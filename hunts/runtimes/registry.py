@@ -1,24 +1,28 @@
 # vim: set fileencoding=utf-8 :
-from hunts.runtimes.lua import LuaRuntime
-from hunts.runtimes.regex import RegexRuntime
-from hunts.runtimes.static import StaticRuntime
+from .external import ExternalRuntime
+from .lua import LuaRuntime
+from .regex import RegexRuntime
+from .static import StaticRuntime
 
 
 class RuntimesRegistry(object):
-    STATIC = 'S'
-    LUA    = 'L'
-    REGEX  = 'R'
+    EXTERNAL = 'E'
+    LUA      = 'L'
+    REGEX    = 'R'
+    STATIC   = 'S'
 
     RUNTIME_CHOICES = (
-        (STATIC, 'Static Runtime'),
-        (LUA,    'Lua Runtime'),
-        (REGEX,  'Regex Run'),
+        (EXTERNAL, 'External Runtime'),
+        (LUA,      'Lua Runtime'),
+        (REGEX,    'Regex Runtime'),
+        (STATIC,   'Static Runtime'),
     )
 
     REGISTERED_RUNTIMES = {
-        STATIC: StaticRuntime(),
-        LUA:    LuaRuntime(),
-        REGEX:  RegexRuntime(),
+        EXTERNAL: ExternalRuntime(),
+        LUA:      LuaRuntime(),
+        REGEX:    RegexRuntime(),
+        STATIC:   StaticRuntime(),
     }
 
     @staticmethod
