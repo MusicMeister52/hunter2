@@ -21,9 +21,9 @@ def content():
     return {"content": f'Divide {data["numerator"]} by {data["denominator"]}'}
 
 
-#@post('/callback')
-#def callback():
-#    pass
+# @post('/callback')
+# def callback():
+#     pass
 
 
 @post('/answer')
