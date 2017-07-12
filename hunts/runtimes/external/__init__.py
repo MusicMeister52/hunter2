@@ -1,5 +1,5 @@
 # vim: set fileencoding=utf-8 :
-from . import AbstractRuntime
+from .. import AbstractRuntime
 
 import json
 import requests
