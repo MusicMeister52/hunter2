@@ -7,11 +7,15 @@ import requests
 
 class ExternalRuntime(AbstractRuntime):
     def evaluate(self, endpoint, team_puzzle_data, user_puzzle_data, team_data, user_data):
+        team_id = team_data.team.pk
+        user_id = user_data.user.pk
         payload = {
-            'team_puzzle_data': team_puzzle_data,
-            'user_puzzle_data': user_puzzle_data,
-            'team_data': team_data,
-            'user_data': user_data,
+            'team_id': team_id,
+            'user_id': user_id,
+            'team_puzzle_data': team_puzzle_data.data,
+            'user_puzzle_data': user_puzzle_data.data,
+            'team_data': team_data.data,
+            'user_data': user_data.data,
         }
 
         r = requests.post(endpoint, data=json.dumps(payload))
