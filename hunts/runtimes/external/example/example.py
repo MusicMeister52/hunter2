@@ -31,7 +31,7 @@ def answer():
     team_id = request.json['team_id']
     with open(f'/srv/example/team_{team_id}') as f:
         data = json.load(f)
-    return { "correct": request.json['guess'] == data['answer'] }
+    return {"correct": request.json['guess'] == data['answer']}
 
 
 if __name__ == '__main__':
