@@ -18,7 +18,7 @@ def content():
         data['numerator'] = data['answer'] * data['denominator']
         with open(f'/srv/example/team_{team_id}', 'x') as f:
             json.dump(data, f)
-    return {"content": f'Divide {data["numerator"]} by {data["denominator"]}'}
+    return {"content": f'<h2>A Divisive Question</h2><p>Divide {data["numerator"]} by {data["denominator"]}</p>'}
 
 
 # @post('/callback')
