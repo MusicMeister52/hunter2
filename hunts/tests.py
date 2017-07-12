@@ -10,7 +10,7 @@ from .runtimes.registry import RuntimesRegistry as rr
 
 
 class AnswerValidationTests(TestCase):
-    fixtures = ['test']
+    fixtures = ['base', 'test']
 
     def setUp(self):
         self.puzzle = Puzzle.objects.get()
@@ -52,7 +52,7 @@ class AnswerValidationTests(TestCase):
 
 
 class PuzzleStartTimeTests(TestCase):
-    fixtures = ['test']
+    fixtures = ['base', 'test']
 
     def test_start_times(self):
         self.assertTrue(self.client.login(username='test', password='hunter2'))
@@ -67,7 +67,7 @@ class PuzzleStartTimeTests(TestCase):
 
 
 class ClueDisplayTests(TestCase):
-    fixtures = ['test']
+    fixtures = ['base', 'test']
 
     def setUp(self):
         user = UserProfile.objects.get(pk=1)
