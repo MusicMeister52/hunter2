@@ -68,6 +68,9 @@ test:
     - ln -fs docker-compose.dev.yml docker-compose.yml
     - docker load -i $IMAGE_FILE
     - install -d -m 777 coverage
+    - pushd hunts/runtimes/external/example
+    - docker-compose up -d
+    - popd
     - docker-compose run $SERVICE coverage run --source . manage.py test -v 2
     - docker-compose run $SERVICE coverage html
     - docker-compose run $SERVICE coverage report

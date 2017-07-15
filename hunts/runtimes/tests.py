@@ -12,7 +12,7 @@ class ExternalRuntimeTestCase(TestCase):
     def test_connection(self):
         external_runtime = ExternalRuntime()
         external_uri = r'http://example:8080/content'
-        r = requests.post(external_uri)
+        r = requests.post(external_uri, json={'team_id': 1})
         r.raise_for_status()
 
 
