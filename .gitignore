@@ -8,4 +8,4 @@ coverage
 .env
 
 # Ignore selected docker-compose.yml file
-docker-compose.yml
+/docker-compose.yml

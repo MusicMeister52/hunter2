@@ -1,0 +1,15 @@
+version: '2.1'
+
+networks:
+  default:
+    external:
+      name: hunter2_default
+
+services:
+  example:
+    build: .
+    volumes:
+      - data:/srv/example
+
+volumes:
+  data: {}

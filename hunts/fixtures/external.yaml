@@ -1,0 +1,4 @@
+- model: hunts.puzzle
+  pk: 1
+  fields: {title: Test Puzzle, runtime: E, content: http://example:8080/content, cb_runtime: S,
+    cb_content: ''}
