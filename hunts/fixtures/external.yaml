@@ -1,4 +1,16 @@
 - model: hunts.puzzle
   pk: 1
-  fields: {title: Test Puzzle, runtime: E, content: http://example:8080/content, cb_runtime: S,
+  fields: {title: Test Puzzle, runtime: E, content: 'http://example:8080/content', cb_runtime: S,
     cb_content: ''}
+- model: hunts.teamdata
+  pk: 1
+  fields: {team: 1, data: {}}
+- model: hunts.userdata
+  pk: 1
+  fields: {event: 1, user: 1, data: {}}
+- model: hunts.teampuzzledata
+  pk: 1
+  fields: {puzzle: 1, team: 1, start_time: '1970-01-01T00:00:00Z', data: {}}
+- model: hunts.userpuzzledata
+  pk: 1
+  fields: {puzzle: 1, user: 1, data: {}}

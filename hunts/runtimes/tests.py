@@ -1,20 +1,22 @@
 # vim: set fileencoding=utf-8 :
-from unittest import TestCase
+from django.test import TestCase
 
 from .external import ExternalRuntime
 from .regex import RegexRuntime
 from .static import StaticRuntime
 
-import requests
+from ..models import Puzzle, PuzzleData
+from teams.models import Team, UserProfile
 
 
 class ExternalRuntimeTestCase(TestCase):
+    fixtures = ['base', 'external']
+
     def test_connection(self):
         external_runtime = ExternalRuntime()
-        external_uri = r'http://example:8080/content'
-        r = requests.post(external_uri, json={'team_id': 1})
-        r.raise_for_status()
-
+        puzzle = Puzzle.objects.get()
+        data = PuzzleData(puzzle, Team.objects.get(), UserProfile.objects.get())
+        external_runtime.evaluate(puzzle.content, data.t_data, data.u_data, data.tp_data, data.up_data)
 
 
 class RegexRuntimeTestCase(TestCase):

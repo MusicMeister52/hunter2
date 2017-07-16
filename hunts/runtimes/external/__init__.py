@@ -18,7 +18,7 @@ class ExternalRuntime(AbstractRuntime):
             'user_data': user_data.data,
         }
 
-        r = requests.post(endpoint, data=json.dumps(payload))
+        r = requests.post(endpoint, json=payload)
         r.raise_for_status()
 
         response = r.json()
@@ -31,7 +31,7 @@ class ExternalRuntime(AbstractRuntime):
         if 'user_data' in response:
             user_data = response['user_data']
 
-        return response['puzzle_text']
+        return response['content']
 
     def validate_guess(self, endpoint, guess, team_puzzle_data, team_data):
         return False
