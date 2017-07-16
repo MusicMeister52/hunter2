@@ -48,10 +48,10 @@ build:example:
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_NAME
     IMAGE_FILE: $SERVICE:$CI_COMMIT_REF_NAME.tar
   script:
-    - pushd hunts/runtimes/external/example
+    - cd hunts/runtimes/external/example
     - docker-compose build
     - docker save -o $IMAGE_FILE $IMAGE_TAG
-    - popd
+    - cd -
   artifacts:
     expire_in: 90 days
     name: external-runtime-example-container
@@ -88,9 +88,9 @@ test:
     - docker load -i $IMAGE_FILE
     - docker load -i $EXAMPLE_FILE
     - install -d -m 777 coverage
-    - pushd hunts/runtimes/external/example
+    - cd hunts/runtimes/external/example
     - docker-compose up -d
-    - popd
+    - cd -
     - docker-compose run $SERVICE coverage run --source . manage.py test -v 2
     - docker-compose run $SERVICE coverage html
     - docker-compose run $SERVICE coverage report
@@ -112,6 +112,22 @@ release:app:
   script:
     - docker load -i $IMAGE_FILE
     - docker-compose push
+  only:
+    - tags
+
+release:example:
+  stage: release
+  dependencies:
+    - build:example
+  variables:
+    SERVICE: example
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_NAME
+    IMAGE_FILE: $SERVICE:$CI_COMMIT_REF_NAME.tar
+  script:
+    - cd hunts/runtimes/external/example
+    - docker load -i $IMAGE_FILE
+    - docker-compose push
+    - cd -
   only:
     - tags
 
