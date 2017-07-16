@@ -88,6 +88,7 @@ test:
     - docker load -i $IMAGE_FILE
     - docker load -i $EXAMPLE_FILE
     - install -d -m 777 coverage
+    - docker-compose up -d db
     - cd hunts/runtimes/external/example
     - docker-compose up -d
     - cd -
