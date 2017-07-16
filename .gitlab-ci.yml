@@ -50,8 +50,8 @@ build:example:
   script:
     - cd hunts/runtimes/external/example
     - docker-compose build
-    - docker save -o $IMAGE_FILE $IMAGE_TAG
     - cd -
+    - docker save -o $IMAGE_FILE $IMAGE_TAG
   artifacts:
     expire_in: 90 days
     name: external-runtime-example-container
