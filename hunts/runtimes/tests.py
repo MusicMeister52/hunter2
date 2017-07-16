@@ -5,18 +5,23 @@ from .external import ExternalRuntime
 from .regex import RegexRuntime
 from .static import StaticRuntime
 
-from ..models import Puzzle, PuzzleData
+from ..models import Answer, Puzzle, PuzzleData
 from teams.models import Team, UserProfile
 
 
 class ExternalRuntimeTestCase(TestCase):
     fixtures = ['base', 'external']
 
-    def test_connection(self):
+    def test_evaluate(self):
         external_runtime = ExternalRuntime()
         puzzle = Puzzle.objects.get()
         data = PuzzleData(puzzle, Team.objects.get(), UserProfile.objects.get())
         external_runtime.evaluate(puzzle.content, data.t_data, data.u_data, data.tp_data, data.up_data)
+
+    def test_validate_guess(self):
+        external_runtime = ExternalRuntime()
+        data = PuzzleData(Puzzle.objects.get(), Team.objects.get(), UserProfile.objects.get())
+        self.assertIsInstance(external_runtime.validate_guess(Answer.objects.get().answer, 'guess', data.t_data, data.tp_data), bool)
 
 
 class RegexRuntimeTestCase(TestCase):

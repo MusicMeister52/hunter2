@@ -1,7 +1,9 @@
 - model: hunts.puzzle
   pk: 1
-  fields: {title: Test Puzzle, runtime: E, content: 'http://example:8080/content', cb_runtime: S,
-    cb_content: ''}
+  fields: {title: Test Puzzle, runtime: E, content: 'http://example:8080/content', cb_runtime: S, cb_content: ''}
+- model: hunts.answer
+  pk: 1
+  fields: {for_puzzle: 1, runtime: E, answer: 'http://example:8080/answer'}
 - model: hunts.teamdata
   pk: 1
   fields: {team: 1, data: {}}
