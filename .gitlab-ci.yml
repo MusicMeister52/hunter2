@@ -44,9 +44,9 @@ build:app:
 build:example:
   stage: build
   variables:
-    - SERVICE: example
-    - IMAGE_TAG: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_NAME
-    - IMAGE_FILE: $SERVICE:$CI_COMMIT_REF_NAME.tar
+    SERVICE: example
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_NAME
+    IMAGE_FILE: $SERVICE:$CI_COMMIT_REF_NAME.tar
   script:
     - pushd hunts/runtimes/external/example
     - docker-compose build
