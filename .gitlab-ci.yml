@@ -41,6 +41,23 @@ build:app:
     paths:
       - $IMAGE_FILE
 
+build:example:
+  stage: build
+  variables:
+    - SERVICE: example
+    - IMAGE_TAG: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_NAME
+    - IMAGE_FILE: $SERVICE:$CI_COMMIT_REF_NAME.tar
+  script:
+    - pushd hunts/runtimes/external/example
+    - docker-compose build
+    - docker save -o $IMAGE_FILE $IMAGE_TAG
+    - popd
+  artifacts:
+    expire_in: 90 days
+    name: external-runtime-example-container
+    paths:
+      - $IMAGE_FILE
+
 build:web:
   stage: build
   variables:
@@ -60,13 +77,16 @@ test:
   stage: test
   dependencies:
     - build:app
+    - build:example
   variables:
     SERVICE: app
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_NAME
     IMAGE_FILE: $SERVICE:$CI_COMMIT_REF_NAME.tar
+    EXAMPLE_FILE: example:$CI_COMMIT_REF_NAME.tar
   script:
     - ln -fs docker-compose.dev.yml docker-compose.yml
     - docker load -i $IMAGE_FILE
+    - docker load -i $EXAMPLE_FILE
     - install -d -m 777 coverage
     - pushd hunts/runtimes/external/example
     - docker-compose up -d
