@@ -47,6 +47,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
+    'lazysignup.backends.LazySignupBackend',
     'rules.permissions.ObjectPermissionBackend',
 )
 
@@ -69,6 +70,7 @@ INSTALLED_APPS = (
     'allauth.socialaccount',
     'allauth.socialaccount.providers.openid',
     'debug_toolbar',
+    'lazysignup',
     'nested_admin',
     'rules.apps.AutodiscoverRulesConfig',
     'sortedm2m',

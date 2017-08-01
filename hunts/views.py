@@ -14,6 +14,7 @@ from teams.mixins import TeamMixin
 from . import models
 from . import rules
 from . import utils
+from .mixins import LazyLoginMixin
 from .runtimes.registry import RuntimesRegistry as rr
 
 import events
@@ -28,7 +29,7 @@ class Index(View):
         )
 
 
-class Episode(LoginRequiredMixin, TeamMixin, View):
+class Episode(LazyLoginMixin, TeamMixin, View):
     def get(self, request, episode_number):
         episode = utils.event_episode(request.event, episode_number)
         admin = rules.is_admin_for_episode(request.user, episode)

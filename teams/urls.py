@@ -19,6 +19,7 @@ eventpatterns = [
 ]
 
 urlpatterns = [
+    url(r'^convert/', include('lazysignup.urls')),
     url(r'^event/(?P<event_id>[1-9]\d*)/', include(eventpatterns)),
     url(r'^userprofile_autocomplete/$', views.UserProfileAutoComplete.as_view(), name='userprofile_autocomplete'),
 ]
