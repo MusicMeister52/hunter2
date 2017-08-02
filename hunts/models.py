@@ -251,7 +251,7 @@ class UserData(models.Model):
         verbose_name_plural = 'User puzzle data'
 
     def __str__(self):
-        return f'<UserData: {self.user.name} - {self.puzzle.title}>'
+        return f'<UserData: {self.user.user.username}>'
 
 
 class TeamPuzzleData(models.Model):
