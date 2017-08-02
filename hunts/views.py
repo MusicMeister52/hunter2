@@ -144,7 +144,7 @@ class GuessesContent(LoginRequiredMixin, View):
         )
 
 
-class EventDirect(LoginRequiredMixin, View):
+class EventDirect(LazyLoginMixin, View):
     def get(self, request):
         event = events.models.Event.objects.filter(current=True).get()
 
@@ -154,7 +154,7 @@ class EventDirect(LoginRequiredMixin, View):
         )
 
 
-class EventIndex(LoginRequiredMixin, View):
+class EventIndex(LazyLoginMixin, View):
     def get(self, request):
 
         event = request.event
@@ -174,7 +174,7 @@ class EventIndex(LoginRequiredMixin, View):
         )
 
 
-class Puzzle(LoginRequiredMixin, TeamMixin, View):
+class Puzzle(LazyLoginMixin, TeamMixin, View):
     def get(self, request, episode_number, puzzle_number):
         episode, puzzle = utils.event_episode_puzzle(
             request.event, episode_number, puzzle_number
@@ -249,7 +249,7 @@ class Puzzle(LoginRequiredMixin, TeamMixin, View):
         return response
 
 
-class Answer(LoginRequiredMixin, TeamMixin, View):
+class Answer(LazyLoginMixin, TeamMixin, View):
     def post(self, request, episode_number, puzzle_number):
         episode, puzzle = utils.event_episode_puzzle(
             request.event, episode_number, puzzle_number
@@ -333,7 +333,7 @@ class Answer(LoginRequiredMixin, TeamMixin, View):
         return JsonResponse(response)
 
 
-class Callback(LoginRequiredMixin, TeamMixin, View):
+class Callback(LazyLoginMixin, TeamMixin, View):
     def post(self, request, episode_number, puzzle_number):
         if request.content_type != 'application/json':
             return HttpResponse(status=415)
