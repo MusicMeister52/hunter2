@@ -21,6 +21,22 @@ from .. import models
 import re
 
 
+class AutomationRuntimeTestCase(TestCase):
+    def test_evaluate(self):
+        automation_runtime = AutomationRuntime()
+        with self.assertRaises(NotImplementedError):
+            automationruntime.evaluate('', None, None, None, None)
+
+    def test_validate_guess(self):
+        # Automation runtime should never return true
+        automation_runtime = AutomationRuntime()
+        automation_key = 'test-key'
+        result = automation_runtime.validate_guess(automation_key, automation_key)
+        self.assertFalse(result)
+        result = automation_runtime.validate_guess(automation_key, 'guess')
+        self.assertFalse(result)
+
+
 class IFrameRuntimeTestCase(TestCase):
     def setUp(self):
         self.iframe_runtime = IFrameRuntime()

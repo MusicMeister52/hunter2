@@ -41,7 +41,7 @@ class LuaRuntime(AbstractRuntime):
             # TODO: look at a way to restrict this completely.
             self._sandbox_run(script, instruction_limit=10)
         except RuntimeExecutionTimeExceededError:
-            return True
+            return script
 
     def evaluate(self, script, team_puzzle_data, user_puzzle_data, team_data, user_data):
         return_values = self._sandbox_run(script, {

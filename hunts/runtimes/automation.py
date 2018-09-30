@@ -11,13 +11,20 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
-class AbstractRuntime:
+import uuid
+
+from .abstract import AbstractRuntime
+
+
+class AutomationRuntime(AbstractRuntime):
     def check_script(self, script):
-        return script
+        try:
+            return str(uuid.UUID(script))  # Try to normalise the UUID string
+        except ValueError:
+            return str(uuid.uuid4())  # Generate a new one if it's invalid
 
     def evaluate(self, script, team_puzzle_data, user_puzzle_data, team_data, user_data):
-        raise NotImplementedError("Abstract")
+        raise NotImplementedError("AutomationRuntime can not be used for static evaluation")
 
-    # TODO: Consider changing to allow returning a result and unlock hints for this puzzle.
     def validate_guess(self, validator, guess):
-        raise NotImplementedError("Abstract")
+        return False

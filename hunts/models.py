@@ -80,8 +80,8 @@ class Puzzle(models.Model):
     def clean(self):
         super().clean()
         try:
-            runtimes.runtimes[self.runtime].check_script(self.content)
-            runtimes.runtimes[self.cb_runtime].check_script(self.cb_content)
+            self.content = runtimes.runtimes[self.runtime].check_script(self.content)
+            self.cb_content = runtimes.runtimes[self.cb_runtime].check_script(self.cb_content)
         except SyntaxError as e:
             raise ValidationError(e) from e
 
@@ -288,7 +288,7 @@ class UnlockAnswer(models.Model):
     def clean(self):
         super().clean()
         try:
-            runtimes.runtimes[self.runtime].check_script(self.guess)
+            self.guess = runtimes.runtimes[self.runtime].check_script(self.guess)
         except SyntaxError as e:
             raise ValidationError(e) from e
 
@@ -306,7 +306,7 @@ class Answer(models.Model):
         verbose_name='Validator',
         help_text='Processor to use to check whether guess is correct',
     )
-    answer = models.TextField()
+    answer = models.TextField(blank=True)
 
     def __str__(self):
         if self.runtime == runtimes.STATIC or self.runtime == runtimes.REGEX:
@@ -317,7 +317,7 @@ class Answer(models.Model):
     def clean(self):
         super().clean()
         try:
-            runtimes.runtimes[self.runtime].check_script(self.answer)
+            self.answer = runtimes.runtimes[self.runtime].check_script(self.answer)
         except SyntaxError as e:
             raise ValidationError(e) from e
 
@@ -393,6 +393,11 @@ class Guess(ExportModelOperationsMixin('guess'), models.Model):
     def save(self, *args, **kwargs):
         if not self.by_team:
             self.by_team = self.get_team()
+
+        if self.correct_current and self.correct_for.runtime == runtimes.AUTOMATION:
+            # If this is a Guess for automatic completion then we don't want to evaluate correctness
+            super().save(*args, **kwargs)
+
         self._evaluate_correctness()
         super().save(*args, **kwargs)
 

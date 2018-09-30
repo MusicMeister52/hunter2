@@ -11,11 +11,13 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from hunts.runtimes.automation import AutomationRuntime
 from hunts.runtimes.iframe import IFrameRuntime
 from hunts.runtimes.lua import LuaRuntime
 from hunts.runtimes.regex import RegexRuntime
 from hunts.runtimes.static import StaticRuntime
 
+AUTOMATION   = 'A'
 CASED_REGEX  = 'r'
 CASED_STATIC = 's'
 IFRAME       = 'I'
@@ -30,6 +32,7 @@ RUNTIME_CHOICES = (
     (CASED_REGEX,  'Case Sensitive Regex'),
     (IFRAME,       'IFrame'),
     (LUA,          'Lua'),
+    (AUTOMATION,   'Automatic Completion'),
 )
 
 
@@ -41,6 +44,7 @@ class Runtimes:
         LUA:          (LuaRuntime, {}),
         REGEX:        (RegexRuntime, {'case_sensitive': False}),
         STATIC:       (StaticRuntime, {'case_sensitive': False}),
+        AUTOMATION:   (AutomationRuntime, {}),
     }
 
     def __getitem__(self, key):

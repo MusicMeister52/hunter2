@@ -19,6 +19,7 @@ from .abstract import AbstractRuntime
 class IFrameRuntime(AbstractRuntime):
     def check_script(self, url):
         urlparse(url)
+        return url
 
     def evaluate(self, url, team_puzzle_data, user_puzzle_data, team_data, user_data):
         url_parts = urlparse(url)

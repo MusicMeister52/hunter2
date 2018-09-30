@@ -25,6 +25,7 @@ class RegexRuntime(AbstractRuntime):
     def check_script(self, script):
         try:
             re.compile(script, flags=self.flags)
+            return script
         except re.error as error:
             raise SyntaxError(error) from error
 

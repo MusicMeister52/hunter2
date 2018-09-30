@@ -12,6 +12,7 @@
 
 from os import path
 from string import Template
+import json
 import tarfile
 
 from collections import defaultdict
@@ -654,6 +655,50 @@ class Callback(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         data.save()
 
         return response
+
+
+class Solve(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+    def post(self, request, episode_number, puzzle_number):
+        if request.content_type != 'application/json':
+            return HttpResponse(status=415)
+        if 'application/json' not in request.META['HTTP_ACCEPT']:
+            return HttpResponse(status=406)
+
+        if request.tenant.end_date < timezone.now():
+            return JsonResponse({'error': 'event is over'}, status=400)
+
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            return JsonResponse({'error': 'error decoding request body', 'json_error': str(e)}, status=400)
+
+        try:
+            key = body['key']
+        except KeyError:
+            return JsonResponse({'error': 'no solve key provided'}, status=400)
+
+        answer = request.puzzle.answer_set.filter(runtime=runtimes.AUTOMATION, answer=key).first()
+        if answer is None:
+            return JsonResponse({'error': 'invalid solve key'}, status=403)
+
+        models.Guess(
+            guess='<automatic>',
+            for_puzzle=request.puzzle,
+            by=request.user.profile,
+            by_team=request.team,
+            correct_for=answer,
+            correct_current=True,
+        ).save()
+
+        response = {}
+        next = request.episode.next_puzzle(request.team)
+        if next:
+            response['url'] = reverse('puzzle', kwargs={'episode_number': episode_number, 'puzzle_number': next})
+        else:
+            response['url'] = reverse('event')
+            response['url'] += f'#episode-{episode_number}'
+
+        return JsonResponse(response)
 
 
 class PuzzleInfo(View):
