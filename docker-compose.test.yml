@@ -27,12 +27,37 @@ services:
     depends_on:
       - app
     image: ${IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/web}
+    networks:
+      default:
+        aliases:
+          - www.hunter2.local
+          - dev.hunter2.local
     ports:
       - "8080:80"
     volumes:
       - uploads_events:/media/events:ro
       - uploads_puzzles:/media/puzzles:ro
       - uploads_solutions:/media/solutions:ro
+  selenium_hub:
+    image: selenium/hub:3.14.0-europium
+  selenium_chrome:
+    image: selenium/node-chrome-debug:3.14.0-europium
+    environment:
+      - HUB_PORT_4444_TCP_ADDR=selenium_hub
+      - HUB_PORT_4444_TCP_PORT=4444
+    ports:
+      - "5900:5900"
+    depends_on:
+      - selenium_hub
+  selenium_firefox:
+    image: selenium/node-firefox-debug:3.14.0-europium
+    environment:
+      - HUB_PORT_4444_TCP_ADDR=selenium_hub
+      - HUB_PORT_4444_TCP_PORT=4444
+    ports:
+      - "5901:5900"
+    depends_on:
+      - selenium_hub
 
 volumes:
   db: {}

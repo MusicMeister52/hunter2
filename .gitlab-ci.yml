@@ -94,6 +94,18 @@ test:app:
       - coverage/
   coverage: /\d+\%\s*$/
 
+test: web
+  stage: testweb
+  dependencies:
+    - image: app
+    - image: web
+  script:
+    - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
+    - docker run selenium/standalone-firefox:3.14.0-europium
+    - docker load -i app.tar
+    - docker load -i web.tar
+    - docker-compose up -d
+
 release:app:
   stage: release
   dependencies:
