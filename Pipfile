@@ -19,6 +19,7 @@ django-enumfields = "*"
 django-environ = "*"
 django-extensions = "*"
 django-fullclean = { git = "https://github.com/riconnon/django-fullclean.git", ref = "0.0.4+whitelist" }
+django-jet = "*"
 django-nested-admin = "*"
 django-sendfile = "*"
 django-solo = "*"
