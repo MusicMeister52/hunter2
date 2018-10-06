@@ -15,6 +15,8 @@ from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 from django.utils import timezone
 from django.urls import reverse
 from sortedm2m.fields import SortedManyToManyField
@@ -580,6 +582,28 @@ class Episode(models.Model):
                     break
 
             return result
+
+    @staticmethod
+    def handle_prequels_changed(sender, instance, action, pk_set, **kwargs):
+        if action == 'pre_add':
+            for episode_id in pk_set:
+                episode = Episode.objects.get(pk=episode_id)
+                if episode == instance:
+                    raise ValidationError('Episode cannot follow itself')
+                elif episode.follows(instance):
+                    raise ValidationError('Circular dependency found in episodes')
+
+    @staticmethod
+    def handle_puzzles_changed(sender, instance, action, pk_set, **kwargs):
+        if action == 'pre_add':
+            for puzzle_id in pk_set:
+                puzzle = Puzzle.objects.get(pk=puzzle_id)
+                if puzzle.episode_set.count() > 0:
+                    raise ValidationError('Puzzle can only be used in one episode')
+
+
+m2m_changed.connect(Episode.handle_prequels_changed, sender=Episode.prequels.through, dispatch_uid='episode_handle_prequels_changed')
+m2m_changed.connect(Episode.handle_puzzles_changed, sender=Episode.puzzles.through, dispatch_uid='episode_handle_puzzles_changed')
 
 
 class AnnouncementType(Enum):
