@@ -13,6 +13,7 @@
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import m2m_changed
 from django.urls import reverse
 
 import accounts
@@ -65,3 +66,17 @@ class Team(models.Model):
 
     def is_full(self):
         return self.members.count() >= self.at_event.max_team_size > 0 and not self.is_admin
+
+    @staticmethod
+    def handle_members_changed(sender, instance, action, pk_set, **kwargs):
+        if action == 'pre_add':
+            if instance.is_full():
+                raise ValidationError('Teams can have at most %d members' % instance.at_event.max_team_size)
+            for user_id in pk_set:
+                user = accounts.models.UserProfile.objects.get(pk=user_id)
+                if Team.objects.exclude(pk=instance.pk).filter(at_event=instance.at_event).filter(members=user).count() > 0:
+                    pk_set.remove(user_id)
+                    raise ValidationError('User can only join one team per same event')
+
+
+m2m_changed.connect(Team.handle_members_changed, sender=Team.members.through, dispatch_uid='team_handle_members_changed')

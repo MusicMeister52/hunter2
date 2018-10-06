@@ -19,4 +19,3 @@ class TeamsConfig(AppConfig):
 
     def ready(self):
         super(TeamsConfig, self).ready()
-        from . import signals  # noqa: F401
