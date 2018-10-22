@@ -5,7 +5,7 @@ function escapeHtml(text) {
 	});
 }
 
-function incorrect_answer(guess, timeout, new_hints, unlocks) {
+function incorrect_answer(guess, timeout_length, timeout, new_hints, unlocks) {
 	"use strict";
 	var hints_div = $('#hints');
 	var n_hints = new_hints.length;
@@ -27,6 +27,15 @@ function incorrect_answer(guess, timeout, new_hints, unlocks) {
 	}
 
 	var milliseconds = Date.parse(timeout) - Date.now();
+	var difference = timeout_length - milliseconds;
+
+	// If the time the server is saying it will accept answers again is very different from our own
+	// calculation of the same thing, assume that it's due to clock problems (rather than latency somewhere)
+	// and just wait however long the server was trying to tell us.
+	if (difference > 2000 || difference < 0) {
+		message("Possible clock mismatch. Cooldown may be inaccurate.");
+		milliseconds = timeout_length;
+	}
 	var answer_button = $('#answer-button');
 	doCooldown(milliseconds);
 	setTimeout(function () {
@@ -228,7 +237,7 @@ $(function() {
 					button.removeAttr('disabled');
 					correct_answer(data.url, data.text);
 				} else {
-					incorrect_answer(data.guess, data.timeout, data.new_hints, data.unlocks);
+					incorrect_answer(data.guess, data.timeout_length, data.timeout_end, data.new_hints, data.unlocks);
 				}
 			},
 			error: function(xhr, status, error) {

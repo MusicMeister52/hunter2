@@ -5,10 +5,15 @@ services:
     image: postgres:9.6.10-alpine
     volumes:
       - db:/var/lib/postgresql/data
+  redis:
+    image: redis:4.0.11-alpine3.8
+    volumes:
+      - redis:/data
   app:
     build: .
     depends_on:
       - db
+      - redis
     environment:
       - H2_DEBUG
       - H2_DOMAIN
@@ -37,6 +42,7 @@ services:
 volumes:
   db: {}
   config: {}
+  redis: {}
   uploads_events: {}
   uploads_puzzles: {}
   uploads_solutions: {}

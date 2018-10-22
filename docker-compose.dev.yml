@@ -7,14 +7,19 @@ services:
       - "5432:5432"
     volumes:
       - db:/var/lib/postgresql/data
+  redis:
+    image: redis:4.0.11-alpine3.8
+    volumes:
+      - redis:/data
   app:
     build:
        context: .
        args:
           DEVELOPMENT: "true"
-    command: runserver 0.0.0.0:3031
+    command: runserver 0.0.0.0:8000
     depends_on:
       - db
+      - redis
     environment:
       - H2_DEBUG=True
       - H2_DOMAIN
@@ -23,7 +28,7 @@ services:
       - H2_SILK
     image: ${IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
     ports:
-      - "${H2_LISTEN:-127.0.0.1:8080}:3031"
+      - "${H2_LISTEN:-127.0.0.1:8080}:8000"
     volumes:
       - ${PWD:-.}:/usr/src/app
       - config:/config
@@ -35,6 +40,7 @@ services:
 volumes:
   db: {}
   config: {}
+  redis: {}
   uploads_events: {}
   uploads_puzzles: {}
   uploads_solutions: {}

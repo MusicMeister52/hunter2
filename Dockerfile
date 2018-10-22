@@ -47,7 +47,6 @@ RUN apk add --no-cache \
     imlib2
 
 COPY --from=python_build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
-COPY --from=python_build /usr/local/bin/uwsgi /usr/local/bin/uwsgi
 COPY --from=lua_build /opt/hunter2 /opt/hunter2
 COPY . /usr/src/app
 
@@ -55,21 +54,12 @@ WORKDIR /usr/src/app
 
 RUN addgroup -g 500 -S django \
  && adduser -h /usr/src/app -s /sbin/nologin -G django -S -u 500 django \
- && install -d -g django -o django /config /static /uploads/events /uploads/puzzles /uploads/solutions
+ && install -d -g django -o django /config /uploads/events /uploads/puzzles /uploads/solutions
 USER django
 
 VOLUME ["/config", "/uploads/events", "/uploads/puzzles", "/uploads/solutions"]
 
-EXPOSE 3031
-
-ENV UWSGI_SOCKET :3031
-ENV UWSGI_ENABLE_THREADS True
-ENV UWSGI_MASTER True
-ENV UWSGI_VACUUM True
-ENV UWSGI_UID 500
-ENV UWSGI_GID 500
-ENV UWSGI_CHDIR /usr/src/app
-ENV UWSGI_MODULE hunter2.wsgi:application
+EXPOSE 8000
 
 ENTRYPOINT ["python", "manage.py"]
-CMD ["runuwsgi"]
+CMD ["rundaphne", "--bind", "0.0.0.0"]

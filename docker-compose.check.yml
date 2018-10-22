@@ -5,7 +5,7 @@ services:
     environment:
       - http_proxy
       - https_proxy
-    image: registry.gitlab.com/rconan/docker-pipenv:2018.7.1-1
+    image: registry.gitlab.com/rconan/docker-pipenv:2018.10.13-0
     command: lock
     volumes:
       - ${PWD:-.}:/code

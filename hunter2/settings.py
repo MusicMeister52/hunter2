@@ -106,6 +106,7 @@ SHARED_APPS = (
     'allauth.socialaccount',
     'allauth.socialaccount.providers.openid',
     'analytical',
+    'channels',
     'dal',
     'dal_select2',
     'debug_toolbar',
@@ -121,7 +122,6 @@ SHARED_APPS = (
     'django_extensions',
     'django_fullclean',
     'django_tenants',
-    'django_uwsgi',
     'nested_admin',
     'raven.contrib.django.raven_compat',
     'rules.apps.AutodiscoverRulesConfig',
@@ -269,6 +269,19 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+USE_X_FORWARDED_HOST = True
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('redis', 6379)],  # Should be env var
+        },
+    },
+}
+
+ASGI_APPLICATION = 'hunter2.routing.application'
 
 WSGI_APPLICATION = 'hunter2.wsgi.application'
 
