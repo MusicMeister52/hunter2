@@ -12,12 +12,14 @@
 
 
 from collections.abc import Iterable
+import warnings
 
 import factory
 from faker import Faker
 
-from accounts.factories import UserProfileFactory
+from accounts.factories import UserInfoFactory, UserProfileFactory
 from events import factories
+from .models import Membership
 
 
 class TeamFactory(factory.django.DjangoModelFactory):
@@ -30,12 +32,38 @@ class TeamFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def members(self, create, extracted, **kwargs):
+        warnings.warn('Implicit member creation is deprecated. Use MembershipFactory instead.', DeprecationWarning)
         if not create:
             return
 
         if extracted:
             for member in (extracted if isinstance(extracted, Iterable) else (extracted,)):
-                self.members.add(member)
+                Membership(team=self, user=member.user.info).save()
+
+
+class MembershipFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = 'teams.Membership'
+
+    team = factory.SubFactory(TeamFactory)
+    user = factory.SubFactory(UserInfoFactory)
+
+
+class InviteFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = 'teams.Invite'
+
+    team = factory.SubFactory(TeamFactory)
+    by = factory.SubFactory(UserInfoFactory)
+    user = factory.SubFactory(UserInfoFactory)
+
+
+class RequestFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = 'teams.Request'
+
+    team = factory.SubFactory(TeamFactory)
+    user = factory.SubFactory(UserInfoFactory)
 
 
 class TeamMemberFactory(UserProfileFactory):

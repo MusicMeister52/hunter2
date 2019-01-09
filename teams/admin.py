@@ -13,23 +13,57 @@
 
 from django.contrib import admin
 
-from .forms import TeamForm
+from .forms import MembershipForm
 from . import models
+
+
+@admin.register(models.Membership)
+class MembershipAdmin(admin.ModelAdmin):
+    form = MembershipForm
+    readonly_fields = (
+        'user',
+    )
+
+
+class InviteInline(admin.TabularInline):
+    model = models.Invite
+    extra = 0
+
+
+class MembershipInline(admin.TabularInline):
+    model = models.Membership
+    readonly_fields = (
+        'user',
+    )
+    can_delete = False
+    extra = 0
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+class RequestInline(admin.TabularInline):
+    model = models.Request
+    extra = 0
 
 
 @admin.register(models.Team)
 class TeamAdmin(admin.ModelAdmin):
-    form = TeamForm
-    ordering = ['at_event', 'name']
+    inlines = (MembershipInline, InviteInline, RequestInline)
+    ordering = ('at_event', 'name')
     list_display = ('the_name', 'at_event', 'is_admin', 'member_count')
     list_display_links = ('the_name', )
 
+#    class Media:
+#        css = { "all": ("teams/css/hide_admin_original.css",) }
+
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.prefetch_related('members', 'members__user')
+        return qs.prefetch_related('membership_set', 'membership_set__user')
 
     def member_count(self, team):
-        return team.members.all().count()
+        return team.membership_set.all().count()
 
     member_count.short_description = "Members"
 

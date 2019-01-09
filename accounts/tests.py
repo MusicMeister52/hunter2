@@ -12,8 +12,10 @@
 
 
 from django.test import TestCase
+from django.urls import reverse
 
 from accounts.factories import UserInfoFactory, UserProfileFactory, UserFactory
+from events.test import EventTestCase
 
 
 class FactoryTests(TestCase):
@@ -26,3 +28,13 @@ class FactoryTests(TestCase):
 
     def test_user_factory_default_construction(self):
         UserFactory.create()
+
+
+class ProfileViewTests(EventTestCase):
+    def test_load_profile_page(self):
+        user = UserInfoFactory()
+        response = self.client.get(reverse('profile', kwargs={
+            'pk': user.id,
+        }))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(user.username.encode(response.charset), response.content)

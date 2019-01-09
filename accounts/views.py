@@ -26,11 +26,11 @@ from teams.models import Team
 from . import forms, models
 
 
-class UserProfileAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
+class UserInfoAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
     raise_exception = True
 
     def get_queryset(self):
-        qs = models.UserProfile.objects.exclude(pk=self.request.user.profile.pk).order_by('user__username')
+        qs = models.UserInfo.objects.exclude(pk=self.request.user.info.pk).order_by('user__username')
 
         if self.q:
             qs = qs.filter(
@@ -53,7 +53,7 @@ class ProfileView(DetailView):
             event = attendance.event
             with tenant_context(event):
                 try:
-                    team = Team.objects.filter(members=object.user.profile).get()
+                    team = Team.objects.filter(membership__user=object.user.info).get()
                     attendance_info = {
                         "event": attendance.event.name,
                         "team": team.name,

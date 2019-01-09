@@ -12,10 +12,9 @@
 
 
 from django.core.exceptions import ValidationError
-from django.db.models.signals import m2m_changed
+from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
-from accounts.models import UserProfile
-from teams.models import Team
+from teams.models import Membership
 from .models import Episode, Guess, Puzzle
 
 
@@ -39,9 +38,7 @@ def episode_prequels_changed(sender, instance, action, pk_set, **kwargs):
                 raise ValidationError('Circular dependency found in episodes')
 
 
-@receiver(m2m_changed, sender=Team.members.through)
-def members_changed(sender, instance, action, pk_set, **kwargs):
-    if action == 'post_add':
-        users = UserProfile.objects.filter(pk__in=pk_set)
-        guesses = Guess.objects.filter(by__in=users)
-        guesses.update(by_team=instance, correct_current=False)
+@receiver(post_save, sender=Membership)
+def membership_changed(sender, instance, created, raw, using, update_fields, **kwargs):
+    guesses = Guess.objects.filter(by=instance.user.user.profile)
+    guesses.update(by_team=instance.team, correct_current=False)

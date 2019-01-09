@@ -22,7 +22,7 @@ from django.utils import timezone
 from parameterized import parameterized
 
 from accounts.factories import UserProfileFactory
-from events.factories import EventFactory, EventFileFactory
+from events.factories import AttendanceFactory, EventFactory, EventFileFactory
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from . import runtimes, utils
@@ -118,12 +118,39 @@ class FactoryTests(EventTestCase):
         AnnouncementFactory.create()
 
 
-class HomePageTests(EventTestCase):
-    def test_load_homepage(self):
-        # Need one default event.
-        EventFactory.create()
+class HuntPageTests(EventTestCase):
+    def test_load_home_page(self):
         url = reverse('index')
         response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_load_about_page(self):
+        url = reverse('about')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_about_page_lists_admin_team(self):
+        user = TeamMemberFactory(team__is_admin=True)
+        attendance = AttendanceFactory(user_info=user.user.info)
+
+        url = reverse('about')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(user.username.encode(response.charset), response.content)
+        self.assertIn(attendance.seat.encode(response.charset), response.content)
+
+    def test_load_examples_page(self):
+        url = reverse('examples')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_load_help_page(self):
+        url = reverse('help')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_load_rules_page(self):
+        url = reverse('rules')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
@@ -230,7 +257,7 @@ class AnswerSubmissionTests(EventTestCase):
                 'answer': GuessFactory.build(for_puzzle=self.puzzle, correct=False).guess
             })
             self.assertEqual(response.status_code, 429)
-            self.assertTrue(b'error' in response.content)
+            self.assertEqual(response.json()['error'], 'too fast')
             frozen_datetime.tick(delta=datetime.timedelta(seconds=5))
             response = self.client.post(self.url, {
                 'last_updated': '0',
@@ -492,7 +519,7 @@ class EpisodeBehaviourTest(EventTestCase):
             user = TeamMemberFactory()
             self.client.force_login(user.user)
 
-            started_parallel_episode = EpisodeFactory(start_date=tz_time - datetime.timedelta(minutes=1), parallel=True)
+            started_parallel_episode = EpisodeFactory(event=self.tenant, start_date=tz_time - datetime.timedelta(minutes=1), parallel=True)
 
             started_parallel_episode_started_puzzle = PuzzleFactory(
                 episode=started_parallel_episode,
@@ -507,7 +534,7 @@ class EpisodeBehaviourTest(EventTestCase):
             response = self.client.get(started_parallel_episode_not_started_puzzle.get_absolute_url())
             self.assertEqual(response.status_code, 403)
 
-            not_started_parallel_episode = EpisodeFactory(start_date=tz_time + datetime.timedelta(minutes=1), parallel=True)
+            not_started_parallel_episode = EpisodeFactory(event=self.tenant, start_date=tz_time + datetime.timedelta(minutes=1), parallel=True)
 
             not_started_parallel_episode_started_puzzle = PuzzleFactory(
                 episode=not_started_parallel_episode,
@@ -522,7 +549,7 @@ class EpisodeBehaviourTest(EventTestCase):
             response = self.client.get(not_started_parallel_episode_not_started_puzzle.get_absolute_url())
             self.assertEqual(response.status_code, 302)
 
-            started_linear_episode = EpisodeFactory(start_date=tz_time - datetime.timedelta(minutes=2), parallel=False)
+            started_linear_episode = EpisodeFactory(event=self.tenant, start_date=tz_time - datetime.timedelta(minutes=2), parallel=False)
 
             started_linear_episode_started_puzzle = PuzzleFactory(
                 episode=started_linear_episode,
@@ -1108,12 +1135,10 @@ class GuessTeamDenormalisationTests(EventTestCase):
         guess2 = GuessFactory(for_puzzle=self.puzzle2, by=self.user2, correct=False)
 
         # Swap teams and check the guesses update
-        self.team1.members.set([])
-        self.team2.members.set([self.user1])
-        self.team1.save()
-        self.team2.save()
-        self.team1.members.set([self.user2])
-        self.team1.save()
+        self.user1.user.info.membership.team = self.team2
+        self.user1.user.info.membership.save()
+        self.user2.user.info.membership.team = self.team1
+        self.user2.user.info.membership.save()
 
         # Refresh the retrieved Guesses and ensure they are consistent.
         guess1.refresh_from_db()

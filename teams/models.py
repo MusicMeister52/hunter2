@@ -28,9 +28,6 @@ class Team(models.Model):
     name = models.CharField(blank=True, null=True, unique=True, max_length=100)
     at_event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING, related_name='teams')
     is_admin = models.BooleanField(default=False)
-    members = models.ManyToManyField(accounts.models.UserProfile, blank=True, related_name='teams')
-    invites = models.ManyToManyField(accounts.models.UserProfile, blank=True, related_name='team_invites')
-    requests = models.ManyToManyField(accounts.models.UserProfile, blank=True, related_name='team_requests')
 
     def __str__(self):
         return '%s @%s' % (self.get_verbose_name(), self.at_event)
@@ -38,14 +35,16 @@ class Team(models.Model):
     def get_verbose_name(self):
         if self.is_explicit():
             return self.name
-        if self.members.all().count() == 1:
+        member_count = self.membership_set.count()
+        if member_count == 1:
             # We use .all()[0] to allow for prefetch_related
-            return '[%s\'s team]' % (self.members.all()[0])
-        elif self.members.all().count() == 0:
+            user = self.membership_set.all()[0].user
+            return f'[{user}\'s team]'
+        elif member_count == 0:
             return '[empty anonymous team]'
         else:
             # This should never happen but we don't want things to break if it does!
-            return '[anonymous team with %d members!]' % self.members.count()
+            return f'[anonymous team with {member_count} members!]'
 
     def clean(self):
         if (
@@ -67,23 +66,30 @@ class Team(models.Model):
         return self.name is not None
 
     def is_full(self):
-        return self.members.count() >= self.at_event.max_team_size > 0 and not self.is_admin
+        return self.membership_set.count() >= self.at_event.max_team_size > 0 and not self.is_admin
 
 
 class Membership(models.Model):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    user = models.OneToOneField(accounts.models.UserInfo)
-    team = models.ForeignKey(Team)
+    user = models.OneToOneField(accounts.models.UserInfo, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+
+    def clean(self):
+        if (
+            self.team.at_event.max_team_size and
+            self.team.membership_set.count() >= self.team.at_event.max_team_size
+        ):
+            raise ValidationError('Team is full')
 
 
 class Invite(models.Model):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    by = models.ForeignKey(accounts.models.UserInfo)
-    user = models.ForeignKey(accounts.models.UserInfo)
-    team = models.ForeignKey(Team)
+    by = models.ForeignKey(accounts.models.UserInfo, on_delete=models.CASCADE, related_name='invites_sent')
+    user = models.ForeignKey(accounts.models.UserInfo, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
 
 
 class Request(models.Model):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    user = models.ForeignKey(accounts.models.UserInfo)
-    team = models.ForeignKey(Team)
+    user = models.ForeignKey(accounts.models.UserInfo, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)

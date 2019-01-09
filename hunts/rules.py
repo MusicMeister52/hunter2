@@ -22,7 +22,7 @@ def is_admin_for_event(user, event):
         admin_team = event.teams.filter(is_admin=True).get()
     except Team.DoesNotExist:
         return False
-    return user.profile in admin_team.members.all()
+    return user.info.membership in admin_team.membership_set.all()
 
 
 rules.add_perm('hunts.change_event', is_admin_for_event)

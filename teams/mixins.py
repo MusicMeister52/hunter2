@@ -13,22 +13,25 @@
 
 from django.core.exceptions import ObjectDoesNotExist
 
-from accounts.models import UserProfile
-from .models import Team
+from accounts.models import UserInfo, UserProfile
+from .models import Membership, Team
 
 
 class TeamMixin():
     def dispatch(self, request, *args, **kwargs):
         try:
-            user = request.user.profile
+            user = request.user.info
         except ObjectDoesNotExist:
-            user = UserProfile(user=request.user)
+            user = UserInfo(user=request.user)
             user.save()
+        (profile, created) = UserProfile.objects.get_or_create(user=request.user)
+        if created:
+            profile.save()
         # TODO: May conflict with assignment of request.team in TeamMiddleware but shouldn't cause problems
         try:
-            request.team = user.team_at(request.tenant)
-        except ObjectDoesNotExist:
+            request.team = user.membership.team
+        except UserInfo.membership.RelatedObjectDoesNotExist:
             request.team = Team(at_event=request.tenant)
             request.team.save()
-            request.team.members.add(user)
+            Membership(team=request.team, user=user).save()
         return super().dispatch(request, *args, **kwargs)

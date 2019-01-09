@@ -32,7 +32,7 @@ class UserProfile(models.Model):
         return self.user.username
 
     def __str__(self):
-        return f'{self.username}'
+        return self.username
 
     def is_on_explicit_team(self, event):
         return self.teams.filter(at_event=event).exclude(name=None).exists()
@@ -42,7 +42,8 @@ class UserProfile(models.Model):
         return self.user.info.attendance_set.get(event=event)
 
     def team_at(self, event):
-        return self.teams.get(at_event=event)
+        warnings.warn('Membership has been moved to UserInfo model', DeprecationWarning)
+        return self.user.info.membership.team
 
 
 # Today this is a new model because it needs an unenumerable key since it will be used in a URL.
@@ -54,12 +55,21 @@ class UserInfo(models.Model):
 
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='info')
-    picture = models.URLField(help_text='Paste a URL to an image for your profile picture')
+    picture = models.URLField(blank=True, help_text='Paste a URL to an image for your profile picture')
     objects = Manager()
 
     @property
     def username(self):
         return self.user.username
 
+    def __str__(self):
+        return self.username
+
     def attendance_at(self, event):
         return self.attendance_set.get(event=event)
+
+    def is_on_explicit_team(self):
+        try:
+            return self.membership.team.name is not None
+        except UserInfo.membership.RelatedObjectDoesNotExist:
+            return False

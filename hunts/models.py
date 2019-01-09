@@ -126,7 +126,7 @@ class Puzzle(models.Model):
         """Return a list of correct guesses for this puzzle by the given team, ordered by when they were given."""
         # Select related since get_correct_for() will want it
         guesses = Guess.objects.filter(
-            by__in=team.members.all(),
+            by__in=team.membership_set.values('user__user__profile'),
             for_puzzle=self,
         ).order_by(
             'given'
@@ -249,7 +249,7 @@ class Hint(Clue):
 class Unlock(Clue):
     def unlocked_by(self, team):
         guesses = Guess.objects.filter(
-            by__in=team.members.all()
+            by__in=team.membership_set.values('user__user__profile')
         ).filter(
             for_puzzle=self.puzzle
         )
@@ -362,8 +362,8 @@ class Guess(ExportModelOperationsMixin('guess'), models.Model):
         return f'"{self.guess}" by {self.by} ({self.by_team}) @ {self.given}'
 
     def get_team(self):
-        event = self.for_puzzle.episode_set.get().event
-        return teams.models.Team.objects.filter(at_event=event, members=self.by).get()
+        # This is massively inefficient right now but it's cached and it's temporary
+        return self.by.user.info.membership.team
 
     def get_correct_for(self):
         """Get the first answer this guess is correct for, if such exists."""

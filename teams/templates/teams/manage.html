@@ -21,7 +21,7 @@ There is no maximum team size.
 <h3>{{ team.name }}</h3>
 {% spaceless %}
 <ul id="member-list" style="width: 40%">
-	{% for member in members.all %}
+	{% for member in members %}
 		<li>{{ member.username }}<span style="float: right">&nbsp;{{ member.seat }}</span></li>
 	{% endfor %}
 </ul>

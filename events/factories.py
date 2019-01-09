@@ -76,7 +76,7 @@ class EventFactory(factory.django.DjangoModelFactory):
     rules_text = factory.Faker('text')
     help_text = factory.Faker('text')
     examples_text = factory.Faker('text')
-    max_team_size = factory.Faker('random_int', min=0, max=10)
+    max_team_size = factory.Faker('random_int', min=2, max=10)
     end_date = factory.Faker('date_time_between', start_date='+1h', end_date='+3y', tzinfo=pytz.utc)
 
     domain = factory.RelatedFactory(DomainFactory, 'tenant', subdomain=schema_name)

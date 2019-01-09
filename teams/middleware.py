@@ -11,9 +11,8 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from accounts.models import UserProfile
-from events.models import Event
-from .models import Team
+from accounts.models import UserInfo
+from .models import Membership
 
 
 class TeamMiddleware(object):
@@ -24,27 +23,17 @@ class TeamMiddleware(object):
         return self.get_response(request)
 
     def process_view(self, request, view_func, view_args, view_kwargs):
-        request.events = None
         request.team = None
 
         if not request.user.is_authenticated:
             return
 
-        (user, _) = UserProfile.objects.get_or_create(user=request.user)
+        (user, _) = UserInfo.objects.get_or_create(user=request.user)
 
         if request.tenant is not None:
-            request.events = set([t.at_event for t in user.teams.all()])
-            request.events.add(Event.objects.filter(current=True).get())
             try:
-                request.events.remove(request.tenant)
-            except KeyError:
-                # TODO: Requested event not in events list. Should we allow? 404?
-                pass
-
-            try:
-                request.team = user.teams.get(at_event=request.tenant)
-            except Team.DoesNotExist:
+                request.team = user.membership.team
+            except Membership.DoesNotExist:
                 request.team = None
-                # TODO: User has no team for this event. Redirect to team creation?
                 pass
             return

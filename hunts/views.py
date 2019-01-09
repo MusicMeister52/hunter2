@@ -36,8 +36,9 @@ from teams.mixins import TeamMixin
 from . import models, rules, runtimes, utils
 from .forms import BulkUploadForm
 from .mixins import EpisodeUnlockedMixin, PuzzleAdminMixin, PuzzleUnlockedMixin
+from accounts.models import UserInfo
 from events.models import Attendance
-from events.utils import annotate_userprofile_queryset_with_seat
+from events.utils import annotate_userinfo_queryset_with_seat
 
 import hunter2
 import teams
@@ -690,12 +691,14 @@ class AboutView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        admin_team = self.request.tenant.teams.get(is_admin=True)
+        try:
+            admin_team = self.request.tenant.teams.get(is_admin=True)
+            admin_members = annotate_userinfo_queryset_with_seat(UserInfo.objects.filter(membership__in=admin_team.membership_set.all()), admin_team.at_event)
+        except teams.models.Team.DoesNotExist:
+            admin_members = ()
 
         files = {f.slug: f.file.url for f in self.request.tenant.eventfile_set.filter(slug__isnull=False)}
         content = Template(self.request.tenant.about_text).safe_substitute(**files)
-
-        admin_members = annotate_userprofile_queryset_with_seat(admin_team.members, self.request.tenant)
 
         context.update({
             'admins': admin_members,
