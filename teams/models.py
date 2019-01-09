@@ -11,6 +11,9 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import uuid
+
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
@@ -65,3 +68,22 @@ class Team(models.Model):
 
     def is_full(self):
         return self.members.count() >= self.at_event.max_team_size > 0 and not self.is_admin
+
+
+class Membership(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
+    user = models.OneToOneField(accounts.models.UserInfo)
+    team = models.ForeignKey(Team)
+
+
+class Invite(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
+    by = models.ForeignKey(accounts.models.UserInfo)
+    user = models.ForeignKey(accounts.models.UserInfo)
+    team = models.ForeignKey(Team)
+
+
+class Request(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
+    user = models.ForeignKey(accounts.models.UserInfo)
+    team = models.ForeignKey(Team)
