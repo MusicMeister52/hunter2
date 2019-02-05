@@ -186,7 +186,7 @@ class GuessesContent(LoginRequiredMixin, View):
             'correct_for__id'
         ).annotate(
             byseat=Subquery(
-                Attendance.objects.filter(user=OuterRef('by'), event=self.request.tenant).values('seat')
+                Attendance.objects.filter(user__user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
             )
         ).prefetch_related(
             Prefetch(

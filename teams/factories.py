@@ -44,6 +44,7 @@ class TeamFactory(factory.django.DjangoModelFactory):
 class MembershipFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'teams.Membership'
+        django_get_or_create = ('team', 'user')
 
     team = factory.SubFactory(TeamFactory)
     user = factory.SubFactory(UserInfoFactory)

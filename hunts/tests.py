@@ -14,6 +14,7 @@
 import datetime
 import random
 
+import factory
 import freezegun
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -856,6 +857,7 @@ class AdminTeamTests(EventTestCase):
     def setUp(self):
         self.event = self.tenant
         self.episode = EpisodeFactory(event=self.event)
+        self.puzzles = PuzzleFactory.create_batch(3, episode=self.episode)
         self.admin_user = UserProfileFactory()
         self.admin_team = TeamFactory(at_event=self.event, is_admin=True, members={self.admin_user})
 
@@ -867,6 +869,15 @@ class AdminTeamTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_guesses(self):
+        anonymous = TeamMemberFactory(team__name='', team__at_event=self.tenant)
+        AttendanceFactory(event=self.tenant, user_info=anonymous.user.info)
+        member = TeamMemberFactory(team__at_event=self.tenant)
+        AttendanceFactory(event=self.tenant, user_info=member.user.info)
+        GuessFactory.create_batch(  # Create some guesses to better exercise the view code
+            5,
+            for_puzzle=factory.Iterator(self.puzzles),
+            by=factory.Iterator((anonymous, member)),
+        )
         self.client.force_login(self.admin_user.user)
         response = self.client.get(reverse('guesses'))
         self.assertEqual(response.status_code, 200)
