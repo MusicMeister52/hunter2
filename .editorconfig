@@ -22,7 +22,6 @@ indent_style = tab
 indent_size = tab
 tab_width = 4
 
-
 # 2 Spaces for Javascript & JSON
 [{*.js,*.json}]
 indent_size = 2
