@@ -17,16 +17,17 @@
 {% endspaceless %}{% endblock %}
 
 {% block topbar_title %}
-	<a class="navbar-brand" href="{% url 'index' %}">{{ event.name }}</a>
+	<a href="{% url 'index' %}">{{ event.name }}</a>
 {% endblock %}
 
 {% block topbar_left %}
-	<li class="nav-item"><a class="nav-link" href="{% url 'about' %}">About</a></li>
-	<li class="nav-item"><a class="nav-link" href="{% url 'rules' %}">Rules</a></li>
-	<li class="nav-item"><a class="nav-link" href="{% url 'help' %}">Help</a></li>
+	<li><a href="{% url 'about' %}">About</a></li>
+	<li><a href="{% url 'rules' %}">Rules</a></li>
+	<li><a href="{% url 'help' %}">Help</a></li>
 {% endblock %}
 
 {% block announcements %}
+	{{ block.super }}
 	{% for announcement in announcements %}
 		<div class="alert {{ announcement.css_type }}" role="alert">
 			<strong>{{ announcement.title }}</strong> {{ announcement.message }}
