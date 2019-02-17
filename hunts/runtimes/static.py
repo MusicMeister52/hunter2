@@ -18,7 +18,7 @@ class StaticRuntime(AbstractRuntime):
     def __init__(self, case_sensitive):
         self.case_sensitive = case_sensitive
 
-    def evaluate(self, script, team_puzzle_data, user_puzzle_data, team_data, user_data):
+    def evaluate(self, script, mode, team_puzzle_data, user_puzzle_data, team_data, user_data):
         return script
 
     def validate_guess(self, validator, guess):

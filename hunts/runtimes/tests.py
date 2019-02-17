@@ -28,7 +28,7 @@ class IFrameRuntimeTestCase(TestCase):
     def test_evaluate_no_param(self):
         iframe_url = r'https://example.com/'
         up_data = models.UserPuzzleData()
-        response = self.iframe_runtime.evaluate(iframe_url, None, up_data, None, None)
+        response = self.iframe_runtime.evaluate(iframe_url, None, None, up_data, None, None)
         self.assertTrue(
             re.search(r'<iframe .* src="https://example.com/\?token=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"></iframe>', response)
         )
@@ -36,7 +36,7 @@ class IFrameRuntimeTestCase(TestCase):
     def test_evaluate_with_param(self):
         iframe_url = r'https://example.com/?k=v'
         up_data = models.UserPuzzleData()
-        response = self.iframe_runtime.evaluate(iframe_url, None, up_data, None, None)
+        response = self.iframe_runtime.evaluate(iframe_url, None, None, up_data, None, None)
         self.assertTrue(
             re.match(r'<iframe .* src="https://example.com/\?k=v&token=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"></iframe>', response)
         )
@@ -52,7 +52,7 @@ class RegexRuntimeTestCase(SimpleTestCase):
         regex_runtime = RegexRuntime(case_sensitive=False)
         regex_script = r'.*'
         with self.assertRaises(NotImplementedError):
-            regex_runtime.evaluate(regex_script, None, None, None, None)
+            regex_runtime.evaluate(regex_script, None, None, None, None, None)
 
     def test_validate_guess(self):
         regex_runtime = RegexRuntime(case_sensitive=False)
@@ -89,7 +89,7 @@ class StaticRuntimeTestCase(SimpleTestCase):
     def test_evaluate(self):
         static_runtime = StaticRuntime(case_sensitive=False)
         static_script = '''Hello  World!'''
-        result = static_runtime.evaluate(static_script, None, None, None, None)
+        result = static_runtime.evaluate(static_script, None, None, None, None, None)
         self.assertEqual(result, static_script)
 
     def test_validate_guess(self):

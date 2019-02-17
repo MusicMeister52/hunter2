@@ -22,14 +22,14 @@ class LuaRuntimeTestCase(SimpleTestCase):
     def test_evaluate(self):
         lua_runtime = LuaRuntime()
         lua_script = '''return "Hello World"'''
-        result = lua_runtime.evaluate(lua_script, None, None, None, None)
+        result = lua_runtime.evaluate(lua_script, None, None, None, None, None)
         self.assertEqual(result, "Hello World")
 
     def test_evaluate_requires_return_value(self):
         lua_runtime = LuaRuntime()
         lua_script = ''''''
         with self.assertRaises(RuntimeExecutionError):
-            lua_runtime.evaluate(lua_script, None, None, None, None)
+            lua_runtime.evaluate(lua_script, None, None, None, None, None)
 
     def test_validate_guess(self):
         lua_runtime = LuaRuntime()
@@ -48,13 +48,13 @@ class LuaRuntimeTestCase(SimpleTestCase):
         lua_runtime = LuaRuntime()
         lua_script = '''@'''
         with self.assertRaises(SyntaxError):
-            lua_runtime.evaluate(lua_script, None, None, None, None)
+            lua_runtime.evaluate(lua_script, None, None, None, None, None)
 
     def test_evaluate_error_fails(self):
         lua_runtime = LuaRuntime()
         lua_script = '''error("error_message")'''
         with self.assertRaises(RuntimeExecutionError) as context:
-            lua_runtime.evaluate(lua_script, None, None, None, None)
+            lua_runtime.evaluate(lua_script, None, None, None, None, None)
         self.assertRegex(context.exception.message, ".*error_message$")
 
 

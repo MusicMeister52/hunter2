@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2019 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -10,14 +10,12 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
 
-class AbstractRuntime:
-    def check_script(self, script):
+
+class AbstractFaasRuntime:
+    def check_metadata(self, function_metadata):
         return True
 
-    def evaluate(self, script, mode, team_puzzle_data, user_puzzle_data, team_data, user_data):
-        raise NotImplementedError("Abstract")
-
-    # TODO: Consider changing to allow returning a result and unlock hints for this puzzle.
-    def validate_guess(self, validator, guess):
+    def call(self, script, state_dict):
         raise NotImplementedError("Abstract")

@@ -33,6 +33,7 @@ django-url-tools-py3 = "*"
 factory_boy = "*"
 # This is actually a transitive dependancy via factory_boy but we need to specify the version
 faker = { git = "https://github.com/joke2k/faker.git", ref = "3e9ab81a55361de0f218f21755ba2f6511b18596" }
+boto3 = "*"
 freezegun = "*"
 lupa = "*"
 parameterized = "*"

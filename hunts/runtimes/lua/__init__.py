@@ -43,8 +43,9 @@ class LuaRuntime(AbstractRuntime):
         except RuntimeExecutionTimeExceededError:
             return True
 
-    def evaluate(self, script, team_puzzle_data, user_puzzle_data, team_data, user_data):
+    def evaluate(self, script, mode, team_puzzle_data, user_puzzle_data, team_data, user_data):
         return_values = self._sandbox_run(script, {
+            "mode": mode,
             "team_puzzle_data": team_puzzle_data,
             "user_puzzle_data": user_puzzle_data,
             "team_data":        team_data,
@@ -58,6 +59,7 @@ class LuaRuntime(AbstractRuntime):
 
     def validate_guess(self, validator, guess):
         return_values = self._sandbox_run(validator, {
+            "mode":             "guess",
             "guess":            guess,
         })
 

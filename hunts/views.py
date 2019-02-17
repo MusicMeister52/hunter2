@@ -455,6 +455,7 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
 
         text = Template(runtimes.runtimes[puzzle.runtime].evaluate(
             puzzle.content,
+            'puzzle',
             data.tp_data,
             data.up_data,
             data.t_data,
@@ -518,6 +519,7 @@ class SolutionContent(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
 
         text = Template(runtimes.runtimes[request.puzzle.soln_runtime].evaluate(
             request.puzzle.soln_content,
+            'solution',
             data.tp_data,
             data.up_data,
             data.t_data,
@@ -644,6 +646,7 @@ class Callback(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         response = HttpResponse(
             runtimes.runtimes[request.puzzle.cb_runtime].evaluate(
                 request.puzzle.cb_content,
+                'callback',
                 data.tp_data,
                 data.up_data,
                 data.t_data,
