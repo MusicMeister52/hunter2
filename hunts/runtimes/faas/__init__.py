@@ -30,7 +30,9 @@ class FaasRuntime(AbstractRuntime):
             function_metadata = json.loads(script)
             runtime = self._make_runtime(function_metadata)
             return runtime.check_metadata(function_metadata)
-        except:
+        except KeyError:
+            return False
+        except json.JSONDecodeError:
             return False
 
     def call(self, script, state_dict):

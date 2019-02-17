@@ -14,7 +14,7 @@ import boto3
 import json
 
 from .abstract import AbstractFaasRuntime
-from ..exceptions import RuntimeExecutionError, RuntimeExecutionTimeExceededError
+from ..exceptions import RuntimeExecutionError
 
 
 class AwsLambdaRuntime(AbstractFaasRuntime):
