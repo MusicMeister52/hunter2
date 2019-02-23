@@ -89,7 +89,7 @@ class Command(BaseCommand):
             message = "{} (leave blank to use \'{}\'): ".format(field, default)
         else:
             message = "{}:".format(field)
-        value = input(message)
+        value = input(message)  # nosec input is fine in Python 3
         if default and value == '':
             value = default
         return value

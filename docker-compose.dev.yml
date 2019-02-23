@@ -11,6 +11,19 @@ services:
     image: redis:5.0.3-alpine3.8
     volumes:
       - redis:/data
+  webpack:
+    build:
+      context: .
+      dockerfile: webpack/Dockerfile
+    environment:
+      - H2_WEBPACK_DEV_HOST
+      - H2_WEBPACK_DEV_PORT
+    ports:
+      - "${H2_WEBPACK_DEV_PORT:-4000}:${H2_WEBPACK_DEV_PORT:-4000}"
+    volumes:
+      - ${PWD:-.}:/usr/src/app
+      - assets:/usr/src/app/assets
+      - node_modules:/usr/src/app/node_modules
   app:
     build:
        context: .
@@ -39,8 +52,10 @@ services:
     tty: true
 
 volumes:
+  assets: {}
   db: {}
   config: {}
+  node_modules: {}
   redis: {}
   uploads_events: {}
   uploads_puzzles: {}

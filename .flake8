@@ -1,4 +1,4 @@
 [flake8]
-exclude = */migrations/*.py
+exclude = migrations,node_modules
 ignore = E202,E211,E221,E241
 max-line-length = 159

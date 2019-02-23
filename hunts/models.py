@@ -21,8 +21,8 @@ from django.db.models import Q
 from django.utils import timezone
 from django.urls import reverse
 from django_prometheus.models import ExportModelOperationsMixin
-from sortedm2m.fields import SortedManyToManyField
 from enumfields import EnumField, Enum
+from ordered_model.models import OrderedModel
 
 import accounts
 import events
@@ -30,7 +30,173 @@ import teams
 from . import runtimes
 
 
-class Puzzle(models.Model):
+class Episode(models.Model):
+    name = models.CharField(max_length=255)
+    flavour = models.TextField(blank=True)
+    prequels = models.ManyToManyField(
+        'self', blank=True,
+        help_text='Set of episodes which must be completed before starting this one', related_name='sequels',
+        symmetrical=False,
+    )
+    start_date = models.DateTimeField()
+    event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING)
+    parallel = models.BooleanField(default=False, help_text='Allow players to answer riddles in this episode in any order they like')
+    headstart_from = models.ManyToManyField(
+        "self", blank=True,
+        help_text='Episodes which should grant a headstart for this episode',
+        symmetrical=False,
+    )
+    winning = models.BooleanField(default=False, help_text='Whether this episode must be won in order to win the event')
+
+    class Meta:
+        ordering = ('start_date', )
+        unique_together = (('event', 'start_date'),)
+
+    def __str__(self):
+        return f'{self.event.name} - {self.name}'
+
+    def get_absolute_url(self):
+        return reverse('event') + '#episode-{}'.format(self.get_relative_id())
+
+    def follows(self, episode):
+        """Does this episode follow the provied episode by one or more prequel relationships?"""
+        if episode in self.prequels.all():
+            return True
+        else:
+            return any([p.follows(episode) for p in self.prequels.all()])
+
+    def get_puzzle(self, puzzle_number):
+        n = int(puzzle_number)
+        return self.puzzle_set.all()[n - 1:n].get()
+
+    def next_puzzle(self, team):
+        """return the relative id of the next puzzle the player should attempt, or None.
+
+        None is returned if the puzzle is parallel and there is not exactly
+        one unlocked puzzle, or if it is linear and all puzzles have been unlocked."""
+
+        if self.parallel:
+            unlocked = None
+            for i, puzzle in enumerate(self.puzzle_set.all()):
+                if not puzzle.answered_by(team):
+                    if unlocked is None:  # If this is the first not unlocked puzzle, it might be the "next puzzle"
+                        unlocked = i + 1
+                    else:  # We've found a second not unlocked puzzle, we can terminate early and return None
+                        return None
+            return unlocked  # This is either None, if we found no unlocked puzzles, or the one puzzle we found above
+        else:
+            for i, puzzle in enumerate(self.puzzle_set.all()):
+                if not puzzle.answered_by(team):
+                    return i + 1
+
+        return None
+
+    def started(self, team=None):
+        date = self.start_date
+        if team:
+            date -= self.headstart_applied(team)
+
+        return date < timezone.now()
+
+    def get_relative_id(self):
+        episodes = self.event.episode_set.order_by('start_date')
+        for index, e in enumerate(episodes):
+            if e == self:
+                return index + 1
+        return -1
+
+    def unlocked_by(self, team):
+        result = self.event.end_date < timezone.now() or \
+            all([episode.finished_by(team) for episode in self.prequels.all()])
+        return result
+
+    def finished_by(self, team):
+        return all([puzzle.answered_by(team) for puzzle in self.puzzle_set.all()])
+
+    def finished_times(self):
+        """Get a list of teams who have finished this episode together with the time at which they finished."""
+        if not self.puzzle_set.all():
+            return []
+
+        if self.parallel:
+            # The position is determined by when the latest of a team's first successful guesses came in, over
+            # all puzzles in the episode. Teams which haven't answered all questions are discarded.
+            last_team_guesses = {team: None for team in teams.models.Team.objects.filter(at_event=self.event)}
+
+            for p in self.puzzle_set.all():
+                team_guesses = p.first_correct_guesses(self.event)
+                for team in list(last_team_guesses.keys()):
+                    if team not in team_guesses:
+                        del last_team_guesses[team]
+                        continue
+                    if not last_team_guesses[team]:
+                        last_team_guesses[team] = team_guesses[team]
+                    elif team_guesses[team].given > last_team_guesses[team].given:
+                        last_team_guesses[team] = team_guesses[team]
+
+            last_team_times = ((t, last_team_guesses[t].given) for t in last_team_guesses)
+            return last_team_times
+
+        else:
+            last_puzzle = self.puzzle_set.all().last()
+            return last_puzzle.finished_team_times(self.event)
+
+    def finished_positions(self):
+        """Get a list of teams who have finished this episode in the order in which they finished."""
+        return [team for team, time in sorted(self.finished_times(), key=lambda x: x[1])]
+
+    def headstart_applied(self, team):
+        """The headstart that the team has acquired that will be applied to this episode"""
+        seconds = sum([e.headstart_granted(team).total_seconds() for e in self.headstart_from.all()])
+        try:
+            seconds += self.headstart_set.get(team=team).headstart_adjustment.total_seconds()
+        except Headstart.DoesNotExist:
+            pass
+        return timedelta(seconds=seconds)
+
+    def headstart_granted(self, team):
+        """The headstart that the team has acquired by completing puzzles in this episode"""
+        seconds = sum([p.headstart_granted.total_seconds() for p in self.puzzle_set.all() if p.answered_by(team)])
+        return timedelta(seconds=seconds)
+
+    def _puzzle_unlocked_by(self, puzzle, team):
+        now = timezone.now()
+        started_puzzles = self.puzzle_set.all()
+        if self.parallel:
+            started_puzzles = started_puzzles.filter(start_date__lt=now)
+        if self.parallel or self.event.end_date < now:
+            return puzzle in started_puzzles
+        else:
+            for p in started_puzzles:
+                if p == puzzle:
+                    return True
+                if not p.answered_by(team):
+                    return False
+
+    def unlocked_puzzles(self, team):
+        now = timezone.now()
+        started_puzzles = self.puzzle_set.all()
+        if self.parallel:
+            started_puzzles = started_puzzles.filter(start_date__lt=now)
+        if self.parallel or self.event.end_date < now:
+            return started_puzzles
+        else:
+            result = []
+            for p in started_puzzles:
+                result.append(p)
+                if not p.answered_by(team):
+                    break
+
+            return result
+
+
+class Puzzle(OrderedModel):
+    order_with_respect_to = 'episode'
+
+    class Meta:
+        ordering = ('episode', 'order')
+
+    episode = models.ForeignKey(Episode, blank=True, null=True, on_delete=models.SET_NULL)
     title = models.CharField(max_length=255, unique=True)
     flavour = models.TextField(
         blank=True, verbose_name="Flavour text",
@@ -86,20 +252,17 @@ class Puzzle(models.Model):
             raise ValidationError(e) from e
 
     def get_absolute_url(self):
-        episode = self.episode_set.get()
         params = {
-            'episode_number': episode.get_relative_id(),
+            'episode_number': self.episode.get_relative_id(),
             'puzzle_number': self.get_relative_id()
         }
         return reverse('puzzle', kwargs=params)
 
     def get_relative_id(self):
-        try:
-            episode = self.episode_set.get()
-        except Episode.DoesNotExist:
+        if self.episode is None:
             raise ValueError("Puzzle %s is not on an episode and so has no relative id" % self.title)
 
-        puzzles = episode.puzzles.all()
+        puzzles = self.episode.puzzle_set.all()
 
         for i, p in enumerate(puzzles, start=1):
             if self.pk == p.pk:
@@ -113,14 +276,12 @@ class Puzzle(models.Model):
         Puzzles in linear episodes are always visible if their episode has started.
         Puzzles in parallel episodes become visible at their individual start time.
         """
-        episode = self.episode_set.get()
-        return not episode.parallel or self.start_date < timezone.now()
+        return not self.episode.parallel or self.start_date < timezone.now()
 
     def unlocked_by(self, team):
         # Is this puzzle playable?
-        episode = self.episode_set.get()
-        return episode.event.end_date < timezone.now() or \
-            episode.unlocked_by(team) and episode._puzzle_unlocked_by(self, team)
+        return self.episode.event.end_date < timezone.now() or \
+            self.episode.unlocked_by(team) and self.episode._puzzle_unlocked_by(self, team)
 
     def answered_by(self, team):
         """Return a list of correct guesses for this puzzle by the given team, ordered by when they were given."""
@@ -463,7 +624,7 @@ class UserPuzzleData(models.Model):
 
     def team(self):
         """Helper method to fetch the team associated with this user and puzzle"""
-        event = self.puzzle.episode_set.get().event
+        event = self.puzzle.episode.event
         return self.user.team_at(event)
 
 
@@ -493,160 +654,21 @@ class PuzzleData:
             self.up_data.save(*args, **kwargs)
 
 
-class Episode(models.Model):
-    name = models.CharField(max_length=255)
-    flavour = models.TextField(blank=True)
-    puzzles = SortedManyToManyField(Puzzle, blank=True)
-    prequels = models.ManyToManyField(
-        'self', blank=True,
-        help_text='Set of episodes which must be completed before starting this one', related_name='sequels',
-        symmetrical=False,
+class Headstart(models.Model):
+    episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
+    team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
+    headstart_adjustment = models.DurationField(
+        default=timedelta(),
+        help_text=(
+            'Time difference to apply to the headstart for the team on the specified episode. '
+            'This will apply in addition to any headstart they earn through other mechanisms.'
+        ),
     )
-    start_date = models.DateTimeField()
-    event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING)
-    parallel = models.BooleanField(default=False, help_text='Allow players to answer riddles in this episode in any order they like')
-    headstart_from = models.ManyToManyField(
-        "self", blank=True,
-        help_text='Episodes which should grant a headstart for this episode',
-        symmetrical=False,
-    )
-    winning = models.BooleanField(default=False, help_text='Whether this episode must be won in order to win the event')
 
     class Meta:
-        unique_together = (('event', 'start_date'),)
-
-    def __str__(self):
-        return f'{self.event.name} - {self.name}'
-
-    def get_absolute_url(self):
-        return reverse('event') + '#episode-{}'.format(self.get_relative_id())
-
-    def follows(self, episode):
-        """Does this episode follow the provied episode by one or more prequel relationships?"""
-        if episode in self.prequels.all():
-            return True
-        else:
-            return any([p.follows(episode) for p in self.prequels.all()])
-
-    def get_puzzle(self, puzzle_number):
-        n = int(puzzle_number)
-        return self.puzzles.all()[n - 1:n].get()
-
-    def next_puzzle(self, team):
-        """return the relative id of the next puzzle the player should attempt, or None.
-
-        None is returned if the puzzle is parallel and there is not exactly
-        one unlocked puzzle, or if it is linear and all puzzles have been unlocked."""
-
-        if self.parallel:
-            unlocked = None
-            for i, puzzle in enumerate(self.puzzles.all()):
-                if not puzzle.answered_by(team):
-                    if unlocked is None:  # If this is the first not unlocked puzzle, it might be the "next puzzle"
-                        unlocked = i + 1
-                    else:  # We've found a second not unlocked puzzle, we can terminate early and return None
-                        return None
-            return unlocked  # This is either None, if we found no unlocked puzzles, or the one puzzle we found above
-        else:
-            for i, puzzle in enumerate(self.puzzles.all()):
-                if not puzzle.answered_by(team):
-                    return i + 1
-
-        return None
-
-    def started(self, team=None):
-        date = self.start_date
-        if team:
-            date -= self.headstart_applied(team)
-
-        return date < timezone.now()
-
-    def get_relative_id(self):
-        episodes = self.event.episode_set.order_by('start_date')
-        for index, e in enumerate(episodes):
-            if e == self:
-                return index + 1
-        return -1
-
-    def unlocked_by(self, team):
-        result = self.event.end_date < timezone.now() or \
-            all([episode.finished_by(team) for episode in self.prequels.all()])
-        return result
-
-    def finished_by(self, team):
-        return all([puzzle.answered_by(team) for puzzle in self.puzzles.all()])
-
-    def finished_times(self):
-        """Get a list of teams who have finished this episode together with the time at which they finished."""
-        if not self.puzzles.all():
-            return []
-
-        if self.parallel:
-            # The position is determined by when the latest of a team's first successful guesses came in, over
-            # all puzzles in the episode. Teams which haven't answered all questions are discarded.
-            last_team_guesses = {team: None for team in teams.models.Team.objects.filter(at_event=self.event)}
-
-            for p in self.puzzles.all():
-                team_guesses = p.first_correct_guesses(self.event)
-                for team in list(last_team_guesses.keys()):
-                    if team not in team_guesses:
-                        del last_team_guesses[team]
-                        continue
-                    if not last_team_guesses[team]:
-                        last_team_guesses[team] = team_guesses[team]
-                    elif team_guesses[team].given > last_team_guesses[team].given:
-                        last_team_guesses[team] = team_guesses[team]
-
-            last_team_times = ((t, last_team_guesses[t].given) for t in last_team_guesses)
-            return last_team_times
-
-        else:
-            last_puzzle = self.puzzles.all().last()
-            return last_puzzle.finished_team_times(self.event)
-
-    def finished_positions(self):
-        """Get a list of teams who have finished this episode in the order in which they finished."""
-        return [team for team, time in sorted(self.finished_times(), key=lambda x: x[1])]
-
-    def headstart_applied(self, team):
-        """The headstart that the team has acquired that will be applied to this episode"""
-        seconds = sum([e.headstart_granted(team).total_seconds() for e in self.headstart_from.all()])
-        return timedelta(seconds=seconds)
-
-    def headstart_granted(self, team):
-        """The headstart that the team has acquired by completing puzzles in this episode"""
-        seconds = sum([p.headstart_granted.total_seconds() for p in self.puzzles.all() if p.answered_by(team)])
-        return timedelta(seconds=seconds)
-
-    def _puzzle_unlocked_by(self, puzzle, team):
-        now = timezone.now()
-        started_puzzles = self.puzzles.all()
-        if self.parallel:
-            started_puzzles = started_puzzles.filter(start_date__lt=now)
-        if self.parallel or self.event.end_date < now:
-            return puzzle in started_puzzles
-        else:
-            for p in started_puzzles:
-                if p == puzzle:
-                    return True
-                if not p.answered_by(team):
-                    return False
-
-    def unlocked_puzzles(self, team):
-        now = timezone.now()
-        started_puzzles = self.puzzles.all()
-        if self.parallel:
-            started_puzzles = started_puzzles.filter(start_date__lt=now)
-        if self.parallel or self.event.end_date < now:
-            return started_puzzles
-        else:
-            result = []
-            for p in started_puzzles:
-                result.append(p)
-                if not p.answered_by(team):
-                    break
-
-            return result
+        unique_together = (
+            ('episode', 'team'),
+        )
 
 
 class AnnouncementType(Enum):

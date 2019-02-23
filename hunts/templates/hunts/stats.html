@@ -1,11 +1,15 @@
 {% extends "events/base.html" %}
 {% load static %}
+{% load render_bundle from webpack_loader %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'hunts/css/stats.css' %}" type="text/css" />
+{{ block.super }}
+{% render_bundle 'hunts_stats' 'css' %}
 {% endblock %}
+
 {% block script %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.10.0/d3.min.js" integrity="sha256-r7j1FXNTvPzHR41+V71Jvej6fIq4v4Kzu5ee7J/RitM=" crossorigin="anonymous"></script>
+{{ block.super }}
+{% render_bundle 'hunts_stats' 'js' attrs='defer' %}
 {% endblock %}
 
 {% block page_header %}
@@ -16,7 +20,7 @@
 <p><input type="checkbox" checked="checked" id="auto-update"> <label for="auto-update">Update automatically</label></p>
 <p><label for="episode">Episode</label>
 	<select id="episode">
-		<option value="all">[all]</option>
+		<option value="">[all]</option>
 	</select>
 <p><label for="type">Graph type</label>
 	<select id="type">
@@ -33,7 +37,6 @@
 	<svg class="chart" id="episode-stats" width="800" height="800"></svg>
 	<ol id="legend"></ol>
 </div>
-<script src="{% static 'hunts/js/stats.js' %}"></script>
 {% endblock %}
 
 

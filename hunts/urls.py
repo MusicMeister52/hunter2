@@ -22,6 +22,7 @@ eventadminpatterns = [
     path('guesses', views.Guesses.as_view(), name='guesses'),
     path('guesses_content', views.GuessesContent.as_view(), name='guesses_content'),
     path('stats', views.Stats.as_view(), name='stats'),
+    path('stats_content/', views.StatsContent.as_view(), name='stats_content'),
     path('stats_content/<int:episode_id>', views.StatsContent.as_view(), name='stats_content'),
 ]
 

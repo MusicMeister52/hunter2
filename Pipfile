@@ -1,12 +1,9 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 Django = "*"
 PyYAML = "*"
 channels = "*"
@@ -23,14 +20,17 @@ django-environ = "*"
 django-extensions = "*"
 django-fullclean = { git = "https://github.com/riconnon/django-fullclean.git", ref = "0.0.4+whitelist" }
 django-nested-admin = "*"
+django-ordered-model = { git = "https://github.com/fish-face/django-ordered-model.git", ref = "241510a0343a3d8430cfef81a7f69c534c1732ba" }
 django-prometheus = "*"
 django-sendfile = "*"
 django-solo = "*"
 django-sortedm2m = "*"
-django-sortedm2m-filter-horizontal-widget = "*"
 django-tenants = { git = "https://github.com/tomturner/django-tenants.git", ref = "0a5ff14478e44f55ea566d020e0252bb6ca5ac24" }
 django-url-tools-py3 = "*"
+django-webpack-loader = "*"
 factory_boy = "*"
+# This is actually a transitive dependancy via factory_boy but we need to specify the version
+faker = { git = "https://github.com/joke2k/faker.git", ref = "3e9ab81a55361de0f218f21755ba2f6511b18596" }
 freezegun = "*"
 lupa = "*"
 parameterized = "*"
@@ -41,9 +41,7 @@ sentry-sdk = "*"
 validators = "*"
 wait = "*"
 
-
 [dev-packages]
-
 django-silk = "==0.7.0"
 ipython = "*"
 ptpython = "*"

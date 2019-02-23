@@ -10,6 +10,10 @@ coverage
 # Ignore selected docker-compose.yml file
 docker-compose.yml
 
+# Ignore generated webpack bundle & node_modules
+node_modules
+webpack-stats.json
+
 # Ignore interactive python stuff
 .ipython
 .ptpython_history

@@ -1,0 +1,43 @@
+{
+  "name": "hunter2-webpack-server",
+  "version": "0.1.0",
+  "author": "The Hunter 2 contributors",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "description": "Hunter 2 is a platform for running puzzle hunts",
+  "homepage": "https://gitlab.com/ihunt/hunter2#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://git@gitlab.com/ihunt/hunter2.git"
+  },
+  "bugs": {
+    "url": "https://gitlab.com/ihunt/hunter2/issues"
+  },
+  "scripts": {
+    "start": "/node_modules/.bin/webpack-dev-server --config webpack.dev.js --watch"
+  },
+  "devDependencies": {
+    "webpack": "^4.29.3",
+    "webpack-dev-server": "^3.1.14",
+    "webpack-cli": "^3.2.3",
+    "webpack-bundle-tracker": "^0.4.2-beta",
+    "webpack-merge": "^4.2.1",
+    "autoprefixer": "^9.4.7",
+    "precss": "^4.0.0",
+    "exports-loader": "^0.7.0",
+    "imports-loader": "^0.8.0",
+    "postcss-loader": "^3.0.0",
+    "style-loader": "^0.23.1",
+    "css-loader": "^2.1.0",
+    "sass-loader": "^7.1.0",
+    "node-sass": "^4.11.0",
+    "mini-css-extract-plugin": "^0.5.0",
+    "expose-loader": "^0.7.5"
+  },
+  "dependencies": {
+    "bootstrap": "^4.1.3",
+    "d3": "^4.13.0",
+    "jquery": "^3.3.1",
+    "popper.js": "^1.14.4"
+  }
+}

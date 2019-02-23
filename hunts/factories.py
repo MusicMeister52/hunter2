@@ -28,6 +28,44 @@ from .models import AnnouncementType
 from . import runtimes
 
 
+class EpisodeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = 'hunts.Episode'
+
+    class Params:
+        not_started = factory.Trait(
+            start_data=factory.Faker('date_time_this_month', before_now=False, after_now=True, tzinfo=pytz.utc)
+        )
+
+    name = factory.Faker('sentence')
+    flavour = factory.Faker('text')
+    start_date = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
+    event = factory.SubFactory(EventFactory)
+    parallel = factory.Faker('boolean')
+
+    @factory.post_generation
+    def prequels(self, create, extracted, **kwargs):
+        if not create:
+            # Simple build, do nothing.
+            return
+
+        if extracted:
+            # A list of prequels were passed in, use them
+            for prequel in (extracted if isinstance(extracted, collections.Iterable) else (extracted,)):
+                self.prequels.add(prequel)
+
+    @factory.post_generation
+    def headstart_from(self, create, extracted, **kwargs):
+        if not create:
+            # Simple build, do nothing.
+            return
+
+        if extracted:
+            # A list of  puzzles were passed in, use them
+            for puzzle in (extracted if isinstance(extracted, collections.Iterable) else (extracted,)):
+                self.headstart_from.add(puzzle)
+
+
 class PuzzleFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'hunts.Puzzle'
@@ -36,6 +74,8 @@ class PuzzleFactory(factory.django.DjangoModelFactory):
         not_started = factory.Trait(
             start_data=factory.Faker('date_time_this_month', before_now=False, after_now=True, tzinfo=pytz.utc)
         )
+
+    episode = factory.SubFactory(EpisodeFactory)
 
     title = factory.Faker('sentence')
     flavour = factory.Faker('text')
@@ -56,7 +96,6 @@ class PuzzleFactory(factory.django.DjangoModelFactory):
     headstart_granted = factory.Faker('time_delta', end_datetime=timedelta(minutes=60))
 
     # This puzzle needs to be part of an episode & have at least one answer
-    # episode_set = factory.RelatedFactory('hunts.factories.EpisodeFactory', 'puzzles')
     answer_set = factory.RelatedFactory('hunts.factories.AnswerFactory', 'for_puzzle')
 
     @factory.post_generation
@@ -67,16 +106,6 @@ class PuzzleFactory(factory.django.DjangoModelFactory):
         if extracted:
             for answer in (extracted if isinstance(extracted, collections.Iterable) else (extracted,)):
                 self.answer_set.add(answer)
-
-    @factory.post_generation
-    def episode(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        if extracted:
-            extracted.puzzles.add(self)
-        else:
-            EpisodeFactory().puzzles.add(self)
 
 
 class PuzzleFileFactory(factory.django.DjangoModelFactory):
@@ -217,7 +246,7 @@ class GuessFactory(factory.django.DjangoModelFactory):
     # We need to ensure that there is this consistency:
     # UserProfile(by) <-> Team <-> Event <-> Episode <-> Puzzle(for_puzzle)
     for_puzzle = factory.SubFactory(PuzzleFactory)
-    event = factory.LazyAttribute(lambda o: o.for_puzzle.episode_set.get().event)
+    event = factory.LazyAttribute(lambda o: o.for_puzzle.episode.event)
     by = factory.LazyAttribute(lambda o: TeamMemberFactory(team__at_event=o.event))
     guess = factory.Faker('sentence')
     given = factory.Faker('past_datetime', start_date='-1d', tzinfo=pytz.utc)
@@ -271,53 +300,13 @@ class UserPuzzleDataFactory(DataFactory):
     token = factory.Faker('uuid4')
 
 
-class EpisodeFactory(factory.django.DjangoModelFactory):
+class HeadstartFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = 'hunts.Episode'
+        model = 'hunts.Headstart'
 
-    class Params:
-        not_started = factory.Trait(
-            start_data=factory.Faker('date_time_this_month', before_now=False, after_now=True, tzinfo=pytz.utc)
-        )
-
-    name = factory.Faker('sentence')
-    flavour = factory.Faker('text')
-    start_date = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
-    event = factory.SubFactory(EventFactory)
-    parallel = factory.Faker('boolean')
-
-    @factory.post_generation
-    def puzzles(self, create, extracted, **kwargs):
-        if not create:
-            # Simple build, do nothing.
-            return
-
-        if extracted:
-            # A list of puzzles were passed in, use them
-            for puzzle in (extracted if isinstance(extracted, collections.Iterable) else (extracted,)):
-                self.puzzles.add(puzzle)
-
-    @factory.post_generation
-    def prequels(self, create, extracted, **kwargs):
-        if not create:
-            # Simple build, do nothing.
-            return
-
-        if extracted:
-            # A list of prequels were passed in, use them
-            for prequel in (extracted if isinstance(extracted, collections.Iterable) else (extracted,)):
-                self.prequels.add(prequel)
-
-    @factory.post_generation
-    def headstart_from(self, create, extracted, **kwargs):
-        if not create:
-            # Simple build, do nothing.
-            return
-
-        if extracted:
-            # A list of  puzzles were passed in, use them
-            for puzzle in (extracted if isinstance(extracted, collections.Iterable) else (extracted,)):
-                self.headstart_from.add(puzzle)
+    episode = factory.SubFactory(EpisodeFactory)
+    team = factory.SubFactory(TeamFactory)
+    headstart_adjustment = factory.Faker('time_delta', end_datetime=timedelta(minutes=60))
 
 
 class AnnouncementFactory(factory.django.DjangoModelFactory):
@@ -329,4 +318,4 @@ class AnnouncementFactory(factory.django.DjangoModelFactory):
     title = factory.Faker('sentence')
     posted = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
     message = factory.Faker('text')
-    type = factory.LazyFunction(lambda: choice(list(AnnouncementType)))
+    type = factory.LazyFunction(lambda: choice(list(AnnouncementType)))  # nosec random is fine for testing

@@ -1,3 +1,10 @@
+import '../scss/puzzle.scss';
+
+import $ from 'jquery';
+import * as d3 from "d3";
+
+import { configureCSRF } from '../../hunter2/js/index.js';
+
 function escapeHtml(text) {
 	"use strict";
 	return text.replace(/[\"&<>]/g, function (a) {
@@ -227,7 +234,7 @@ $(function() {
 		$.ajax({
 			type: 'POST',
 			url: 'an',
-			data: jQuery.param(data),
+			data: $.param(data),
 			contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
 			success: function(data) {
 				field.val('');
@@ -251,4 +258,22 @@ $(function() {
 			dataType: 'json'
 		});
 	});
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  "use strict";
+  var content = $('#soln-content');
+  var button = $('#soln-button');
+
+  content.on('show.bs.collapse', function() {
+    var url = button.data('url');
+    $('#soln-text').load(url);
+    $(this).unbind('show.bs.collapse');
+  });
+  content.on('shown.bs.collapse', function() {
+    button.text('Hide Solution');
+  });
+  content.on('hidden.bs.collapse', function() {
+    button.text('Show Solution');
+  });
 });

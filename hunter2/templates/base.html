@@ -1,4 +1,5 @@
 {% load analytical %}
+{% load render_bundle from webpack_loader %}
 {% load static %}
 <!DOCTYPE html>
 <html lang="en" class="h-100">
@@ -10,27 +11,18 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-	{# Sentry #}
 	{% if sentry_dsn %}
 	<script src="https://browser.sentry-cdn.com/4.5.2/bundle.min.js" integrity="sha384-B40T8JbVXw6SvEWUzdCliv4rtB06EhQznO11FvvMJ7pWnniode1Ggyu4VPk9L8l1" crossorigin="anonymous"></script>
 	<script>Sentry.init({ dsn: '{{ sentry_dsn }}' });</script>
 	{% endif %}
 
-	{# Bootstrap JS, CSS & dependancies #}
-	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
-	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
-	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
-
-	{# Base Hunter2 JS & CSS #}
-	<link rel="stylesheet" href="{% static 'hunter2/css/base.css' %}" type="text/css" />
-	<script src="{% static 'hunter2/js/base.js' %}"></script>
-
-	{# Event specific theming #}
+	{% render_bundle 'hunter2' 'css' %}
 	{% block style %}{% endblock %}
-	{% block script %}{% endblock %}
 
 	<title>{{ request.site.name }}</title>
+
+	{% render_bundle 'hunter2' 'js' attrs='defer' %}
+	{% block script %}{% endblock %}
 
 	{% analytical_head_bottom %}
 </head>

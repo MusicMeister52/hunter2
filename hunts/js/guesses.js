@@ -1,3 +1,8 @@
+import '../scss/guesses.scss';
+
+import $ from 'jquery';
+
+
 function updateGuesses(force) {
 	"use strict";
 	if (force || $('#auto-update').prop('checked')) {

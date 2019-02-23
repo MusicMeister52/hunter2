@@ -91,12 +91,13 @@ class AnswerForm(forms.ModelForm):
                 )
                 msg += "</ul>"
             msg += "If you are sure you want to make this change, tick below."
+            safe_msg = mark_safe(msg)  # nosec msg is created here, so definitely safe
 
             self.fields['alter_progress'].widget = forms.CheckboxInput()
             if cleaned_data['DELETE']:
                 del cleaned_data['DELETE']
             del cleaned_data['alter_progress']
-            raise ValidationError(mark_safe(msg))
+            raise ValidationError(safe_msg)
 
         return cleaned_data
 

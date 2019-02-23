@@ -1,10 +1,6 @@
 {% extends "teams/base.html" %}
 {% load static %}
 
-{% block script %}
-<script src="{% static 'teams/js/team.js' %}" defer></script>
-{% endblock %}
-
 {% block content %}
 <h1>Team</h1>
 {% if team.is_explicit %}
@@ -38,8 +34,8 @@ There is no maximum team size.
 	<li>
 		{{ user.username }} has requested to join
 		<span style="float: right">
-			&nbsp;<a href="#" class="req-accept" data-team="{{ team.pk }}" data-user="{{ user.pk }}">Accept</a>
-			&nbsp;<a href="#" class="req-deny" data-team="{{ team.pk }}" data-user="{{ user.pk }}">Ignore</a>
+			&nbsp;<a href="#" class="req-accept" data-team="{{ team.pk }}" data-user="{{ user.pk }} onclick="acceptRequest()">Accept</a>
+			&nbsp;<a href="#" class="req-deny" data-team="{{ team.pk }}" data-user="{{ user.pk }}" onclick="declineRequest()">Ignore</a>
 		</span>
 	</li>
 {% endfor %}
@@ -54,7 +50,7 @@ There is no maximum team size.
 	<li>
 		{{ user.username }} @{{ user.seat }} has been invited
 		<span style="float: right">
-			&nbsp;<a href="#" class="inv-cancel" data-team="{{ team.pk }}" data-user="{{ user.pk }}">Cancel</a>
+			&nbsp;<a href="#" class="inv-cancel" data-team="{{ team.pk }}" data-user="{{ user.pk }}" onclick="cancelInvite()">Cancel</a>
 		</span>
 	</li>
 {% endfor %}
@@ -86,8 +82,8 @@ There is no maximum team size.
 	<li>
 		You have been invited to {{ team.name }}
 		<span style="float: right">
-			&nbsp;<a href="#" class="inv-accept" data-team="{{ team.pk }}">Join</a>
-			&nbsp;<a href="#" class="inv-deny" data-team="{{ team.pk }}">Ignore</a>
+			&nbsp;<a href="#" class="inv-accept" data-team="{{ team.pk }}" onclick="acceptInvite()">Join</a>
+			&nbsp;<a href="#" class="inv-deny" data-team="{{ team.pk }}" onclick="declineInvite()">Ignore</a>
 		</span>
 	</li>
 {% endfor %}
@@ -99,7 +95,7 @@ There is no maximum team size.
 {% spaceless %}
 <ul id="req-list" style="width: 40%">
 {% for team in requests %}
-<li>You have requested to join {{ team.name }}<span style="float: right">&nbsp;<a href="#" class="req-cancel" data-team="{{ team.pk }}">Cancel</a></span></li>
+<li>You have requested to join {{ team.name }}<span style="float: right">&nbsp;<a href="#" class="req-cancel" data-team="{{ team.pk }}" onclick="cancelRequest()">Cancel</a></span></li>
 {% endfor %}
 </ul>
 <form id="req-create" action="#" method="post">

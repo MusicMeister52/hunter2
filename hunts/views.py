@@ -163,7 +163,7 @@ class GuessesContent(LoginRequiredMixin, View):
         puzzle = request.GET.get('puzzle')
         team = request.GET.get('team')
 
-        puzzles = models.Puzzle.objects.filter(episode__event=request.tenant)
+        puzzles = models.Puzzle.objects.all()
         if puzzle:
             puzzles = puzzles.filter(id=puzzle)
         if episode:
@@ -190,7 +190,7 @@ class GuessesContent(LoginRequiredMixin, View):
             )
         ).prefetch_related(
             Prefetch(
-                'for_puzzle__episode_set',
+                'for_puzzle__episode',
                 queryset=models.Episode.objects.only('id', 'name').all()
             )
         )
@@ -207,14 +207,6 @@ class GuessesContent(LoginRequiredMixin, View):
             guesses = guess_pages.page(1)
         except EmptyPage:
             guesses = guess_pages.page(guess_pages.num_pages)
-
-        for g in guesses:
-            # Using .get() here for some reason creates an extra query for each guess even though
-            # we have prefetched this relation. .all()[0] does not.
-            # We are monkey-patching here so that we can do guess.episode.<blah> in the template -
-            # otherwise we'd have to do guess.for_puzzle.episode_set.all.0.id etc there, which is
-            # too nasty.
-            g.episode = g.for_puzzle.episode_set.all()[0]
 
         if request.GET.get('highlight_unlocks'):
             for g in guesses:
@@ -252,7 +244,7 @@ class Stats(LoginRequiredMixin, View):
 
 
 class StatsContent(LoginRequiredMixin, View):
-    def get(self, request, episode_id):
+    def get(self, request, episode_id=None):
         admin = rules.is_admin_for_event(request.user, request.tenant)
 
         if not admin:
@@ -263,14 +255,12 @@ class StatsContent(LoginRequiredMixin, View):
 
         # TODO select and prefetch all the things
         episodes = models.Episode.objects.filter(event=request.tenant).order_by('start_date')
-        if episode_id != 'all':
+        if episode_id is not None:
             episodes = episodes.filter(pk=episode_id)
             if not episodes.exists():
                 raise Http404
 
-        # Directly use the through relation for sorted M2M so we can sort the entire query.
-        episode_puzzles = models.Episode.puzzles.through.objects.filter(episode__in=episodes).select_related('puzzle')
-        puzzles = [ep.puzzle for ep in episode_puzzles.order_by('episode', 'sort_value')]
+        puzzles = models.Puzzle.objects.all()
 
         all_teams = teams.models.Team.objects.annotate(
             num_members=Count('members')
@@ -285,7 +275,6 @@ class StatsContent(LoginRequiredMixin, View):
         # (team, puzzle) pair i.e. a butt-ton. This comes at the cost of possibly seeing
         # a team doing worse than it really is.
         all_guesses = models.Guess.objects.filter(
-            for_puzzle__in=puzzles,
             correct_for__isnull=False,
         ).select_related('for_puzzle', 'by_team')
         correct_guesses = defaultdict(dict)
@@ -440,7 +429,8 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
             # Get rid of duplicates but preserve order
             duplicates = set()
             guesses = [g for g in guesses if not (g in duplicates or duplicates.add(g))]
-            unlocks.append({'guesses': guesses, 'text': mark_safe(u.text)})
+            unlock_text = mark_safe(u.text)  # nosec unlock text is provided by puzzle admins, we consider this safe
+            unlocks.append({'guesses': guesses, 'text': unlock_text})
 
         event_files = {f.slug: f.file.url for f in request.tenant.eventfile_set.filter(slug__isnull=False)}
         puzzle_files = {f.slug: reverse(

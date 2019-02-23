@@ -1,11 +1,15 @@
 {% extends "teams/base.html" %}
 {% load static %}
+{% load render_bundle from webpack_loader %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'hunts/css/guesses.css' %}" type="text/css" />
+{{ block.super }}
+{% render_bundle 'hunts_guesses' 'css' %}
 {% endblock %}
+
 {% block script %}
-<script src="{% static 'hunts/js/guesses.js' %}"></script>
+{{ block.super }}
+{% render_bundle 'hunts_guesses' 'js' attrs='defer' %}
 {% endblock %}
 
 {% block page_header %}

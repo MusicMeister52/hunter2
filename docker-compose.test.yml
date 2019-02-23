@@ -14,7 +14,6 @@ services:
       - H2_SENTRY_DSN
     image: ${IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
     volumes:
-      - ${PWD:-.}:/usr/src/app
       - config:/config
       - uploads_events:/uploads/events
       - uploads_puzzles:/uploads/puzzles

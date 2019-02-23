@@ -14,7 +14,7 @@ stages:
 
 before_script:
   - export GIT_DESCRIBE=$(git describe)
-  - docker login -u gitlab-ci-token -p "${CI_JOB_TOKEN}" "${CI_REGISTRY}"
+  - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
   - chmod -R g-w,o-w .
   - ln -s docker-compose.test.yml docker-compose.yml
 
@@ -34,16 +34,13 @@ image:app:
     SERVICE: app
   script:
     - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
-    - docker-compose build "${SERVICE}"
-    - install -d -m 777 diagram
-    - docker-compose run --entrypoint "sh" "${SERVICE}" -c "python manage.py graph_models -a > diagram/models.dot"
+    - docker-compose build --build-arg BUILD_TAG="${GIT_DESCRIBE}" "${SERVICE}"
     - docker save -o "${SERVICE}.tar" "${IMAGE_TAG}"
   artifacts:
     expire_in: 90 days
     name: app-container
     paths:
       - "${SERVICE}.tar"
-      - diagram/models.dot
 
 image:metrics:
   stage: build-app
@@ -51,7 +48,7 @@ image:metrics:
     SERVICE: metrics
   script:
     - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
-    - docker-compose build --build-arg app_tag="${GIT_DESCRIBE}" "${SERVICE}"
+    - docker-compose build --build-arg BUILD_TAG="${GIT_DESCRIBE}" "${SERVICE}"
     - docker save -o "${SERVICE}.tar" "${IMAGE_TAG}"
   artifacts:
     expire_in: 90 days
@@ -68,7 +65,7 @@ image:web:
   script:
     - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
     - docker load -i app.tar
-    - docker-compose build --build-arg app_tag="${GIT_DESCRIBE}" "${SERVICE}"
+    - docker-compose build --build-arg BUILD_TAG="${GIT_DESCRIBE}" "${SERVICE}"
     - docker save -o "${SERVICE}.tar" "${IMAGE_TAG}"
   artifacts:
     expire_in: 90 days
@@ -81,12 +78,15 @@ doc:graph:
   dependencies:
     - image:app
   script:
+    - docker load -i app.tar
+    - install -d -m 777 diagram
+    - docker run --rm --entrypoint "sh" -v "${PWD}/diagram:/diagram" "${CI_REGISTRY_IMAGE}/app:${GIT_DESCRIBE}" -c "python manage.py graph_models -a > /diagram/models.dot"
     - docker-compose -f docker-compose.check.yml run --rm dot
   artifacts:
     expire_in: 90 days
     name: models-graph
     paths:
-      - diagram/models.svg
+      - diagram/models.*
 
 test:app:
   stage: web-doc-test
@@ -98,15 +98,29 @@ test:app:
     - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
     - docker load -i "${SERVICE}.tar"
     - install -d -m 777 coverage
-    - docker-compose run -e H2_TEST_SEED=1 --entrypoint "python" "${SERVICE}" -Wd -m coverage run --source . manage.py test -v 2
-    - docker-compose run --entrypoint "python" "${SERVICE}" -m coverage html
-    - docker-compose run --entrypoint "python" "${SERVICE}" -m coverage report
+    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/usr/src/app/coverage" --entrypoint "python" "${SERVICE}" -Wd -m coverage run --source . manage.py test -v 2
+    - docker run -v "${PWD}/coverage:/usr/src/app/coverage" --entrypoint "python" "${IMAGE_TAG}" -m coverage html
+    - docker run -v "${PWD}/coverage:/usr/src/app/coverage" --entrypoint "python" "${IMAGE_TAG}" -m coverage report
   artifacts:
     expire_in: 180 days
     name: coverage
     paths:
       - coverage/
   coverage: /\d+\%\s*$/
+
+test:sast:
+  stage: web-doc-test
+  allow_failure: true
+  script:
+    - export SP_VERSION=$(echo "$CI_SERVER_VERSION" | sed 's/^\([0-9]*\)\.\([0-9]*\).*/\1-\2-stable/')
+    - docker run
+        --env SAST_CONFIDENCE_LEVEL="${SAST_CONFIDENCE_LEVEL:-3}"
+        --volume "$PWD:/code"
+        --volume /var/run/docker.sock:/var/run/docker.sock
+        "registry.gitlab.com/gitlab-org/security-products/sast:$SP_VERSION" /app/bin/run /code
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
 
 release:app:
   stage: release

@@ -15,6 +15,7 @@ services:
     volumes:
       - ${PWD:-.}:/files
   jshint:
+    command: ["/usr/bin/find", ".", "-path", "./node_modules", "-prune", "-o", "-name", "*.js", "-exec", "/node_modules/jshint/bin/jshint", "{}", "+"]
     image: registry.gitlab.com/rconan/docker-jshint:2.9.6-0
     volumes:
       - ${PWD:-.}:/code
@@ -22,3 +23,11 @@ services:
     image: registry.gitlab.com/rconan/docker-flake8:3.5.0-4
     volumes:
       - ${PWD:-.}:/code
+  webpack:
+    build:
+      context: .
+      dockerfile: webpack/Dockerfile
+      args:
+        webpack_tag: 4.23.1-1
+    volumes:
+      - ${PWD:-.}:/usr/src/app

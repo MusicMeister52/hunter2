@@ -3,14 +3,18 @@
 from django.db import migrations, models
 
 
-def initialise_url_path(class_name):
-    def _method(apps, schema_editor):
-        Class=apps.get_model('hunts', class_name)
-        for f in Class.objects.all():
-            f.url_path = f.slug
-            f.save()
+def initialise_puzzlefile_url_path(apps, schema_editor):
+    Class=apps.get_model('hunts', 'PuzzleFile')
+    for f in Class.objects.all():
+        f.url_path = f.slug
+        f.save()
 
-    return _method
+
+def initialise_solutionfile_url_path(apps, schema_editor):
+    Class=apps.get_model('hunts', 'SolutionFile')
+    for f in Class.objects.all():
+        f.url_path = f.slug
+        f.save()
 
 
 class Migration(migrations.Migration):
@@ -38,8 +42,8 @@ class Migration(migrations.Migration):
             name='solutionfile',
             unique_together={('puzzle', 'slug'), ('puzzle', 'url_path')},
         ),
-        migrations.RunPython(initialise_url_path('PuzzleFile'), migrations.RunPython.noop),
-        migrations.RunPython(initialise_url_path('SolutionFile'), migrations.RunPython.noop),
+        migrations.RunPython(initialise_puzzlefile_url_path, migrations.RunPython.noop),
+        migrations.RunPython(initialise_solutionfile_url_path, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='puzzlefile',
             name='url_path',

@@ -17,11 +17,8 @@ from django.utils.functional import curry
 from django.utils.html import format_html
 from django.urls import path, reverse
 from django.db.models import Count, Sum
-from nested_admin import \
-    NestedModelAdmin, \
-    NestedStackedInline, \
-    NestedTabularInline
-from sortedm2m_filter_horizontal_widget.forms import SortedFilteredSelectMultiple
+from nested_admin import NestedModelAdmin, NestedModelAdminMixin, NestedStackedInline, NestedTabularInline
+from ordered_model.admin import OrderedModelAdmin
 
 from . import models
 from .forms import AnswerForm
@@ -138,7 +135,7 @@ class GuessAdmin(admin.ModelAdmin):
 
 
 @admin.register(models.Puzzle)
-class PuzzleAdmin(NestedModelAdmin):
+class PuzzleAdmin(NestedModelAdminMixin, OrderedModelAdmin):
     change_form_template = 'hunts/admin/change_puzzle.html'
     inlines = [
         PuzzleFileInline,
@@ -148,8 +145,8 @@ class PuzzleAdmin(NestedModelAdmin):
         UnlockInline,
     ]
     # TODO: once episode is a ForeignKey make it editable
-    list_display = ('the_episode', 'title', 'start_date', 'check_flavour', 'headstart_granted', 'answers', 'hints', 'unlocks')
-    list_editable = ('start_date', 'headstart_granted')
+    list_display = ('episode', 'title', 'start_date', 'check_flavour', 'headstart_granted', 'answers', 'hints', 'unlocks', 'move_up_down_links')
+    list_editable = ('episode', 'start_date', 'headstart_granted')
     list_display_links = ('title',)
     popup = False
 
@@ -198,22 +195,10 @@ class PuzzleAdmin(NestedModelAdmin):
         qs = super().get_queryset(request)
         # TODO prefetch_related?
         # Optimisation: add the counts so that we don't have to perform extra queries for them
-        through = models.Puzzle.episode_set.through
         qs = qs.annotate(
             answer_count=Count('answer', distinct=True),
             hint_num=Count('hint', distinct=True),
             unlock_count=Count('unlock', distinct=True)
-        ).extra(  # This screams that we've outgrown the ManyToManyField but re-implementing the ordering is non-trivial
-            tables=(
-                through._meta.db_table,
-            ),
-            where=(
-                f'{through._meta.db_table}.puzzle_id = {models.Puzzle._meta.db_table}.id',
-            ),
-            order_by=(
-                'episode__start_date',
-                f'{through._meta.db_table}.{through._sort_field_name}',
-            ),
         )
         return qs
 
@@ -237,17 +222,6 @@ class PuzzleAdmin(NestedModelAdmin):
             return False
 
         return super().has_add_permission(request)
-
-    # Who knows why we can't call this 'episode' but it causes an AttributeError...
-    def the_episode(self, obj):
-        episode_qs = obj.episode_set
-        if episode_qs.exists():
-            return episode_qs.get().name
-
-        return '[no episode set]'
-
-    the_episode.short_description = 'episode'
-    the_episode.admin_order_field = 'episode__start_date'
 
     def check_flavour(self, obj):
         return bool(obj.flavour)
@@ -293,14 +267,9 @@ class EpisodeAdmin(NestedModelAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.annotate(
-            puzzles_count=Count('puzzles', distinct=True),
-            headstart_sum=Sum('puzzles__headstart_granted'),
+            puzzles_count=Count('puzzle', distinct=True),
+            headstart_sum=Sum('puzzle__headstart_granted'),
         )
-
-    def formfield_for_manytomany(self, db_field, request=None, **kwargs):
-        if db_field.name == 'puzzles':
-            kwargs['widget'] = SortedFilteredSelectMultiple()
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def event_change(self, obj):
         return format_html(
@@ -340,4 +309,5 @@ class AnnoucementAdmin(admin.ModelAdmin):
     list_display_links = ('title', )
 
 
+admin.site.register(models.Headstart)
 admin.site.register(models.TeamPuzzleData)

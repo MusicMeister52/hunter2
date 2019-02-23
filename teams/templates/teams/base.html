@@ -1,5 +1,12 @@
 {% extends "events/base.html" %}
 
+{% load render_bundle from webpack_loader %}
+
+{% block script %}
+{{ block.super }}
+{% render_bundle 'teams' 'js' attrs='defer' %}
+{% endblock %}
+
 {% block topbar_right %}{% spaceless %}
 	<li class="nav-item"><a class="nav-link" href="{% url 'manage_team' %}">Team</a></li>
 	{{ block.super }}

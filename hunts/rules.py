@@ -39,9 +39,7 @@ rules.add_perm('hunts.delete_episode', is_admin_for_episode)
 
 @rules.predicate
 def is_admin_for_puzzle(user, puzzle):
-    return any(
-        [is_admin_for_episode(user, ep) for ep in puzzle.episode_set.all()]
-    )
+    return is_admin_for_episode(user, puzzle.episode)
 
 
 rules.add_perm('hunts.change_puzzle', is_admin_for_puzzle)

@@ -1,13 +1,17 @@
 {% extends "teams/base.html" %}
 {% load static %}
+{% load render_bundle from webpack_loader %}
 
 {% block style %}
-<link rel="stylesheet" type="text/css" href="{% static 'hunts/css/hunts.css' %}" />
+{{ block.super }}
+{% render_bundle 'hunts_puzzle' 'css' %}
 {% endblock %}
-{% block script %} 
-<script src="{% static 'hunts/js/hunts.js' %}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.10.0/d3.js"> <!--integrity="sha256-r7j1FXNTvPzHR41+V71Jvej6fIq4v4Kzu5ee7J/RitM=" crossorigin="anonymous">--></script>
+
+{% block script %}
+{{ block.super }}
+{% render_bundle 'hunts_puzzle' 'js' attrs='defer' %}
 {% endblock %}
+
 {% block content %}
 <h1>{{ title }}</h1>
 {% if flavour %}
@@ -57,24 +61,5 @@
 	<div id="soln-text" class="card card-body">
 	</div>
 </div>
-<script>
-$(function() {
-	"use strict";
-	var content = $('#soln-content');
-	var button = $('#soln-button');
-
-	content.on('show.bs.collapse', function() {
-		var url = button.data('url');
-		$('#soln-text').load(url);
-		$(this).unbind('show.bs.collapse');
-	});
-	content.on('shown.bs.collapse', function() {
-		button.text('Hide Solution');
-	});
-	content.on('hidden.bs.collapse', function() {
-		button.text('Show Solution');
-	});
-});
-</script>
 {% endif %}
 {% endblock %}

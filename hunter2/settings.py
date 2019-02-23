@@ -10,9 +10,10 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
-import environ
 import logging
+import os
 
+import environ
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -127,11 +128,11 @@ SHARED_APPS = (
     'django_prometheus',
     'django_tenants',
     'nested_admin',
+    'ordered_model',
     'rules.apps.AutodiscoverRulesConfig',
     'solo',
-    'sortedm2m',
-    'sortedm2m_filter_horizontal_widget',
     'url_tools',
+    'webpack_loader',
 )
 if USE_SILK:  # nocover
     SHARED_APPS += ('silk',)
@@ -211,9 +212,19 @@ STATIC_ROOT = '/static/'
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = (
-    'hunter2/static',
-    'hunts/static',
+    os.path.join(BASE_DIR, 'assets'),
 )
+
+WEBPACK_LOADER = {
+    'DEFAULT': {
+        'CACHE': not DEBUG,
+        'BUNDLE_DIR_NAME': 'bundles/',  # must end with slash
+        'STATS_FILE': os.path.join(BASE_DIR, 'webpack-stats.json'),
+        'POLL_INTERVAL': 0.1,
+        'TIMEOUT': None,
+        'IGNORE': [r'.+.hot-update.js', r'.+.map'],
+    }
+}
 
 SECURE_BROWSER_XSS_FILTER = True
 

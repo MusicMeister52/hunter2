@@ -1,7 +1,13 @@
 {% extends "teams/base.html" %}
+{% load render_bundle from webpack_loader %}
 
 {% block page_header %}
 	<h1>{{ event_title }}</h1>
+{% endblock %}
+
+{% block script %}
+{{ block.super }}
+{% render_bundle 'hunts_event' 'js' attrs='defer' %}
 {% endblock %}
 
 {% block content %}
@@ -18,7 +24,7 @@
 					       data-url="{% url 'episode_content' episode_number=episode.index %}" data-toggle="tab">{{ episode.name }}</a></li>
 				{% endfor %}
 			</ul>
-			<div class="tab-content">
+			<div class="tab-content" id="ep">
 				{% for episode in episodes %}
 					<div class="tab-pane" id="episode-{{ episode.index }}"></div>
 				{% endfor %}
@@ -30,20 +36,4 @@
 			No episodes are available.
 		</p>
 	{% endif %}
-	<script>
-		$(function () {
-			"use strict";
-			$('a[data-toggle="tab"]').on('show.bs.tab', function (e) {
-				var url = $(this).data('url');
-				var target = $(this).attr('href');
-				var tab = $(this);
-				$(target).load(url, function (result) {
-					tab.tab('show');
-					window.location.hash = target.substr(1);
-				});
-			});
-			var hash = window.location.hash ? window.location.hash : '#episode-1';
-			$(`#ep-list a[href="${hash}"`).tab('show');
-		});
-	</script>
 {% endblock %}

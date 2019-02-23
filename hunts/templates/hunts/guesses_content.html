@@ -13,7 +13,7 @@
 	</tr>
 	{% for guess in guesses %}
 	<tr class="guess-viewer-guess{% if guess.get_correct_for %} correct{% elif guess.unlocked %} unlocked{% endif %}">
-		<td><a href="?episode={{ guess.episode.id }}">{{ guess.episode.name }}</a></td>
+		<td><a href="?episode={{ guess.for_puzzle.episode.id }}">{{ guess.for_puzzle.episode.name }}</a></td>
 		<td>
 			<a href="?puzzle={{ guess.for_puzzle.id }}">{{ guess.for_puzzle.title }}</a>
 			<span class="shortcuts">

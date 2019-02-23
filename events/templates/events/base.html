@@ -10,7 +10,7 @@
 
 {% block script %}{% spaceless %}
 {% if event.theme.script %}
-<script>{{ event.theme.script }}</script>
+<script defer>{{ event.theme.script }}</script>
 {% else %}
 {{ block.super }}
 {% endif %}

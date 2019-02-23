@@ -9,6 +9,9 @@ trim_trailing_whitespace = true
 end_of_line = lf
 charset = utf-8
 
+[*.yml]
+indent_size = 2
+
 # Python
 [*.py]
 max_line_length = 159
@@ -18,6 +21,9 @@ max_line_length = 159
 indent_style = tab
 indent_size = tab
 tab_width = 4
+
+[{*.js,*.json}]
+indent_size = 2
 
 # Minified JavaScript files shouldn't be changed
 [**.min.js]
