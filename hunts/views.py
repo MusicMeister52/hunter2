@@ -186,7 +186,7 @@ class GuessesContent(LoginRequiredMixin, View):
             'correct_for__id'
         ).annotate(
             byseat=Subquery(
-                Attendance.objects.filter(user__user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
+                Attendance.objects.filter(user_info__user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
             )
         ).prefetch_related(
             Prefetch(
@@ -263,12 +263,12 @@ class StatsContent(LoginRequiredMixin, View):
         puzzles = models.Puzzle.objects.all()
 
         all_teams = teams.models.Team.objects.annotate(
-            num_members=Count('members')
+            num_members=Count('membership')
         ).filter(
             at_event=request.tenant,
             is_admin=False,
             num_members__gte=1,
-        ).prefetch_related('members', 'members__user')
+        ).prefetch_related('membership_set__user', 'membership_set__user__user')
 
         # Get the first correct guess for each team on each puzzle.
         # We use Guess.correct_for (i.e. the cache) because otherwise we perform a query for every
