@@ -14,7 +14,7 @@
 	{% for guess in guesses %}
 	<tr class="guess-viewer-guess{% if guess.get_correct_for %} correct{% elif guess.unlocked %} unlocked{% endif %}">
 		<td><a href="?episode={{ guess.for_puzzle.episode.id }}">{{ guess.for_puzzle.episode.name }}</a></td>
-		<td>
+		<td class="puzzle-name">
 			<a href="?puzzle={{ guess.for_puzzle.id }}">{{ guess.for_puzzle.title }}</a>
 			<span class="shortcuts">
 				(<a href="{% url 'admin:hunts_puzzle_change' guess.for_puzzle.id %}">E</a>
@@ -29,11 +29,15 @@
 		</td>
 		<td>{{ guess.byseat }}</td>
 		<td class="guess">
-			{{ guess.guess }}
-			<span class="shortcuts">
-				(<a href="{% url 'admin:hunts_answer_add' %}?for_puzzle={{ guess.for_puzzle.id }}&answer={{ guess.guess|urlencode }}">A</a>
-				<a href="{% url 'admin:hunts_unlock_add' %}?puzzle={{ guess.for_puzzle.id }}&new_guess={{ guess.guess|urlencode }}">U</a>)
-			</span>
+			<div class="guess-cell-content">
+				<div>
+					{{ guess.guess }}
+				</div>
+				<span class="shortcuts">
+					(<a href="{% url 'admin:hunts_answer_add' %}?for_puzzle={{ guess.for_puzzle.id }}&answer={{ guess.guess|urlencode }}">A</a>
+					<a href="{% url 'admin:hunts_unlock_add' %}?puzzle={{ guess.for_puzzle.id }}&new_guess={{ guess.guess|urlencode }}">U</a>)
+				</span>
+			</div>
 		</td>
 		<td>{{ guess.given }}</td>
 		<td>{{ guess.time_on_puzzle }}</td>
