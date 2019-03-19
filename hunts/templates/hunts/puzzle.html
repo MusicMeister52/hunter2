@@ -11,31 +11,36 @@
 {% render_bundle 'hunts_puzzle' 'js' attrs='defer' %}
 {% endblock %}
 
-{% block content %}
+{% block page_header %}
 <h1>{{ title }}</h1>
+{% endblock %}
+
+{% block content %}
 {% if flavour %}
-<!-- This is just flavour text - not related to the puzzle! -->
-<div class="puzzle-flavour"><span class="flavour-intro">Story: </span>{{ flavour | safe }}</div>
-<hr class="flavour-clue-divider">
+<section id="puzzle-flavour">
+	<!-- This is just flavour text - not related to the puzzle! -->
+	<span id="flavour-intro">Story: </span>
+	{{ flavour | safe }}
+</section>
 {% endif %}
+<section id="puzzle-content" class="flex-grow-1">
 <!-- CLUE STARTS HERE -->
 {% comment %}Render puzzle text including HTML elements{% endcomment %}
 {{ text | safe }}
 <!-- CLUE ENDS HERE -->
-<hr />
+</section>
+<section id="puzzle-clues">
 <h3>Hints</h3>
-<div id="hints">
 {% for hint in hints %}
 <p>{{hint.time}}: {{hint.text}}</p>
 {% endfor %}
-</div>
 <h3>Unlocks</h3>
 <div id="unlocks">
 {% for unlock in unlocks %}
 <p>{% for guess in unlock.guesses %}{{guess}}{% if not forloop.last %}, {% endif %}{% endfor %}: {{unlock.text}}</p>
 {% endfor %}
-</div>
-<hr />
+</section>
+<section id="puzzle-answer">
 {% if answered %}
 <h2>Your correct answer{{ answered|pluralize }}</h2>
 <div id="answer">
@@ -56,9 +61,8 @@
 {% endif %}
 {% if ended or admin %}
 <button id="soln-button" class="btn btn-primary" data-toggle="collapse" data-target="#soln-content" data-url="{% url 'solution_content' episode_number=episode_number puzzle_number=puzzle_number %}">Show Solution</button>
-<div id="soln-content" class="collapse">
-	<div id="soln-text" class="card card-body">
-	</div>
+<div id="soln-content" class="card card-body collapse">
 </div>
 {% endif %}
+</section>
 {% endblock %}

@@ -30,72 +30,68 @@
 <body class="d-flex flex-column h-100">
 	{% analytical_body_top %}
 
-	<header>
-		<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+	<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+		{% block topbar_title %}
+			<a class="navbar-brand" href="{% url 'index' %}">Home</a>
+		{% endblock %}
 
-			{% block topbar_title %}
-				<a class="navbar-brand" href="{% url 'index' %}">Home</a>
-			{% endblock %}
+		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar" aria-controls="collapsibleNavbar" aria-expanded="false" aria-label="Toggle navigation">
+		  <span class="navbar-toggler-icon"></span>
+		</button>
 
-			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar" aria-controls="collapsibleNavbar" aria-expanded="false" aria-label="Toggle navigation">
-			  <span class="navbar-toggler-icon"></span>
-			</button>
+		<div class="collapse navbar-collapse" id="collapsibleNavbar">
+			<ul class="navbar-nav">
+				{% block topbar_left %}{% endblock %}
+			</ul>
 
-			<div class="collapse navbar-collapse" id="collapsibleNavbar">
-				<ul class="navbar-nav">
-					{% block topbar_left %}{% endblock %}
-				</ul>
-
-				<ul class="navbar-nav ml-auto">
-					{% block topbar_right %}
-						{% if user.is_authenticated %}
-							<li class="nav-item"><a class="nav-link" href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
-							<li class="nav-item"><a class="nav-link" href="#" onclick="$('#logoutForm').submit()">Logout</a></li>
-							<li class="nav-item"><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
-						{% else %}
-							<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Login</a></li>
-						{% endif %}
-					{% endblock %}
-				</ul>
-			</div>
-		</nav>
-	</header>
+			<ul class="navbar-nav ml-auto">
+				{% block topbar_right %}
+					{% if user.is_authenticated %}
+						<li class="nav-item"><a class="nav-link" href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
+						<li class="nav-item"><a class="nav-link" href="#" onclick="$('#logoutForm').submit()">Logout</a></li>
+						<li class="nav-item"><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
+					{% else %}
+						<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Login</a></li>
+					{% endif %}
+				{% endblock %}
+			</ul>
+		</div>
+	</nav>
 
 	{# Debugging information include #}
 	{% block debug %}{% endblock %}
 
-	<main class="flex-shrink-0">
-		<div class="container-fluid pt-3">
-			{# Annoucements & Javascript Warning #}
-			<noscript>
-				<div class="alert alert-danger" role="alert">
-						<strong>You do not have JavaScript Enabled</strong> JavaScript is required to access and take part in a hunt.
-				</div>
-			</noscript>
-			{% block announcements %}{% endblock %}
-
-			<header class="container pt-3">
-				{% block page_header %}{% endblock page_header%}
-			</header>
-
-			<div id="content" class="container{% if wide %}-fluid{% endif %} pt-3">
-				{% block content %}If you're seeing this, contact the site administrators.{% endblock content %}
+	{# Annoucements & Javascript Warning #}
+	<aside id="announcements" class="container-fluid pt-3">
+		<noscript>
+			<div class="alert alert-danger" role="alert">
+				<strong>You do not have JavaScript Enabled</strong> JavaScript is required to access and take part in a hunt.
 			</div>
-		</div>
-	</main>
+		</noscript>
+		{% block announcements %}{% endblock %}
+	</aside>
 
-	<footer class="footer mt-auto py-3">
-		<div class="container-fluid row">
-		    <div class="col-md-4 text-muted small">
-			    Built with <a href="https://hunter2.app/">Hunter2</a>
-		    </div>
-			<div class="col-md-4 text-muted small">
-			    Copyright &copy; 2017-2019  The Hunter 2 Contributors
-		    </div>
-			<div class="col-md-4 text-muted small">
-			    Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU AGPL 3.0</a>
-		    </div>
-		</div>
+	{% comment %}
+	We have two levels of block for the top level elements. Most templates should define {% block page_header %} and {% block content %}.
+	Templates should define {% block header %} and {% block main %} only if they want to override the classes on the <header> and <main> elements.
+	{% endcomment %}
+
+	{% block header %}
+	<header class="container pt-3">
+		{% block page_header %}{% endblock page_header %}
+	</header>
+	{% endblock %}
+
+	{% block main %}
+	<main class="d-flex flex-column flex-grow-1 flex-shrink-0 container pt-3">
+		{% block content %}If you're seeing this, contact the site administrators.{% endblock content %}
+	</main>
+	{% endblock %}
+
+	<footer class="container-fluid mt-auto pt-3 row">
+		<p class="col-md-4 small text-muted">Built with <a href="https://hunter2.app/">Hunter2</a></p>
+		<p class="col-md-4 small text-muted">Copyright &copy; 2017-2019  The Hunter 2 Contributors</p>
+		<p class="col-md-4 small text-muted">Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU AGPL 3.0</a></div>
 	</footer>
 
 	{% analytical_body_bottom %}

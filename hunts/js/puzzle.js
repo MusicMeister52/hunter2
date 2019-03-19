@@ -260,7 +260,7 @@ $(function() {
   if (soln_content.length && soln_button.length) {
     soln_content.on('show.bs.collapse', function() {
       var url = soln_button.data('url')
-      $('#soln-text').load(url)
+      soln_content.load(url)
       $(this).unbind('show.bs.collapse')
     })
     soln_content.on('shown.bs.collapse', function() {

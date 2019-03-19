@@ -12,15 +12,19 @@
 {% render_bundle 'hunts_guesses' 'js' attrs='defer' %}
 {% endblock %}
 
-{% block page_header %}
-<h1>Guesses</h1>
+{% block header %}
+<header class="flex-shrink-0 pt-3">
+	<h1>Guesses</h1>
+</header>
 {% endblock %}
 
-{% block content %}
-<p><a href="?">Clear filters</a></p>
-<p><input type="checkbox" checked="checked" id="auto-update"> <label for="auto-update">Update automatically</label></p>
-<div id="guesses-container">
-	Waiting for content...
-</div>
+{% block main %}
+<main class="flex-shrink-0 container-fluid pt-3">
+	<p><a href="?">Clear filters</a></p>
+	<p><input type="checkbox" checked="checked" id="auto-update"> <label for="auto-update">Update automatically</label></p>
+	<div id="guesses-container">
+		Waiting for content...
+	</div>
+</main>
 {% endblock %}
 
