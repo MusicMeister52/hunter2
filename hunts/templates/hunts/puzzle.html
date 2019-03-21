@@ -35,7 +35,6 @@
 <p>{{hint.time}}: {{hint.text}}</p>
 {% endfor %}
 <h3>Unlocks</h3>
-<div id="unlocks">
 {% for unlock in unlocks %}
 <p>{% for guess in unlock.guesses %}{{guess}}{% if not forloop.last %}, {% endif %}{% endfor %}: {{unlock.text}}</p>
 {% endfor %}
@@ -54,7 +53,7 @@
 <form class="form-inline" action="an" method="POST">
 	{% csrf_token %}
 	<span id="answer-border">
-	<input name="answer" id="answer-entry" class="form-control"></input>
+	<input name="answer" id="answer-entry" class="form-control" />
 	</span>
 	<button type="submit" id="answer-button" class="btn btn-default" disabled="disabled">Guess!</button>
 </form>
