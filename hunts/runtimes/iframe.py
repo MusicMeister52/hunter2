@@ -26,7 +26,7 @@ class IFrameRuntime(AbstractRuntime):
         query_params['token'] = user_puzzle_data.token
         url_parts = url_parts._replace(query=urlencode(query_params, doseq=True))
         url = url_parts.geturl()
-        return f'<iframe id="runtime" src="{url}"></iframe>'
+        return f'<iframe id="runtime" src="{url}"></iframe><script>document.getElementById("puzzle-content").className += "flex-grow-1"</script>'
 
     def validate_guess(self, validator, guess):
         raise NotImplementedError("IFrameRuntime can not be used for guess validation")
