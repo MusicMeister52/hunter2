@@ -1,6 +1,6 @@
 {% extends "events/base.html" %}
 
 {% block topbar_right %}{% spaceless %}
-	<li class="nav-item"><a class="nav-link" href="{% url 'manage_team' %}">Team</a></li>
+	<li><a href="{% url 'manage_team' %}">Team</a></li>
 	{{ block.super }}
 {% endspaceless %}{% endblock %}

@@ -27,42 +27,42 @@
 
 	{% analytical_head_bottom %}
 </head>
-<body class="d-flex flex-column h-100">
+<body>
 	{% analytical_body_top %}
 
-	<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+	<nav class="hunter2_bar">
 		{% block topbar_title %}
-			<a class="navbar-brand" href="{% url 'index' %}">Home</a>
+			<a class="event_title" href="{% url 'index' %}">Home</a>
 		{% endblock %}
 
-		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar" aria-controls="collapsibleNavbar" aria-expanded="false" aria-label="Toggle navigation">
-		  <span class="navbar-toggler-icon"></span>
+		<button type="button" data-toggle="collapse" data-target="#collapsibleNavbar" aria-controls="collapsibleNavbar" aria-expanded="false" aria-label="Toggle navigation">
+			<span class="toggle_icon"></span>
 		</button>
 
-		<div class="collapse navbar-collapse" id="collapsibleNavbar">
-			<ul class="navbar-nav">
+		<div id="collapsibleNavbar">
+			<ul id="hunter2_bar_left">
 				{% block topbar_left %}{% endblock %}
 			</ul>
 
-			<ul class="navbar-nav ml-auto">
+			<ul id="hunter2_bar_right">
 				{% block topbar_right %}
 					{% if user.is_authenticated %}
-						<li class="nav-item"><a class="nav-link" href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
-						<li class="nav-item"><a class="nav-link" href="#" onclick="$('#logoutForm').submit()">Logout</a></li>
-						<li class="nav-item"><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
+						<li><a href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
+						<li><a href="#" onclick="$('#logoutForm').submit()">Logout</a></li>
+						<li><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
 					{% else %}
-						<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Login</a></li>
+						<li><a href="{{ login_url }}" id="navLogin">Login</a></li>
 					{% endif %}
 				{% endblock %}
 			</ul>
 		</div>
 	</nav>
 
-	{# Debugging information include #}
+	{# Debugging information #}
 	{% block debug %}{% endblock %}
 
 	{# Annoucements & Javascript Warning #}
-	<aside id="announcements" class="container-fluid pt-3">
+	<aside id="announcements">
 		<noscript>
 			<div class="alert alert-danger" role="alert">
 				<strong>You do not have JavaScript Enabled</strong> JavaScript is required to access and take part in a hunt.
@@ -77,21 +77,21 @@
 	{% endcomment %}
 
 	{% block header %}
-	<header class="container pt-3">
+	<header>
 		{% block page_header %}{% endblock page_header %}
 	</header>
 	{% endblock %}
 
 	{% block main %}
-	<main class="d-flex flex-column flex-grow-1 flex-shrink-0 container pt-3">
+	<main>
 		{% block content %}If you're seeing this, contact the site administrators.{% endblock content %}
 	</main>
 	{% endblock %}
 
 	<footer>
-		<p class="col-md-4 small text-muted">Built with <a href="https://hunter2.app/">Hunter2</a></p>
-		<p class="col-md-4 small text-muted">Copyright &copy; 2017-2019  The Hunter 2 Contributors</p>
-		<p class="col-md-4 small text-muted">Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU AGPL 3.0</a>
+	    <div>Built with <a href="https://hunter2.app/">Hunter2</a></div>
+		<div>Copyright &copy; 2017-2019  The Hunter 2 Contributors</div>
+		<div>Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.en.html">GNU AGPL 3.0</a></div>
 	</footer>
 
 	{% analytical_body_bottom %}

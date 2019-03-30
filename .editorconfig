@@ -22,10 +22,15 @@ indent_style = tab
 indent_size = tab
 tab_width = 4
 
+# 2 Spaces for Javascript & JSON
 [{*.js,*.json}]
+indent_size = 2
+
+# 2 Spaces for SCSS
+[{*.scss, *.css}]
 indent_size = 2
 
 # Minified JavaScript files shouldn't be changed
 [**.min.js]
-indent_style = ignore
-insert_final_newline = ignore
+indent_style = unset
+insert_final_newline = unset
