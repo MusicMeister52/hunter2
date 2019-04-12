@@ -74,9 +74,18 @@ docker-compose run --rm app createevent
 Thanks
 ======
 Hunter 2 makes use of a number of tools provided generously for free.
+
+GitLab
+------
+[![GitLab Logo](https://about.gitlab.com/images/press/logo/svg/gitlab-logo-gray-rgb.svg)](https://gitlab.com/)
+
+Sentry
+------
+[![Sentry Logo](https://sentry-brand.storage.googleapis.com/sentry-logo-black.svg)](https://sentry.io/)
+
 BrowserStack
 ------------
-![BrowserStack Logo](https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg)
+[![BrowserStack Logo](https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg)](https://www.browserstack.com/)
 
 Copyright
 =========
