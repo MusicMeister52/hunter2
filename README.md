@@ -77,7 +77,7 @@ Hunter 2 makes use of a number of tools provided generously for free.
 
 GitLab
 ------
-[![GitLab Logo](https://about.gitlab.com/images/press/logo/svg/gitlab-logo-gray-rgb.svg){width=250}](https://gitlab.com/)
+[<img src="https://about.gitlab.com/images/press/logo/svg/gitlab-logo-gray-rgb.svg" alt="GitLab Logo" width="250px" />](https://gitlab.com/)
 
 Sentry
 ------
