@@ -71,8 +71,15 @@ docker-compose run --rm app createsuperuser
 docker-compose run --rm app createevent
 ```
 
+Thanks
+======
+Hunter 2 makes use of a number of tools provided generously for free.
+BrowserStack
+------------
+![BrowserStack Logo](https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg)
+
 Copyright
-=======
+=========
 Hunter 2 is a platform for running online puzzle hunts. Further information can be found at https://www.hunter2.app/ including details of contributors.
 
 Copyright (C) 2017-2019  The Hunter 2 contributors.
