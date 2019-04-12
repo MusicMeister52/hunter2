@@ -77,7 +77,7 @@ Hunter 2 makes use of a number of tools provided generously for free.
 
 [<img src="https://about.gitlab.com/images/press/logo/svg/gitlab-logo-gray-rgb.svg" alt="GitLab Logo" width="200px" />](https://gitlab.com/)
 [<img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.svg" alt="Sentry Logo" width="200px" />](https://sentry.io/)
-[<img src="https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg" alt="BrowserStack Logo" width="200px" style="background-color: black;" />](https://www.browserstack.com/)
+[<img src="https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg" alt="BrowserStack Logo" width="200px" style="background-color: black !important; padding: 10px !important;" />](https://www.browserstack.com/)
 
 Copyright
 =========
