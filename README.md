@@ -85,7 +85,7 @@ Sentry
 
 BrowserStack
 ------------
-[<img src="https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg" alt="BrowserStack Logo" width="200px" style="background: black;" />](https://www.browserstack.com/)
+[<img src="https://d3but80xmlhqzj.cloudfront.net/production/images/static/header/header-logo.svg" alt="BrowserStack Logo" width="200px" style="background-color: black;" />](https://www.browserstack.com/)
 
 Copyright
 =========
