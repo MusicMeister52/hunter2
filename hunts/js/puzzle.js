@@ -10,6 +10,7 @@ import 'hunter2/js/base'
 import 'hunter2/js/csrf.js'
 
 import '../scss/puzzle.scss'
+import { SocketHandler, setupNotifications} from './puzzleWebsocketHandlers'
 
 /* global unlocks, hints */
 
@@ -167,11 +168,6 @@ function addSVG() {
 
   var defs = svg.append('defs')
 
-  /*var filter = defs.append("filter")
-		.attr("id", "drop-shadow")
-		.attr("x", "0")
-		.attr("y", "0")
-		.attr(*/
   var filter = defs.append('filter')
     .attr('id', 'drop-shadow')
     .attr('width', '200%')
@@ -375,20 +371,20 @@ var lastUpdated
 
 function openEventSocket() {
   const socketHandlers = {
-    'announcement': window.alertList.addAnnouncement,
-    'delete_announcement': window.alertList.deleteAnnouncement,
-    'new_guesses': receivedNewAnswers,
-    'old_guesses': receivedOldAnswers,
-    'solved': receivedSolvedMsg,
-    'new_unlock': receivedNewUnlock,
-    'old_unlock': receivedNewUnlock,
-    'change_unlock': receivedChangeUnlock,
-    'delete_unlock': receivedDeleteUnlock,
-    'delete_unlockguess': receivedDeleteUnlockGuess,
-    'new_hint': receivedNewHint,
-    'old_hint': receivedNewHint,
-    'delete_hint': receivedDeleteHint,
-    'error': receivedError,
+    'announcement': new SocketHandler(window.alertList.addAnnouncement, true, 'New announcement'),
+    'delete_announcement': new SocketHandler(window.alertList.deleteAnnouncement),
+    'new_guesses': new SocketHandler(receivedNewAnswers),
+    'old_guesses': new SocketHandler(receivedOldAnswers),
+    'solved': new SocketHandler(receivedSolvedMsg, true, 'Puzzle solved'),
+    'new_unlock': new SocketHandler(receivedNewUnlock, true, 'New unlock'),
+    'old_unlock': new SocketHandler(receivedNewUnlock),
+    'change_unlock': new SocketHandler(receivedChangeUnlock, true, 'Updated unlock'),
+    'delete_unlock': new SocketHandler(receivedDeleteUnlock),
+    'delete_unlockguess': new SocketHandler(receivedDeleteUnlockGuess),
+    'new_hint': new SocketHandler(receivedNewHint, true, 'New hint'),
+    'old_hint': new SocketHandler(receivedNewHint),
+    'delete_hint': new SocketHandler(receivedDeleteHint),
+    'error': new SocketHandler(receivedError),
   }
 
   var ws_scheme = (window.location.protocol == 'https:' ? 'wss' : 'ws') + '://'
@@ -411,7 +407,11 @@ function openEventSocket() {
       throw `Invalid message type: ${data.type}, content: ${data.content}`
     } else {
       var handler = socketHandlers[data.type]
-      handler(data.content)
+      if (typeof handler === 'function') {
+        handler(data.content)
+      } else {
+        handler.handle(data.content)
+      }
     }
   }
   sock.onerror = function() {
@@ -463,6 +463,7 @@ $(function() {
   }
   field.on('input', fieldKeyup)
 
+  setupNotifications()
   openEventSocket()
 
   $('#answer-form').submit(function(e) {
