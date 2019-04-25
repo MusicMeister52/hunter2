@@ -1,0 +1,26 @@
+div.admin-list {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-evenly;
+}
+
+div.admin {
+    flex: 0 0 25%;
+    margin: auto;
+    text-align: center;
+}
+
+// If the last line would contain one item, make it contain two
+div.admin:nth-last-child(2):nth-child(4n) {
+    min-width: 33%;
+}
+
+div.admin > img {
+    box-sizing: border-box;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-height: 200px;
+    max-width: 200px;
+    text-align: center;
+}

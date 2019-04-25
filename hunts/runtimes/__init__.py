@@ -24,13 +24,6 @@ from .static import StaticRuntime
 # Pattern copied from label handling in django-enumfields
 class RuntimeMeta(EnumMeta):
     def __new__(mcs, name, bases, attrs):
-        # Strip the classes containing additional values off the Enum class
-        Options = attrs.get('Options')
-        if Options is not None and inspect.isclass(Options):
-            del attrs['Options']
-            if hasattr(attrs, '_member_names'):
-                attrs._member_names.remove('Options')
-
         Types = attrs.get('Types')
         if Types is not None and inspect.isclass(Types):
             del attrs['Types']
@@ -42,46 +35,34 @@ class RuntimeMeta(EnumMeta):
         # Add the additional values to each Enum instance
         for m in obj:
             m.type = getattr(Types, m.name)
-            try:
-                m.options = getattr(Options, m.name)
-            except AttributeError:
-                m.options = {}
 
         return obj
 
 
 class Runtime(Enum, metaclass=RuntimeMeta):
-    CASED_REGEX  = 'r'
-    CASED_STATIC = 's'
     IFRAME       = 'I'
     LUA          = 'L'
     REGEX        = 'R'
     STATIC       = 'S'
 
     class Labels:
-        CASED_REGEX  = 'Case Sensitive Regex'
-        CASED_STATIC = 'Case Sensitive Static'
         IFRAME       = 'IFrame'
         LUA          = 'Lua'
         REGEX        = 'Regex'
         STATIC       = 'Static'
 
-    class Options:
-        CASED_REGEX = {'case_sensitive': True}
-        CASED_STATIC = {'case_sensitive': True}
-        REGEX = {'case_sensitive': False}
-        STATIC = {'case_sensitive': False}
-
     class Types:
         STATIC       = StaticRuntime
-        CASED_STATIC = StaticRuntime
         REGEX        = RegexRuntime
-        CASED_REGEX  = RegexRuntime
         IFRAME       = IFrameRuntime
         LUA          = LuaRuntime
 
-    def create(self):
-        return self.type(**self.options)
+    def create(self, options):
+        return self.type(**options)
 
     def is_printable(self):
-        return self in (Runtime.CASED_REGEX, Runtime.CASED_STATIC, Runtime.REGEX, Runtime.STATIC)
+        return self in (Runtime.REGEX, Runtime.STATIC)
+
+    @property
+    def grow_section(self):
+        return self == Runtime.IFRAME

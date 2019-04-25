@@ -26,7 +26,6 @@ django-sendfile = "*"
 django-solo = "*"
 django-sortedm2m = "*"
 django-tenants = { git = "https://github.com/tomturner/django-tenants.git", ref = "0a5ff14478e44f55ea566d020e0252bb6ca5ac24" }
-django-url-tools-py3 = "*"
 django-webpack-loader = "*"
 factory_boy = "*"
 # This is actually a transitive dependancy via factory_boy but we need to specify the version

@@ -1,41 +1,39 @@
 Launching an Environment
 ========================
 
-First select which kind of environment you want to run.
+Development Environment
+-----------------------
 
-For a basic development environment using the django development webserver:
+Hunter 2 requires docker engine 17.05 or greater to build. Check docker engine version using the following command:
+```shell
+docker version
+```
+
+Link the development compose file:
 ```shell
 ln -s docker-compose.dev.yml docker-compose.yml
 ```
 This environment maps the local repo into the container and will dynamically reload code changes.
 
-For a production-like environment using uwsgi and nginx:
+Build the container images:
 ```shell
-ln -s docker-compose.prod.yml docker-compose.yml
-```
-This environment uses static code from the docker image.
-
-Either environment can be launched using the following commands:
-```shell
-echo 'H2_DEBUG=True' > .env
-docker-compose up -d
-docker-compose run --rm app migrate_schemas
+docker-compose build
 ```
 
-To get performance profiling with silk, do:
+You will need to configure some hosts file entries for the wildcard DNS:
 ```shell
-echo 'H2_SILK=True' >> .env
-docker-compose up -d
-```
-
-If you are running a development instance on a laptop then you need to add some hosts file entries:
-```
 echo 127.0.0.1 hunter2.local www.hunter2.local dev.hunter2.local >> /etc/hosts
 ```
 `dev.hunter2.local` is the default event subdomain. If you are working with more events add more names here.
 
-To create the base objects run the following:
+Launch the containers and configure the database tables:
+```shell
+docker-compose up -d
+docker-compose run --rm app migrate_schemas
 ```
+
+To create the base objects run the following:
+```shell
 docker-compose run --rm app setupsite
 docker-compose run --rm app createsuperuser
 docker-compose run --rm app createevent
@@ -43,6 +41,35 @@ docker-compose run --rm app createevent
 
 Load an event page (such as [http://dev.hunter2.local:8080/hunt/](http://dev.hunter2.local:8080/hunt/)) and log in.
 This implicitly creates a profile for you, and then you can strugle make an admin team.
+
+### Profiling ###
+To enable performance profiling with silk, do:
+```shell
+echo 'H2_SILK=True' >> .env
+docker-compose up -d
+docker-compose run --rm app migrate_schemas
+```
+
+Production Environment
+----------------------
+
+Link the production compose file:
+```shell
+ln -s docker-compose.prod.yml docker-compose.yml
+```
+
+Launch the containers and configure the database tables:
+```shell
+docker-compose up -d
+docker-compose run --rm app migrate_schemas
+```
+
+To create the base objects run the following:
+```shell
+docker-compose run --rm app setupsite
+docker-compose run --rm app createsuperuser
+docker-compose run --rm app createevent
+```
 
 Copyright
 =======

@@ -16,6 +16,7 @@ import warnings
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.urls import reverse
 
 
 class UserProfileManager(models.Manager):
@@ -63,3 +64,6 @@ class UserInfo(models.Model):
 
     def attendance_at(self, event):
         return self.attendance_set.get(event=event)
+
+    def get_absolute_url(self):
+        return reverse('profile', kwargs={'pk': self.id})

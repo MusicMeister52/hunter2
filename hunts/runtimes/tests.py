@@ -14,6 +14,7 @@
 from django.test import TestCase, SimpleTestCase
 
 from .iframe import IFrameRuntime
+from .options import Case
 from .regex import RegexRuntime
 from .static import StaticRuntime
 from .. import models
@@ -87,30 +88,84 @@ class RegexRuntimeTestCase(SimpleTestCase):
 
 class StaticRuntimeTestCase(SimpleTestCase):
     def test_evaluate(self):
-        static_runtime = StaticRuntime(case_sensitive=False)
+        static_runtime = StaticRuntime()
         static_script = '''Hello  World!'''
         result = static_runtime.evaluate(static_script, None, None, None, None)
         self.assertEqual(result, static_script)
 
-    def test_validate_guess(self):
-        static_runtime = StaticRuntime(case_sensitive=False)
-        static_script = '''answer'''
-        guess = "answer"
+    def test_validate_guess_no_strip(self):
+        static_runtime = StaticRuntime(strip=False)
+        static_script = 'Guess'
+        guess = 'Guess'
         result = static_runtime.validate_guess(static_script, guess)
         self.assertTrue(result)
-        guess = "ANSWER"
+        guess = 'Guess '
         result = static_runtime.validate_guess(static_script, guess)
-        self.assertTrue(result)
-        guess = "incorrect answer"
+        self.assertFalse(result)
+        guess = 'G uess'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+        guess = 'G,uess'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+        guess = "incorrect guess"
         result = static_runtime.validate_guess(static_script, guess)
         self.assertFalse(result)
 
-    def test_case_sensitive_guess(self):
-        static_runtime = StaticRuntime(case_sensitive=True)
-        static_script = '''Answer'''
-        guess = "Answer"
+    def test_validate_guess_strip(self):
+        static_runtime = StaticRuntime(case_handling=Case.FOLD)
+        static_script = 'Guess'
+        guess = 'Guess'
         result = static_runtime.validate_guess(static_script, guess)
         self.assertTrue(result)
-        guess = "answer"
+        guess = 'Guess '
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = 'G uess'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+        guess = 'G,uess'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+        guess = "incorrect guess"
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+
+    def test_validate_guess_case_fold(self):
+        static_runtime = StaticRuntime(case_handling=Case.FOLD)
+        static_script = 'Guess'
+        guess = 'Guess'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = 'GUESS'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = 'gueß'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = "incorrect guess"
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+
+    def test_validate_guess_case_lower(self):
+        static_runtime = StaticRuntime(case_handling=Case.LOWER)
+        static_script = 'Guess'
+        guess = 'Guess'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = "GUESS"
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = 'gueß'
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertFalse(result)
+
+    def test_validate_guess_case_none(self):
+        static_runtime = StaticRuntime(case_handling=Case.NONE)
+        static_script = 'Guess'
+        guess = "Guess"
+        result = static_runtime.validate_guess(static_script, guess)
+        self.assertTrue(result)
+        guess = "GUESS"
         result = static_runtime.validate_guess(static_script, guess)
         self.assertFalse(result)

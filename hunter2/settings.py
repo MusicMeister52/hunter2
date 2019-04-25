@@ -131,7 +131,6 @@ SHARED_APPS = (
     'ordered_model',
     'rules.apps.AutodiscoverRulesConfig',
     'solo',
-    'url_tools',
     'webpack_loader',
 )
 if USE_SILK:  # nocover

@@ -17,6 +17,7 @@
 	padding: 0;
 	overflow: hidden;
 	position: relative;
+	margin-left: 5px;
 }
 
 #answer-button[disabled] {
@@ -48,8 +49,17 @@ section {
     padding-bottom: 1em;
 }
 
-section:not(:last-child) {
-    border-bottom: 1px solid #ccc;
+section.puzzle-grow {
+    height: 75vh;
+}
+
+section:not(:last-child):after {
+    content: "";
+    display: block;
+    height: 1px;
+    width: 6em;
+    margin: 1em calc(50% - 3em) 0 calc(50% - 3em);
+    background: #ccc;
 }
 
 iframe#runtime {

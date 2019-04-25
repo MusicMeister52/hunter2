@@ -19,7 +19,7 @@ from .abstract import AbstractRuntime
 class RegexRuntime(AbstractRuntime):
     flags = 0
 
-    def __init__(self, case_sensitive):
+    def __init__(self, case_sensitive=False):
         self.flags = 0 if case_sensitive else re.IGNORECASE
 
     def check_script(self, script):

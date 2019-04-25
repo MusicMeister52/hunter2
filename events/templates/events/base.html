@@ -2,7 +2,7 @@
 
 {% block style %}{% spaceless %}
 {% if event.theme.style %}
-<style>{{ event.theme.style }}</style>
+<style>{{ event.theme.style | safe }}</style>
 {% else %}
 {{ block.super }}
 {% endif %}
@@ -10,7 +10,7 @@
 
 {% block script %}{% spaceless %}
 {% if event.theme.script %}
-<script defer>{{ event.theme.script }}</script>
+<script defer>{{ event.theme.script | safe }}</script>
 {% else %}
 {{ block.super }}
 {% endif %}

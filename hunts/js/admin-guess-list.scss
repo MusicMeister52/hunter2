@@ -1,0 +1,30 @@
+div#controls {
+    > p {
+        flex-grow: 1;
+    }
+}
+
+span.shortcuts {
+    @extend %nowrap;
+    font-size: 75%;
+
+    > a {
+        font-weight: bold;
+    }
+}
+
+span.team {
+    @extend %nowrap;
+}
+
+span.date {
+    @extend %nowrap;
+}
+
+span.time {
+    @extend %nowrap;
+}
+
+%nowrap {
+    white-space: nowrap;
+}

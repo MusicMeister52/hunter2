@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.utils.safestring import mark_safe
 
-from .models import Answer, Guess, UnlockAnswer
+from .models import Answer, Guess
 
 
 class AnswerForm(forms.ModelForm):
@@ -25,6 +25,11 @@ class AnswerForm(forms.ModelForm):
     class Meta:
         model = Answer
         fields = ('answer', 'runtime')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['runtime'].widget.attrs['class'] = 'advanced_field'
+        self.fields['options'].widget.attrs['class'] = 'advanced_field'
 
     def clean(self, **kwargs):
         cleaned_data = super().clean(**kwargs)
@@ -119,6 +124,3 @@ class BulkUploadForm(forms.Form):
     base_path = forms.CharField(required=False, help_text='Path to be pre-pended to paths in the archive')
     solution = forms.BooleanField(required=False, help_text='Upload files as SolutionFile objects instead of PuzzleFile')
     overwrite = forms.BooleanField(required=False, help_text='Allow upload to overwrite existing files')
-
-
-UnlockAnswerForm = forms.modelform_factory(UnlockAnswer, fields=('runtime', 'guess'))

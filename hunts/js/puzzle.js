@@ -246,6 +246,8 @@ $(function() {
         button.removeAttr('disabled')
         if (xhr.responseJSON && xhr.responseJSON.error == 'too fast') {
           message('Slow down there, sparky! You\'re supposed to wait 5s between submissions.', '')
+        } else if (xhr.responseJSON && xhr.responseJSON.error == 'already answered') {
+          message('Your team has already correctly answered this puzzle!', '')
         } else {
           message('There was an error submitting the answer.', error)
         }

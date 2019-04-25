@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block script %}
-{{ block.super }}
 {% render_bundle 'hunts_guesses' 'js' attrs='defer' %}
 {% endblock %}
 
@@ -20,11 +19,7 @@
 
 {% block main %}
 <main class="flex-shrink-0 container-fluid pt-3">
-	<p><a href="?">Clear filters</a></p>
-	<p><input type="checkbox" checked="checked" id="auto-update"> <label for="auto-update">Update automatically</label></p>
-	<div id="guesses-container">
-		Waiting for content...
-	</div>
+	<div id="admin-guess-list" data-href="{% url 'guesses_list' %}" />
 </main>
 {% endblock %}
 

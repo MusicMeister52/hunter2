@@ -1,8 +1,11 @@
 {% extends 'admin/change_form.html' %}
+
 {% block object-tools-items %}
 <li><a href="{% url 'bulk_upload' original.pk %}" class="bulkuploadlink">Bulk upload files</a></li>
 {{ block.super }}
 {% endblock %}
+
 {% block form_top %}
 {% if not has_absolute_url %}<ul class="messagelist"><li class="warning">This puzzle cannot be viewed on the site until it's added to an episode.</li></ul>{% endif %}
+<button id="advanced_button"></button>
 {% endblock %}

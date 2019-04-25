@@ -23,9 +23,8 @@
 	{{ flavour | safe }}
 </section>
 {% endif %}
-<section id="puzzle-content">
+<section id="puzzle-content"{% if grow_section %} class="puzzle-grow"{% endif %}>
 <!-- CLUE STARTS HERE -->
-{% comment %}Render puzzle text including HTML elements{% endcomment %}
 {{ text | safe }}
 <!-- CLUE ENDS HERE -->
 </section>
@@ -49,13 +48,14 @@
 </div>
 {% elif ended %}
 <h2>Event is over</h2>
-{% else %}
+{% endif %}
+{% if admin or not answered and not ended %}
 <form class="form-inline" action="an" method="POST">
 	{% csrf_token %}
 	<span id="answer-border">
-	<input name="answer" id="answer-entry" class="form-control" />
+		<input name="answer" id="answer-entry" class="form-control" placeholder="Enter guess" />
 	</span>
-	<button type="submit" id="answer-button" class="btn btn-default" disabled="disabled">Guess!</button>
+	<button type="submit" id="answer-button" class="btn btn-primary" disabled="disabled">Guess!</button>
 </form>
 {% endif %}
 {% if ended or admin %}

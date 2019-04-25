@@ -10,8 +10,10 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
+from distutils.util import strtobool
 from os import path
 from string import Template
+from urllib.parse import quote_plus
 import tarfile
 
 from collections import defaultdict
@@ -21,7 +23,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Count, OuterRef, Prefetch, Subquery
-from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.utils import timezone
@@ -36,8 +38,9 @@ from teams.mixins import TeamMixin
 from . import models, rules, utils
 from .forms import BulkUploadForm
 from .mixins import EpisodeUnlockedMixin, PuzzleAdminMixin, PuzzleUnlockedMixin
+from accounts.models import UserInfo
 from events.models import Attendance
-from events.utils import annotate_userprofile_queryset_with_seat
+from events.utils import annotate_userinfo_queryset_with_seat
 
 import hunter2
 import teams
@@ -151,22 +154,26 @@ class Guesses(LoginRequiredMixin, View):
         )
 
 
-class GuessesContent(LoginRequiredMixin, View):
+class GuessesList(LoginRequiredMixin, View):
     def get(self, request):
         admin = rules.is_admin_for_event(request.user, request.tenant)
 
         if not admin:
-            return HttpResponseForbidden()
+            return JsonResponse({
+                'result': 'Forbidden',
+                'message': 'Must be an admin to list guesses',
+            }, status=403)
 
         episode = request.GET.get('episode')
         puzzle = request.GET.get('puzzle')
         team = request.GET.get('team')
+        user = request.GET.get('user')
 
         puzzles = models.Puzzle.objects.all()
         if puzzle:
             puzzles = puzzles.filter(id=puzzle)
         if episode:
-            puzzles = puzzles.filter(episode=episode)
+            puzzles = puzzles.filter(episode_id=episode)
 
         # The following query is heavily optimised. We only retrieve the fields we will use here and
         # in the template, and we select and prefetch related objects so as not to perform any extra
@@ -195,8 +202,9 @@ class GuessesContent(LoginRequiredMixin, View):
         )
 
         if team:
-            team = teams.models.Team.objects.get(id=team)
-            all_guesses = all_guesses.filter(by_team=team)
+            all_guesses = all_guesses.filter(by_team_id=team)
+        if user:
+            all_guesses = all_guesses.filter(by_id=user)
 
         guess_pages = Paginator(all_guesses, 50)
         page = request.GET.get('page')
@@ -207,25 +215,47 @@ class GuessesContent(LoginRequiredMixin, View):
         except EmptyPage:
             guesses = guess_pages.page(guess_pages.num_pages)
 
-        if request.GET.get('highlight_unlocks'):
-            for g in guesses:
+        guesses_list = [
+            {
+                'add_answer_url': f'{reverse("admin:hunts_answer_add")}?for_puzzle={g.for_puzzle.id}&answer={quote_plus(g.guess)}',
+                'add_unlock_url': f'{reverse("admin:hunts_unlock_add")}?puzzle={g.for_puzzle.id}&new_guess={quote_plus(g.guess)}',
+                'correct': bool(g.get_correct_for()),
+                'episode': {
+                    'id': g.for_puzzle.episode.id,
+                    'name': g.for_puzzle.episode.name,
+                },
+                'given': g.given,
+                'guess': g.guess,
+                'puzzle': {
+                    'id': g.for_puzzle.id,
+                    'title': g.for_puzzle.title,
+                    'admin_url': reverse('admin:hunts_puzzle_change', kwargs={'object_id': g.for_puzzle.id}),
+                    'site_url': g.for_puzzle.get_absolute_url(),
+                },
+                'team': {
+                    'id': g.by_team.id,
+                    'name': g.by_team.name,
+                },
+                'time_on_puzzle': g.time_on_puzzle(),
+                'user': {
+                    'id': g.by.id,
+                    'name': g.by.username,
+                    'seat': g.byseat,
+                },
+                'unlocked': False,
+            } for g in guesses
+        ]
+
+        highlight_unlocks = request.GET.get('highlight_unlocks')
+        if highlight_unlocks is not None and strtobool(highlight_unlocks):
+            for g, gl in zip(guesses, guesses_list):
                 unlockanswers = models.UnlockAnswer.objects.filter(unlock__puzzle=g.for_puzzle)
-                if any([a.validate_guess(g) for a in unlockanswers]):
-                    g.unlocked = True
+                gl['unlocked'] = any([a.validate_guess(g) for a in unlockanswers])
 
-        # Grab the current URL (which is not the URL of *this* view) so that we can manipulate the query string
-        # in the template.
-        current_url = reverse('guesses')
-        current_url += '?' + request.GET.urlencode()
-
-        return TemplateResponse(
-            request,
-            'hunts/guesses_content.html',
-            context={
-                'guesses': guesses,
-                'current_url': current_url
-            }
-        )
+        return JsonResponse({
+            'guesses': guesses_list,
+            'rows': all_guesses.count(),
+        })
 
 
 class Stats(LoginRequiredMixin, View):
@@ -442,7 +472,7 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         }
         files = {**event_files, **puzzle_files}  # Puzzle files with matching slugs override hunt counterparts
 
-        text = Template(puzzle.runtime.create().evaluate(
+        text = Template(puzzle.runtime.create(puzzle.options).evaluate(
             puzzle.content,
             data.tp_data,
             data.up_data,
@@ -464,6 +494,7 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
                 'episode_number': episode_number,
                 'hints': hints,
                 'puzzle_number': puzzle_number,
+                'grow_section': puzzle.runtime.grow_section,
                 'title': puzzle.title,
                 'flavour': flavour,
                 'text': text,
@@ -505,7 +536,7 @@ class SolutionContent(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         }
         files = {**event_files, **puzzle_files, **solution_files}  # Solution files override puzzle files, which override event files.
 
-        text = Template(request.puzzle.soln_runtime.create().evaluate(
+        text = Template(request.puzzle.soln_runtime.create(request.puzzle.soln_options).evaluate(
             request.puzzle.soln_content,
             data.tp_data,
             data.up_data,
@@ -536,6 +567,9 @@ class SolutionFile(View):
 
 class Answer(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
+        if not request.admin and request.puzzle.answered_by(request.team):
+            return JsonResponse({'error': 'already answered'}, status=422)
+
         now = timezone.now()
 
         minimum_time = timedelta(seconds=5)
@@ -638,7 +672,7 @@ class Callback(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         data = models.PuzzleData(request.puzzle, request.team, request.user.profile)
 
         response = HttpResponse(
-            request.puzzle.cb_runtime.create().evaluate(
+            request.puzzle.cb_runtime.create(request.puzzle.cb_options).evaluate(
                 request.puzzle.cb_content,
                 data.tp_data,
                 data.up_data,
@@ -692,7 +726,8 @@ class AboutView(TemplateView):
         files = {f.slug: f.file.url for f in self.request.tenant.eventfile_set.filter(slug__isnull=False)}
         content = Template(self.request.tenant.about_text).safe_substitute(**files)
 
-        admin_members = annotate_userprofile_queryset_with_seat(admin_team.members, self.request.tenant)
+        admin_members = UserInfo.objects.filter(user__profile__in=admin_team.members.all())
+        admin_members = annotate_userinfo_queryset_with_seat(admin_members, self.request.tenant)
 
         context.update({
             'admins': admin_members,

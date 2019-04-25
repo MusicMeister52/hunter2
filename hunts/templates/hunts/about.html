@@ -1,16 +1,34 @@
 {% extends "teams/base.html" %}
+{% load render_bundle from webpack_loader %}
+
+{% block style %}
+{{ block.super }}
+{% render_bundle 'hunts_about' 'css' %}
+{% endblock %}
 
 {% block page_header %}
 <h1>About {{ event_name }}</h1>
 {% endblock %}
 
 {% block content %}
+<section id="admins">
 <h2>Admins</h2>
 <p>{{ event_name }} is run by:</p>
-<ul style="width: 40%">
-    {% for admin in admins %}
-    <li>{{ admin.username }}<span style="float: right;">&nbsp;{{ admin.seat }}</li>
-    {% endfor %}
-</ul>
+<div class="admin-list">
+{% for admin in admins %}
+<div class="admin">
+	<h3><a href="{{ admin.get_absolute_url }}">{{ admin.username }}</a></h3>
+	<img src="{{ admin.picture }}" alt="{{ admin.username }}" />
+	<p>
+	{% if admin.seat %}
+		Seat {{ admin.seat }}
+	{% endif %}
+	</p>
+</div>
+{% endfor %}
+</div>
+</section>
+<section id="about">
 {{ content | safe }}
+</section>
 {% endblock %}

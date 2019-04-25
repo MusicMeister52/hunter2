@@ -1,0 +1,48 @@
+<div class="admin-guess-list">
+	<div id="controls" class="d-flex flex-row">
+		<p><a href="?" v-on:click.prevent="clearFilters">Clear filters</a></p>
+		<p>
+			<input type="checkbox" v-model="autoUpdate" id="auto-update" />
+			<label for="auto-update">Update automatically</label>
+		</p>
+		<p>
+			<input type="checkbox" v-model="highlightUnlocks" id="highlight-unlocks" />
+			<label for="highlight-unlocks">Highlight Unlocks</label>
+		</p>
+	</div>
+
+	<b-table v-bind:fields="fields" v-bind:items="guesses" small striped>
+		<template v-slot:episode="row">
+			<a v-bind:href="`?episode=${row.value.id}`" v-on:click.prevent="addFilter('episode', row.value.id)">{{ row.value.name }}</a>
+		</template>
+		<template v-slot:puzzle="row">
+			<a v-bind:href="`?puzzle=${row.value.id}`" v-on:click.prevent="addFilter('puzzle', row.value.id)">{{ row.value.title }}</a>
+			<span class="shortcuts">(
+				<a v-bind:href="row.value.admin_url">E</a>
+				<a v-bind:href="row.value.site_url">V</a>
+			)</span>
+		</template>
+		<template v-slot:user="row">
+			<a v-bind:href="`?user=${row.value.id}`" v-on:click.prevent="addFilter('user', row.value.id)">{{ row.value.name }}</a>
+			<span v-if="row.item.team.name" class="team">
+				(<a v-bind:href="`?team=${row.item.team.id}`" v-on:click.prevent="addFilter('team', row.item.team.id)">{{ row.item.team.name }}</a>)
+			</span>
+		</template>
+		<template v-slot:seat="row">
+			{{ row.item.user.seat }}
+		</template>
+		<template v-slot:guess="row">
+			{{ row.value }}
+			<span class="shortcuts">(
+				<a v-bind:href="row.item.add_answer_url">A</a>
+				<a v-bind:href="row.item.add_unlock_url">U</a>
+			)</span>
+		</template>
+		<template v-slot:given="row">
+			<span class="date">{{ row.value | moment("ll") }}</span>
+			<span class="time">{{ row.value | moment("LTS") }}</span>
+		</template>
+	</b-table>
+
+	<b-pagination v-model="currentPage" v-bind:total-rows="rows" v-bind:per-page="perPage" v-on:change="changePage" size="sm" />
+</div>

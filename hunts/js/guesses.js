@@ -1,47 +1,19 @@
 import $ from 'jquery'
 import 'bootstrap'
+import Vue from 'vue'
 
-import '../scss/guesses.scss'
-
+import AdminGuessList from './admin-guess-list.vue'
 import setupJQueryAjaxCsrf from 'hunter2/js/csrf.js'
-
-function updateGuesses(force) {
-  if (force || $('#auto-update').prop('checked')) {
-    $('#guesses-container').load('guesses_content' + window.location.search + ' #guesses-container', function() {
-      // Go for more guesses 5 seconds after we're done getting the last lot of guesses.
-      setTimeout(updateGuesses, 5000)
-    })
-  }
-}
-
-function getQueryParam(param) {
-  var value
-  location.search.substr(1)
-    .split('&')
-    .some(function(item) { // returns first occurence and stops
-      var keyAndValue = item.split('=')
-      if (keyAndValue[0] == param) {
-        value = keyAndValue[1]
-        return true
-      } else {
-        return false
-      }
-    })
-  return value
-}
 
 $(function () {
   setupJQueryAjaxCsrf()
 
-  updateGuesses(true)
-  var autoUpdate = $('#auto-update')
-  var page = parseInt(getQueryParam('page'))
-  if (page > 1) {
-    autoUpdate.prop('checked', false)
-  }
-  autoUpdate.click(function () {
-    if ($(this).prop('checked')) {
-      updateGuesses()
-    }
+  const href = $('#admin-guess-list').data('href')
+  const adminguesslist = new Vue({
+    ...AdminGuessList,
+    propsData: {
+      href: href,
+    },
   })
+  adminguesslist.$mount('#admin-guess-list')
 })

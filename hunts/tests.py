@@ -363,16 +363,50 @@ class PuzzleAccessTests(EventTestCase):
 
         # This test submits two answers on the same puzzle so we have to jump forward 5 seconds
         with freezegun.freeze_time() as frozen_datetime:
-            # Create an initial correct guess and wait 5 seconds before attempting other answers.
+            # Can load, callback and answer the first puzzle
+            _check_load_callback_answer(self.puzzles[0], 200)
+
+            # Answer the puzzle correctly, wait, then try again. This should fail because it's already done.
             GuessFactory(
                 by=self.user,
                 for_puzzle=self.puzzles[0],
                 correct=True
             )
             frozen_datetime.tick(delta=datetime.timedelta(seconds=5))
+            # We should be able to load the puzzle but not answer it
 
-            # Can load, callback and answer the first two puzzles
-            _check_load_callback_answer(self.puzzles[0], 200)
+            # Load
+            kwargs = {
+                'episode_number': self.episode.get_relative_id(),
+                'puzzle_number': self.puzzles[0].get_relative_id(),
+            }
+            resp = self.client.get(reverse('puzzle', kwargs=kwargs))
+            self.assertEqual(resp.status_code, 200)
+
+            # Callback
+            resp = self.client.post(
+                reverse('callback', kwargs=kwargs),
+                content_type='application/json',
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+            self.assertEqual(resp.status_code, 200)
+
+            # Answer
+            resp = self.client.post(
+                reverse('answer', kwargs=kwargs),
+                {'answer': 'NOT_CORRECT'},  # Deliberately incorrect answer
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            )
+            self.assertEqual(resp.status_code, 422)
+
+            # Solution
+            resp = self.client.get(
+                reverse('solution_content', kwargs=kwargs),
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+            )
+            self.assertEqual(resp.status_code, 403)
+
             _check_load_callback_answer(self.puzzles[1], 200)
             # Can't load, callback or answer the third puzzle
             _check_load_callback_answer(self.puzzles[2], 403)
@@ -876,7 +910,7 @@ class AdminContentTests(EventTestCase):
         self.admin_user = TeamMemberFactory(team__at_event=self.tenant, team__is_admin=True)
         puzzle = PuzzleFactory()
         self.guesses = GuessFactory.create_batch(5, for_puzzle=puzzle)
-        self.guesses_url = reverse('guesses_content')
+        self.guesses_url = reverse('guesses_list')
 
     def test_can_view_guesses(self):
         self.client.force_login(self.admin_user.user)
@@ -1127,7 +1161,9 @@ class CorrectnessCacheTests(EventTestCase):
         guess2.refresh_from_db()
         self.assertFalse(guess1.correct_current)
         self.assertTrue(guess2.correct_current)
-        self.assertFalse(guess1.get_correct_for())
+        correct = guess1.get_correct_for()
+        self.assertTrue(guess1.correct_current)
+        self.assertFalse(correct)
         self.assertFalse(self.puzzle1.answered_by(self.team1))
 
         # Update the first guess and check
@@ -1145,7 +1181,8 @@ class CorrectnessCacheTests(EventTestCase):
         self.assertFalse(self.puzzle1.answered_by(self.team1))
 
         # Add an answer that matches guess 2 and check
-        AnswerFactory(for_puzzle=self.puzzle2, runtime=Runtime.STATIC, answer=guess2.guess).save()
+        answer = AnswerFactory(for_puzzle=self.puzzle2, runtime=Runtime.STATIC, answer=guess2.guess)
+        answer.save()
         guess1.refresh_from_db()
         guess2.refresh_from_db()
         self.assertTrue(guess1.correct_current)
