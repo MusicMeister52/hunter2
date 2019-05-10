@@ -9,7 +9,7 @@ services:
 stages:
   - check
   - build-app
-  - web-doc-test
+  - test # Also web build and documentation but the gitlab templates need the stage to be called test
   - release
 
 before_script:
@@ -57,7 +57,7 @@ image:metrics:
       - "${SERVICE}.tar"
 
 image:web:
-  stage: web-doc-test
+  stage: test
   dependencies:
     - image:app
   variables:
@@ -74,7 +74,7 @@ image:web:
       - "${SERVICE}.tar"
 
 doc:graph:
-  stage: web-doc-test
+  stage: test
   dependencies:
     - image:app
   script:
@@ -89,7 +89,7 @@ doc:graph:
       - diagram/models.*
 
 test:app:
-  stage: web-doc-test
+  stage: test
   dependencies:
     - image:app
   variables:
@@ -108,19 +108,10 @@ test:app:
       - coverage/
   coverage: /\d+\%\s*$/
 
-test:sast:
-  stage: web-doc-test
-  allow_failure: true
-  script:
-    - export SP_VERSION=$(echo "$CI_SERVER_VERSION" | sed 's/^\([0-9]*\)\.\([0-9]*\).*/\1-\2-stable/')
-    - docker run
-        --env SAST_CONFIDENCE_LEVEL="${SAST_CONFIDENCE_LEVEL:-3}"
-        --volume "$PWD:/code"
-        --volume /var/run/docker.sock:/var/run/docker.sock
-        "registry.gitlab.com/gitlab-org/security-products/sast:$SP_VERSION" /app/bin/run /code
-  artifacts:
-    reports:
-      sast: gl-sast-report.json
+include:
+  - template: Container-Scanning.gitlab-ci.yml
+  - template: Dependency-Scanning.gitlab-ci.yml
+  - template: SAST.gitlab-ci.yml
 
 release:app:
   stage: release
