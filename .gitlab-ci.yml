@@ -9,7 +9,7 @@ services:
 stages:
   - check
   - build-app
-  - web-doc-test
+  - test  # Stage must be named test for the template jobs
   - release
 
 before_script:
@@ -17,6 +17,9 @@ before_script:
   - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
   - chmod -R g-w,o-w .
   - ln -s docker-compose.test.yml docker-compose.yml
+
+include:
+  template: Dependency-Scanning.gitlab-ci.yml
 
 check:flake8:
   stage: check
@@ -57,7 +60,7 @@ image:metrics:
       - "${SERVICE}.tar"
 
 image:web:
-  stage: web-doc-test
+  stage: test
   dependencies:
     - image:app
   variables:
@@ -74,7 +77,7 @@ image:web:
       - "${SERVICE}.tar"
 
 doc:graph:
-  stage: web-doc-test
+  stage: test
   dependencies:
     - image:app
   script:
@@ -89,7 +92,7 @@ doc:graph:
       - diagram/models.*
 
 test:app:
-  stage: web-doc-test
+  stage: test
   dependencies:
     - image:app
   variables:
@@ -109,7 +112,7 @@ test:app:
   coverage: /\d+\%\s*$/
 
 test:sast:
-  stage: web-doc-test
+  stage: test
   allow_failure: true
   script:
     - export SP_VERSION=$(echo "$CI_SERVER_VERSION" | sed 's/^\([0-9]*\)\.\([0-9]*\).*/\1-\2-stable/')
