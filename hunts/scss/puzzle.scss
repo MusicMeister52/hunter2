@@ -73,6 +73,14 @@
     }
 }
 
+.hint-text {
+    font-weight: bold;
+}
+
+.hint-shower[aria-expanded="true"] {
+    display: none;
+}
+
 #guesses td, #guesses th {
     padding: 3pt 6pt;
 }

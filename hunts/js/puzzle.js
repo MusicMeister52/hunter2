@@ -289,7 +289,7 @@ function updateUnlocks() {
     .append('li')
     .attr('class', 'hint')
     .html(function (d) {
-      return `${d[1].time}: <b>${d[1].hint}</b>`
+      return hintHtml(d[0], d[1])
     })
 }
 
@@ -352,12 +352,15 @@ function updateHints() {
     .append('li')
     .merge(list)
     .html(function (d) {
-      return `${d[1].time}: <b>${d[1].hint}</b>`
+      return hintHtml(d[0], d[1])
     })
   list.exit()
     .remove()
 }
 
+function hintHtml(uid, hint) {
+  return `${hint.time}: <a class="hint-shower" href="#" data-toggle="collapse" data-target="#hint-${uid}">show...</a><span class="collapse hint-text" id="hint-${uid}">${hint.hint}</span>`
+}
 
 function receivedNewHint(content) {
   if (content.depends_on_unlock_uid === null) {
