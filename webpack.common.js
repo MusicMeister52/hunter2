@@ -4,7 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const VueLoaderPlugin = require('vue-loader/lib/plugin')
 
 module.exports = {
-  context: '/usr/src/app',
+  context: '/opt/hunter2',
 
   entry: {
     sentry:             'hunter2/js/sentry.js',
