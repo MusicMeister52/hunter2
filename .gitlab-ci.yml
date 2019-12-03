@@ -1,20 +1,9 @@
-image: registry.gitlab.com/rconan/docker-and-compose:1.24.0-0
-
-variables:
-  DOCKER_BUILDKIT: 1
-  DOCKER_DRIVER: overlay2
-
-services:
-  - docker:18.09.5-dind
-
 stages:
   - test
   - stage2
   - release
 
 before_script:
-  - export GIT_DESCRIBE=$(git describe)
-  - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
   - chmod -R g-w,o-w .
   - ln -s docker-compose.test.yml docker-compose.yml
 
@@ -22,60 +11,53 @@ include:
   template: SAST.gitlab-ci.yml
 
 check:flake8:
+  image:
+    name: registry.gitlab.com/rconan/docker-flake8:3.7.8-0
+    entrypoint: [""]
   stage: test
   script:
-    - docker-compose -f docker-compose.check.yml run --rm flake8 --verbose
+    - flake8 --verbose
 
 check:eslint:
+  image:
+    name: registry.gitlab.com/rconan/docker-eslint:6.2.2-0
+    entrypoint: [""]
   stage: test
   script:
-    - docker-compose -f docker-compose.check.yml run --rm eslint
+    - /node_modules/.bin/eslint "${CI_PROJECT_DIR}"
+
+.image_template: &image_template
+  image:
+    name: registry.gitlab.com/rconan/docker-kaniko:0.14.0-0
+    entrypoint: [""]
+  script:
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
+    - export DOCKER_CONFIG=/kaniko/.docker/
+    - DOCKER_TAG="$([[ "${CI_COMMIT_REF_NAME}" == "${CI_DEFAULT_BRANCH}" ]] || echo "${CI_COMMIT_REF_SLUG}-")$(git describe)"
+    - /kaniko/executor --context "${CI_PROJECT_DIR}${REPO_PATH}" --dockerfile "${CI_PROJECT_DIR}${REPO_PATH}/Dockerfile" --destination "${CI_REGISTRY_IMAGE}/${SERVICE}:${DOCKER_TAG}" --build-arg BUILD_TAG="${DOCKER_TAG}" --reproducible
+  stage: test
+  variables:
+    REPO_PATH: ""
 
 image:app:
-  stage: test
+  <<: *image_template
   variables:
     SERVICE: app
-  script:
-    - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
-    - docker build -t "registry.gitlab.com/hunter2.app/hunter2/app:${GIT_DESCRIBE}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain .
-    - docker save -o "${SERVICE}.tar" "${IMAGE_TAG}"
-  artifacts:
-    expire_in: 90 days
-    name: app-container
-    paths:
-      - "${SERVICE}.tar"
 
 image:metrics:
-  stage: test
+  <<: *image_template
   variables:
+    REPO_PATH: /prometheus
     SERVICE: metrics
-  script:
-    - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
-    - docker build -t "registry.gitlab.com/hunter2.app/hunter2/metrics:${GIT_DESCRIBE}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain ./prometheus
-    - docker save -o "${SERVICE}.tar" "${IMAGE_TAG}"
-  artifacts:
-    expire_in: 90 days
-    name: metrics-container
-    paths:
-      - "${SERVICE}.tar"
 
 image:web:
+  <<: *image_template
   stage: stage2
   dependencies:
     - image:app
   variables:
+    REPO_PATH: /nginx
     SERVICE: web
-  script:
-    - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
-    - export APP_IMAGE_TAG="${CI_REGISTRY_IMAGE}/app:${GIT_DESCRIBE}"
-    - docker load -i app.tar
-    - docker build -t "registry.gitlab.com/hunter2.app/hunter2/web:${GIT_DESCRIBE}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain ./nginx
-    - docker save -o "${SERVICE}.tar" "${IMAGE_TAG}"
-  artifacts:
-    expire_in: 90 days
-    name: web-container
-    paths:
-      - "${SERVICE}.tar"
 
 doc:graph:
   stage: stage2
