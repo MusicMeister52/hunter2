@@ -20,16 +20,23 @@ before_script:
 
 include:
   template: SAST.gitlab-ci.yml
+sast:
+  except:
+    - schedules
 
 check:flake8:
   stage: test
   script:
     - docker-compose -f docker-compose.check.yml run --rm flake8 --verbose
+  except:
+    - schedules
 
 check:eslint:
   stage: test
   script:
     - docker-compose -f docker-compose.check.yml run --rm eslint
+  except:
+    - schedules
 
 image:app:
   stage: test
@@ -44,6 +51,8 @@ image:app:
     name: app-container
     paths:
       - "${SERVICE}.tar"
+  except:
+    - schedules
 
 image:metrics:
   stage: test
@@ -58,6 +67,8 @@ image:metrics:
     name: metrics-container
     paths:
       - "${SERVICE}.tar"
+  except:
+    - schedules
 
 image:web:
   stage: stage2
@@ -76,6 +87,8 @@ image:web:
     name: web-container
     paths:
       - "${SERVICE}.tar"
+  except:
+    - schedules
 
 doc:graph:
   stage: stage2
@@ -91,6 +104,8 @@ doc:graph:
     name: models-graph
     paths:
       - diagram/models.*
+  except:
+    - schedules
 
 test:app:
   stage: stage2
@@ -111,6 +126,8 @@ test:app:
     paths:
       - coverage/
   coverage: /\d+\%\s*$/
+  except:
+    - schedules
 
 release:app:
   stage: release
@@ -156,3 +173,33 @@ release:web:
     - docker push "${CI_REGISTRY_IMAGE}/${SERVICE}"
   only:
     - master
+
+deps-js:
+  image: "node:latest"
+  only:
+    - schedules
+  before_script: []
+  script:
+    - curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+    - apt-get install git-lfs
+    - curl https://deps.app/install.sh | bash -s -- -b $HOME/bin
+    - yarn install
+    - git status
+    - $HOME/bin/deps ci --type js
+  variables:
+    GIT_LFS_SKIP_SMUDGE: 1
+
+deps-python:
+  image: "python:latest"
+  only:
+    - schedules
+  before_script: []
+  script:
+    - curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+    - apt-get install git-lfs
+    - curl https://deps.app/install.sh | bash -s -- -b $HOME/bin
+    - pip install pipenv
+    - pipenv sync --dev
+    - $HOME/bin/deps ci --type python
+  variables:
+    GIT_LFS_SKIP_SMUDGE: 1
