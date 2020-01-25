@@ -27,7 +27,7 @@ export default {
         'given',
         'time_on_puzzle',
       ],
-      filter: search,
+      filter: new Map(search.entries()),
       guesses: [],
       highlightUnlocks: false,
       rows: 0,
@@ -52,7 +52,7 @@ export default {
       this.updateData(true)
     },
     addFilter: function(type, value) {
-      this.filter[type] = value
+      this.filter.set(type, value)
       this.currentPage = 1
       let new_uri = URI(window.location).setSearch(type, value).removeSearch('page')
       window.history.pushState('', '', new_uri)
@@ -61,7 +61,7 @@ export default {
     clearFilters: function() {
       this.autoUpdate = true
       this.currentPage = 1
-      this.filter = {}
+      this.filter.clear()
       let new_uri = URI(window.location).search({})
       window.history.pushState('', '', new_uri)
       this.updateData(true)
@@ -70,7 +70,7 @@ export default {
       clearTimeout(this.timer)
       let page = this.currentPage
       if (force || this.autoUpdate) {
-        let guesses_url = URI(this.href).search({...this.filter, 'highlight_unlocks': this.highlightUnlocks, 'page': page})
+        let guesses_url = URI(this.href).search({...Object.fromEntries(this.filter), 'highlight_unlocks': this.highlightUnlocks, 'page': page})
         let v = this
         $.get(guesses_url).done(function(data) {
           for (let guess of data.guesses) {
