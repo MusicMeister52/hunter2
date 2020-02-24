@@ -25,6 +25,7 @@ from django.urls import reverse
 from django_prometheus.models import ExportModelOperationsMixin
 from enumfields import EnumField, Enum
 from ordered_model.models import OrderedModel
+from seal.models import SealableModel
 
 import accounts
 import events
@@ -201,7 +202,7 @@ def generate_url_id():
     return id
 
 
-class Puzzle(OrderedModel):
+class Puzzle(SealableModel, OrderedModel):
     order_with_respect_to = 'episode'
 
     class Meta:
@@ -410,9 +411,9 @@ class SolutionFile(models.Model):
         unique_together = (('puzzle', 'slug'), ('puzzle', 'url_path'))
 
 
-class Clue(models.Model):
+class Clue(SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
+    puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE, related_name='%(class)s_set')
     text = models.TextField(help_text="Text displayed when this clue is unlocked")
 
     class Meta:
@@ -612,7 +613,7 @@ Regex:
         )
 
 
-class Guess(ExportModelOperationsMixin('guess'), models.Model):
+class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     for_puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     by = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
@@ -706,7 +707,7 @@ class UserData(models.Model):
         return f'Data for {self.user.username} at {self.event}'
 
 
-class TeamPuzzleData(models.Model):
+class TeamPuzzleData(SealableModel):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
     start_time = models.DateTimeField(blank=True, null=True)

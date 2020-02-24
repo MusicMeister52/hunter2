@@ -43,6 +43,7 @@ validators = "^0.14.0"
 wait = "^0.0.3"
 [tool.poetry.dev-dependencies]
 django-silk = "^4.0.0"
+django-seal = { git = "https://github.com/charettes/django-seal.git", tag = "1.2.0" }
 ipython = "^7.11.1"
 ptpython = "^3.0.0"
 

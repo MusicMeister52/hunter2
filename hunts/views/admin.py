@@ -409,26 +409,35 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
             guess__by_team=team_id
         ).distinct().annotate(
             num_guesses=Count('guess')
-        ).prefetch_related(
+        ).select_related('episode').prefetch_related(
             # Only prefetch guesses by the requested team; puzzle.guess_set.all()
             # will not be all, which means we don't need to filter again.
             Prefetch(
                 'guess_set',
                 queryset=models.Guess.objects.filter(
                     by_team_id=team_id
-                ).order_by(
+                ).seal().order_by(
                     'given'
-                ).select_related('by', 'by__user')
+                ).select_related('by', 'by__user', 'correct_for')
             ),
             Prefetch(
                 'hint_set',
                 queryset=models.Hint.objects.select_related(
                     'start_after', 'start_after__puzzle'
-                ).prefetch_related('start_after__unlockanswer_set')
+                ).prefetch_related('start_after__unlockanswer_set').seal()
             ),
-            'unlock_set',
+            #'unlock_set',
             'unlock_set__unlockanswer_set',
-        )
+        ).seal()
+
+        #import logging
+        #l = logging.getLogger('django.db.backends')
+        #l.setLevel(logging.DEBUG)
+        import warnings
+        from seal.exceptions import UnsealedAttributeAccess
+        warnings.filterwarnings('error', category=UnsealedAttributeAccess)
+        pz = puzzles[0]
+        #list(pz.unlock_set.all())
 
         # Most info is only needed for un-solved puzzles; find which are solved
         # now so we can save some work
