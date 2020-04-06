@@ -58,6 +58,7 @@ class AnswerForm(forms.ModelForm):
             new_answer = Answer(
                 for_puzzle=cleaned_data['for_puzzle'],
                 runtime=cleaned_data['runtime'],
+                options=cleaned_data['options'],
                 answer=cleaned_data['answer']
             )
             guesses = Guess.objects.filter(for_puzzle=new_answer.for_puzzle)
