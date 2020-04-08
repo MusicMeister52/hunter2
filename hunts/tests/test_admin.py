@@ -15,10 +15,12 @@ import datetime
 import freezegun
 from django.apps import apps
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.factories import UserFactory
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
@@ -34,9 +36,11 @@ from ..factories import (
     UnlockFactory,
     UserPuzzleDataFactory,
 )
+from ..forms import AnswerForm
 from ..models import EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamPuzzleData, Unlock, UnlockAnswer, \
     UserPuzzleData, TeamPuzzleProgress, \
     TeamUnlock, Guess
+from ..runtimes import Runtime
 
 
 class AdminRegistrationTests(TestCase):
@@ -824,3 +828,89 @@ class StatsTests(EventTestCase):
         self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 404)
+
+
+class AnswerFormValidationTests(EventTestCase):
+    def setUp(self):
+        self.episode = EpisodeFactory()
+        self.event = self.episode.event
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
+        self.team1 = TeamFactory(at_event=self.event, members={self.user1})
+        self.team2 = TeamFactory(at_event=self.event, members={self.user2})
+
+        # Generate a puzzle.
+        self.puzzle1 = PuzzleFactory(episode=self.episode)
+
+        # TODO: We always want to ensure we have a static answer, probably a
+        # better way to do this...
+        while self.puzzle1.answer_set.get().runtime != Runtime.STATIC:
+            self.puzzle1 = PuzzleFactory(episode=self.episode)
+
+        # Get the answer to the puzzle to provide it as guesses
+        self.answer1 = self.puzzle1.answer_set.get()
+
+        # Set the options on the answer, we want no case_handling, so that only
+        # one of the guesses is correct.
+        self.answer1.options = {'case_handling': 'none'}
+        self.answer1.save()
+
+        # Give each team an answer to the puzzle.
+        guess1 = GuessFactory(for_puzzle=self.puzzle1, by=self.user1, guess=str(self.answer1))
+        guess2 = GuessFactory(for_puzzle=self.puzzle1, by=self.user2, guess=str(self.answer1).upper())
+        guess1.save()
+        guess2.save()
+
+        # Only 1 team should be finished.
+        self.assertTrue(len(self.puzzle1.finished_teams(self.event)) == 1)
+
+        # TODO: This is probably not the right way to test a form...
+        self.form1 = AnswerForm()
+        self.form1.cleaned_data = {'for_puzzle': self.answer1.for_puzzle,
+                                   'answer': self.answer1.answer,
+                                   'runtime': self.answer1.runtime,
+                                   'options': self.answer1.options,
+                                   'alter_progress': False,
+                                   'DELETE': False,
+                                   }
+        self.form1.instance = self.answer1
+
+    # Test that changing nothing, does nothing.
+    def test_changing_nothing(self):
+        self.form1.clean()
+
+    # Test changing answer options
+    def test_changing_answers_passes_options(self):
+        # Change the options specifically to case-handling none. This should
+        # be fine as it should not advance any team.
+        self.form1.cleaned_data['options'] = {'case_handling': 'none'}
+        self.form1.clean()
+
+        # Now, change the options specifically to case-handling lower, should
+        # cause an error because this will advance team2.
+        self.form1.cleaned_data['options'] = {'case_handling': 'lower'}
+        try:
+            self.form1.clean()
+            self.fail('Changing case_handling on Answer did not attempt to advance team2')
+        except ValidationError:
+            pass
+
+        # Now if we allow progress to be altered, it should be fine.
+        self.form1.cleaned_data['alter_progress'] = True
+        self.form1.clean()
+
+    # Test deleting an answer
+    def test_deleting_answers(self):
+        # Deleting should cause an error because it will stop team1 having
+        # a valid answer
+        self.form1.cleaned_data['DELETE'] = True
+
+        try:
+            self.form1.clean()
+            self.fail('Deleting an Answer did not attempt to unadvance team1')
+        except ValidationError:
+            pass
+
+        # Now if we allow progress to be altered, it should be fine.
+        self.form1.cleaned_data['alter_progress'] = True
+        self.form1.clean()
