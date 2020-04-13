@@ -5,6 +5,11 @@
 	<h1>{{ event_title }}</h1>
 {% endblock %}
 
+{% block style %}
+{{ block.super }}
+{% render_bundle 'hunts_event' 'css' %}
+{% endblock %}
+
 {% block script %}
 <script>
 "use strict"

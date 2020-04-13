@@ -20,6 +20,9 @@ module.exports = merge(common, {
     host: '0.0.0.0',
     port: DEV_SERVER_PORT,
     disableHostCheck: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
   },
 
   plugins: [

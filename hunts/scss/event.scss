@@ -1,0 +1,33 @@
+div.puzzle-list {
+	align-content: center;
+	align-items: center;
+	display: flex;
+	flex-flow: row wrap;
+}
+
+div.puzzle-box {
+	height: 15em;
+	flex: 0 0 15em;
+	margin: 1em;
+	text-align: center;
+}
+
+div.puzzle-available {
+	border: 0.5em solid #222;
+	background: DarkSlateGrey;
+}
+
+div.puzzle-done {
+	border: 0.5em solid #555;
+	background: SlateGrey;
+	background-image: url("../img/checkbox.png");
+	background-repeat: no-repeat;
+	background-position: 95% 95%;
+	background-size: 3em 3em;
+}
+
+a.puzzle-link {
+	color: White;
+	margin: auto;
+	font-size: x-large;
+}

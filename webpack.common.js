@@ -69,7 +69,13 @@ module.exports = {
           MiniCssExtractPlugin.loader,
           'css-loader',
           'postcss-loader',
-          'sass-loader',
+          'resolve-url-loader',
+          {
+            loader: 'sass-loader',
+            options: {
+              sourceMap: true, // Source mapping has to be unconditional here to enable resolve-url-loader to work
+            },
+          },
         ],
       },
     ],

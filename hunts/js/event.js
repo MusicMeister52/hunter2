@@ -3,6 +3,8 @@ import 'bootstrap'
 
 import 'hunter2/js/base'
 
+import '../scss/event.scss'
+
 /* global eventTitle */
 
 $(function () {
