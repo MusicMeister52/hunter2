@@ -22,7 +22,7 @@ indent_style = tab
 indent_size = tab
 tab_width = 4
 
-[{*.js,*.json}]
+[{*.js,*.json,.jshintrc}]
 indent_size = 2
 
 # Minified JavaScript files shouldn't be changed

@@ -1,5 +1,6 @@
 {
   "browser": true,
   "esversion": 6,
-  "strict": true
+  "strict": true,
+  "asi": true
 }
