@@ -22,7 +22,7 @@ services:
     volumes:
       - ${PWD:-.}:/opt/hunter2/src
       - assets:/opt/hunter2/assets
-      - node_modules:/opt/hunter2/node_modules
+      - node_modules:/opt/hunter2/src/node_modules
   app:
     build:
        context: .
