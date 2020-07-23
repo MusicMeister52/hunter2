@@ -8,12 +8,28 @@ services:
   - docker:19.03.13-dind
 
 stages:
+  - bump
   - build1
   - build2
   - test
   - release
 
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_TITLE !~ /^chore\(release\)/
+    - if: $CI_COMMIT_TAG
+
 .base_job:
+  # All our jobs should use needs-based DAG and declare explicit dependencies
+  dependencies: []
+  needs: []
+  # If a job doesn't say otherwise we want to run it for non-default branch builds and release builds
+  rules:
+      - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      - if: $CI_COMMIT_TAG
+
+.build_job:
+  extends: .base_job
   before_script:
     - export GIT_DESCRIBE=$(git describe)
     - export APP_IMAGE_TAG="${CI_REGISTRY_IMAGE}/app:${GIT_DESCRIBE}"
@@ -26,6 +42,13 @@ stages:
     - export WEB_LATEST_TAG="${WEB_IMAGE_TAG%:*}:latest"
     - chmod -R g-w,o-w .
     - ln -s docker-compose.test.yml docker-compose.yml
+    - printenv CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
+
+.release_job:
+  extends: .build_job
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG
 
 include:
   template: SAST.gitlab-ci.yml
@@ -35,9 +58,35 @@ nodejs-scan-sast:
   rules:
     - when: never
 
+bump:
+  stage: bump
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  image:
+    name: registry.gitlab.com/rconan/docker-semantic-release:17.1.1-9
+    entrypoint: [""]
+  script:
+    - mkdir -p ~/.ssh
+    - |
+      cat > ~/.ssh/known_hosts << EOF
+      gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf
+      gitlab.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsj2bNKTBSpIYDEGk9KxsGh3mySTRgMtXL583qmBpzeQ+jqCMRgBqB98u3z++J1sKlXHWfM9dyhSevkMwSbhoR8XIq/U0tCNyokEi/ueaBMCvbcTHhO7FcwzY92WK4Yt0aGROY5qX2UKSeOvuP4D6TPqKF1onrSzH9bx9XUf2lEdWT/ia1NEKjunUqu1xOB/StKDHMoX4/OKyIzuS0q/T1zOATthvasJFoPrAjkohTyaDUz2LN5JoH839hViyEG82yB+MjcFV5MU3N1l1QL3cVUCh93xSaua1N85qivl+siMkPGbO5xR/En4iEY6K2XPASUEMaieWVNTRCtJ4S8H+9
+      gitlab.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFSMqzJeV9rUzU4kWitGjeR4PWSa29SPqJ1fVkhtj3Hw9xjLVXVYrU9QlYWrOLXBpQ6KWjbjTDTdDkoohFzgbEY=
+      EOF
+    # Load the SSH key for git push without writing it out to disk
+    - eval $(ssh-agent)
+    - mkfifo -m 0600 id_ed25519
+    - echo "${SSH_PRIVATE_KEY}" | base64 -d > id_ed25519 &
+    - ssh-add id_ed25519
+    - rm id_ed25519
+    - remote_url="$(echo "${CI_REPOSITORY_URL}" | sed 's#https://.*@#ssh://git@#')"
+    - git config lfs.https://gitlab.com/h2forktest/hunter2.git/info/lfs.locksverify true
+    - chmod -x .git/hooks/pre-push  # We don't need git LFS pushing and it's fragile
+    - semantic-release -r "${remote_url}"
+  services: []
+
 check:flake8:
-  extends: .base_job
-  needs: []
+  extends: .build_job
   stage: test
   script:
     - install -d -m 777 reports
@@ -48,8 +97,7 @@ check:flake8:
       junit: reports/flake8.xml
 
 check:eslint:
-  extends: .base_job
-  needs: []
+  extends: .build_job
   stage: test
   script:
     - install -d -m 777 reports
@@ -59,63 +107,43 @@ check:eslint:
       junit: reports/junit.xml
 
 image:app:
-  extends: .base_job
-  needs: []
+  extends: .build_job
   stage: build1
   script:
     - docker pull "${PYTHON_LATEST_TAG}" || true
     - docker pull "${APP_LATEST_TAG}" || true
     - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${PYTHON_LATEST_TAG}" --target python_build -t "${PYTHON_IMAGE_TAG}" -t "${PYTHON_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain .
     - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${APP_LATEST_TAG}" -t "${APP_IMAGE_TAG}" -t "${APP_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain .
-    - docker save -o python.tar "${PYTHON_IMAGE_TAG}"
-    - docker save -o app.tar "${APP_IMAGE_TAG}"
-  artifacts:
-    expire_in: 90 days
-    name: app-container
-    paths:
-      - python.tar
-      - app.tar
+    - docker push "${PYTHON_IMAGE_TAG}"
+    - docker push "${APP_IMAGE_TAG}"
 
 image:metrics:
-  extends: .base_job
-  needs: []
+  extends: .build_job
   stage: build1
-  variables:
   script:
+    - echo $CI_MERGE_REQUEST_EVENT_TYPE
+    - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - echo $CI_DEFAULT_BRANCH
     - docker pull "${METRICS_LATEST_TAG}" || true
     - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${METRICS_LATEST_TAG}" -t "${METRICS_IMAGE_TAG}" -t "${METRICS_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain ./prometheus
-    - docker save -o metrics.tar "${METRICS_IMAGE_TAG}"
-  artifacts:
-    expire_in: 90 days
-    name: metrics-container
-    paths:
-      - metrics.tar
+    - docker push "${METRICS_IMAGE_TAG}"
 
 image:web:
-  extends: .base_job
-  needs: ["image:app"]
+  extends: .build_job
   stage: build2
-  dependencies:
+  needs:
     - image:app
   script:
-    - docker load -i app.tar
     - docker pull "${WEB_LATEST_TAG}" || true
     - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${WEB_LATEST_TAG}" -t "${WEB_IMAGE_TAG}" -t "${WEB_LATEST_TAG}" --build-arg IMAGE_TAG="${APP_IMAGE_TAG}" --progress plain ./nginx
-    - docker save -o web.tar "${WEB_IMAGE_TAG}"
-  artifacts:
-    expire_in: 90 days
-    name: web-container
-    paths:
-      - web.tar
+    - docker push "${WEB_IMAGE_TAG}"
 
 doc:graph:
-  extends: .base_job
-  needs: ["image:app"]
+  extends: .build_job
   stage: build2
-  dependencies:
+  needs:
     - image:app
   script:
-    - docker load -i app.tar
     - install -d -m 777 diagram
     - docker run --rm --entrypoint "sh" -v "${PWD}/diagram:/diagram" "${CI_REGISTRY_IMAGE}/app:${GIT_DESCRIBE}" -c "/opt/hunter2/venv/bin/python manage.py graph_models -a > /diagram/models.dot"
     - docker-compose -f docker-compose.tools.yml run --rm dot
@@ -126,20 +154,17 @@ doc:graph:
       - diagram/models.*
 
 test:app:
-  extends: .base_job
-  dependencies:
-    - image:app
-  needs: ["image:app"]
+  extends: .build_job
   stage: test
+  needs:
+    - image:app
   variables:
-    SERVICE: app
   script:
-    - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
-    - docker load -i "${SERVICE}.tar"
     - install -d -m 777 coverage reports
-    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${SERVICE}" -Wd -m coverage run --source . manage.py test -v 2
-    - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${IMAGE_TAG}" -m coverage html
-    - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${IMAGE_TAG}" -m coverage report
+    - docker-compose pull app db redis
+    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" --entrypoint "/opt/hunter2/venv/bin/python" --rm app -Wd -m coverage run --source . manage.py test -v 2
+    - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${APP_IMAGE_TAG}" -m coverage html
+    - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${APP_IMAGE_TAG}" -m coverage report
   after_script:
     - docker-compose logs db > db.log
     - docker-compose logs redis > redis.log
@@ -155,58 +180,37 @@ test:app:
   coverage: /\d+\%\s*$/
 
 release:app:
-  extends: .base_job
-  stage: release
-  dependencies:
-    - image:app
+  extends: .release_job
+  needs:
+    - test:app
   script:
-    - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
-    - docker load -i app.tar
+    - docker pull "${APP_IMAGE_TAG}"
     - docker tag "${APP_IMAGE_TAG}" "${APP_LATEST_TAG}"
-    - docker push "${APP_IMAGE_TAG}"
     - docker push "${APP_LATEST_TAG}"
-  only:
-    - master
 
 release:metrics:
-  extends: .base_job
-  stage: release
-  dependencies:
-    - image:metrics
+  extends: .release_job
+  needs:
+    - test:app
   script:
-    - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
-    - docker load -i metrics.tar
+    - docker pull "${METRICS_IMAGE_TAG}"
     - docker tag "${METRICS_IMAGE_TAG}" "${METRICS_LATEST_TAG}"
-    - docker push "${METRICS_IMAGE_TAG}"
     - docker push "${METRICS_LATEST_TAG}"
-  only:
-    - master
 
 release:python:
-  extends: .base_job
-  stage: release
-  dependencies:
-    - image:app
+  extends: .release_job
+  needs:
+    - test:app
   script:
-    - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
-    - docker load -i python.tar
+    - docker pull "${PYTHON_IMAGE_TAG}"
     - docker tag "${PYTHON_IMAGE_TAG}" "${PYTHON_LATEST_TAG}"
-    - docker push "${PYTHON_IMAGE_TAG}"
     - docker push "${PYTHON_LATEST_TAG}"
-  only:
-    - master
 
 release:web:
-  extends: .base_job
-  stage: release
-  dependencies:
-    - image:web
-  variables:
+  extends: .release_job
+  needs:
+    - test:app
   script:
-    - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
-    - docker load -i web.tar
+    - docker pull "${WEB_IMAGE_TAG}"
     - docker tag "${WEB_IMAGE_TAG}" "${WEB_LATEST_TAG}"
-    - docker push "${WEB_IMAGE_TAG}"
     - docker push "${WEB_LATEST_TAG}"
-  only:
-    - master

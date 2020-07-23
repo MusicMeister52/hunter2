@@ -1,0 +1,9 @@
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/npm"
+  - ["@semantic-release/exec", {"prepareCmd": 'awk ''/^\[tool.poetry\]$/ { flag = 1; print $0; next } /^\[.*\]$/ { flag = 0 } /^version = / { if (flag) { print "version = \"${nextRelease.version}\""; next } } { print $0 }'' pyproject.toml > pyproject.new && mv pyproject.new pyproject.toml'}]
+  - ["@semantic-release/git", {"assets": ["dist/**/*.{js,css}", "docs", "package.json", "pyproject.toml"], "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"}]
+  - "@semantic-release/gitlab"
+
+preset: conventionalcommits

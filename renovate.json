@@ -1,6 +1,7 @@
 {
   "extends": [
     "config:base",
+    ":semanticCommits",
     ":githubComToken(dSZoX40xKmpQciDT7dl6FyYuJZxHsvMEu/EV6RBL8CxSKcMuA/9YPEmMEYcSl16lwOMMVhH0aO4fDwXfXrtYMiMLUwOyYZnW4DXEDCbG5tyqjZ/4Xu7rVVEH0ijIbGFhA5M/o5k0roNGgvvp0eXymdDNIvAOqcac+9bzhBGcIVzGeV0bXW45bRZFvB8qpIKGQNNq8dAF+BS6AEhHkVhcv4p6uIxPbbEWecPw6RIarvhO9LuYy9Iz4lheSljzEeAKHoeERrIeumft6TxiqZ2O3Fq6QY5PrlEwyRZUXjePB35iVJdOsRgZFtAVngDJfAZhBnSdjbd2HcQT71T34oodZg==)"
   ],
   "packageRules": [
