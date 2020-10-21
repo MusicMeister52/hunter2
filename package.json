@@ -39,6 +39,7 @@
   "dependencies": {
     "@sentry/browser": "5.27.2",
     "@sentry/integrations": "5.27.2",
+    "axios": "0.20.0",
     "bootstrap": "4.5.3",
     "bootstrap-vue": "2.18.1",
     "d3": "6.2.0",

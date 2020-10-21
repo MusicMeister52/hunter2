@@ -1,7 +1,8 @@
-import $ from 'jquery'
 import {BTable, BPagination} from 'bootstrap-vue'
 import URI from 'urijs'
 import moment from 'moment'
+
+import axios from 'hunter2/js/axios.js'
 
 export default {
   components: {
@@ -72,8 +73,8 @@ export default {
       if (force || this.autoUpdate) {
         let guesses_url = URI(this.href).search({...this.filter, 'highlight_unlocks': this.highlightUnlocks, 'page': page})
         let v = this
-        $.get(guesses_url).done(function(data) {
-          for (let guess of data.guesses) {
+        axios.get(guesses_url).then(response => {
+          for (let guess of response.data.guesses) {
             if (guess.correct) {
               guess._rowVariant = 'success'
               continue
@@ -83,8 +84,8 @@ export default {
               continue
             }
           }
-          v.guesses = data.guesses
-          v.rows = data.rows
+          v.guesses = response.data.guesses
+          v.rows = response.data.rows
         })
         if (this.autoUpdate) {
           this.timer = setTimeout(this.updateData, 5000)

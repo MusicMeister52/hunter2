@@ -1,7 +1,8 @@
-import $ from 'jquery'
 import {BTable} from 'bootstrap-vue'
 import URI from 'urijs'
 import moment from 'moment'
+
+import axios from 'hunter2/js/axios.js'
 
 export default {
   components: {
@@ -44,9 +45,9 @@ export default {
       if (force || this.autoUpdate) {
         let url = URI(this.href)
         let v = this
-        $.get(url).done(function(data) {
-          v.puzzles = data.puzzles
-          v.solved_puzzles = data.solved_puzzles
+        axios.get(url).then(response => {
+          v.puzzles = response.data.puzzles
+          v.solved_puzzles = response.data.solved_puzzles
         })
         if (this.autoUpdate) {
           this.timer = setTimeout(this.updateData, 5000)

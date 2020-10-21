@@ -4,11 +4,10 @@ import vueMoment from 'vue-moment'
 
 Vue.use(vueMoment)
 
-const id = '#team_puzzles_admin_widget'
-const el = document.querySelector(id)
+const el = document.getElementById('team_puzzles_admin_widget')
 
 new Vue({
-  el: id,
+  el: el,
   render: h => h(App, {
     props: {
       href: el.attributes.href.value,
