@@ -33,7 +33,7 @@ module.exports = {
       },
       {
         test: /\.m?js$/,
-        exclude: /node_modules/,
+        exclude: /node_modules\/(?!bootstrap-vue\/src\/)/,
         use: {
           loader: 'babel-loader',
           options: {
@@ -85,6 +85,10 @@ module.exports = {
   ],
 
   resolve: {
+    alias: {
+      // Alias for using source of BootstrapVue
+      'bootstrap-vue$': 'bootstrap-vue/src/index.js',
+    },
     modules: [
       path.resolve('.'),
       path.resolve('../node_modules'),
