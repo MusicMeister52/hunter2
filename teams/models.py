@@ -11,7 +11,10 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import re
+
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.urls import reverse
 from enumfields import Enum, EnumField
@@ -29,7 +32,11 @@ class TeamRole(Enum):
 class Team(models.Model):
     # Nullable CharField with the unique property allows us to enforce uniqueness at DB schema level
     # DB will allow multiple teams with no name while still enforcing name uniqueness
-    name = models.CharField(blank=True, null=True, unique=True, max_length=100)
+    name = models.CharField(
+        blank=True, null=True, unique=True, max_length=100, validators=(
+            RegexValidator(regex=r'^\s*\[.*team.*\]\s*$', flags=re.IGNORE_CASE, inverse_match=True),
+        )
+    )
     at_event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING, related_name='teams')
     role = EnumField(
         TeamRole, max_length=1, default=TeamRole.PLAYER,

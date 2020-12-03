@@ -63,6 +63,42 @@ class TeamMultiEventTests(EventAwareTestCase):
         new_event.deactivate()
 
 
+class TeamNameTests(EventTestCase):
+    def test_empty_anonymous_team_invalid(self):
+        team = TeamFactory.build(name='[empty anonymous team]')
+        with self.assertRaises(ValidationError):
+            team.full_clean()
+
+    def test_single_anonymous_team_invalid(self):
+        team = TeamFactory.build(name="[user's team]")
+        with self.assertRaises(ValidationError):
+            team.full_clean()
+
+    def test_capital_anonymous_team_invalid(self):
+        team = TeamFactory.build(name=" [user's Team]")
+        with self.assertRaises(ValidationError):
+            team.full_clean()
+
+    def test_leading_whitespace_anonymous_team_invalid(self):
+        team = TeamFactory.build(name=" [user's team]")
+        with self.assertRaises(ValidationError):
+            team.full_clean()
+
+    def test_trailing_whitespace_anonymous_team_invalid(self):
+        team = TeamFactory.build(name="[user's team] ")
+        with self.assertRaises(ValidationError):
+            team.full_clean()
+
+    def test_multiple_anonymous_team_invalid(self):
+        team = TeamFactory.build(name='[anonymous team with 2 members]')
+        with self.assertRaises(ValidationError):
+            team.full_clean()
+
+    def test_square_bracket_ok(self):
+        team = TeamFactory.build(name='This [team] likes square brackets')
+        team.full_clean()
+
+
 class TeamRulesTests(EventTestCase):
     def test_max_team_size(self):
         event = self.tenant
