@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.db import connection
+from django.db import DatabaseError, ProgrammingError, connection
 from django.utils.functional import LazyObject
 from django_tenants.middleware import TenantMainMiddleware
 from channels.db import database_sync_to_async
@@ -46,6 +46,9 @@ class TenantMiddleware(TenantMainMiddleware):
     def process_request(self, request):
         try:
             super().process_request(request)
+        except ProgrammingError as e:
+            # Site has been accessed before initial migrate_schemas.
+            raise DatabaseError("Initial schema migration has not been performed (see README.md)") from e
         except self.TENANT_NOT_FOUND_EXCEPTION:
             connection.set_schema_to_public()
             request.tenant = None
