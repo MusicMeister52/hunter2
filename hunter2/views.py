@@ -13,6 +13,7 @@
 from urllib.parse import urlsplit, urlunsplit
 
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
 from django.views.generic.base import RedirectView
 from django.views.generic import TemplateView
 from django.utils.safestring import mark_safe
@@ -39,7 +40,7 @@ class DefaultEventView(RedirectView):
             # if not, we want to indicate that error first (as it's a pain to catch elsewhere).
             site = Site.objects.get()
             if site.domain == "example.com" and site.name == "example.com":
-                raise RuntimeError("Site setup has not been performed (see README.md)")
+                raise ImproperlyConfigured("Site setup has not been performed (see README.md)")
 
             # Indicate that the event does not exist.
             raise Event.DoesNotExist("Event has not been created (see README.md)") from e

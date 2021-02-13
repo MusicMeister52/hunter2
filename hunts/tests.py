@@ -16,9 +16,10 @@ import random
 import time
 
 import freezegun
-from django.core.exceptions import ValidationError
+from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
-from django.test import RequestFactory
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 from parameterized import parameterized
@@ -26,8 +27,10 @@ from channels.testing import WebsocketCommunicator
 
 from accounts.factories import UserProfileFactory, UserFactory
 from events.factories import EventFileFactory, AttendanceFactory
+from events.models import Event
 from events.test import EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
 from hunter2.routing import application as websocket_app
+from hunter2.views import DefaultEventView
 from teams.models import TeamRole
 from teams.factories import TeamFactory, TeamMemberFactory
 from . import utils
@@ -136,6 +139,22 @@ class ErrorTests(EventTestCase):
         url = '/does/not/exist'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
+
+
+class SiteSetupTest(TestCase):
+    def test_error_on_site_not_setup(self):
+        view = DefaultEventView()
+        with self.assertRaises(ImproperlyConfigured):
+            view.get_redirect_url(),
+
+    def test_error_on_no_event(self):
+        site = Site.objects.get()
+        site.domain = "hunter2.local"
+        site.name = "hunter2.local"
+        site.save()
+        view = DefaultEventView()
+        with self.assertRaises(Event.DoesNotExist):
+            view.get_redirect_url()
 
 
 class HomePageTests(EventTestCase):
