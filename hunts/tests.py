@@ -144,8 +144,10 @@ class ErrorTests(EventTestCase):
 class SiteSetupTest(TestCase):
     def test_error_on_site_not_setup(self):
         view = DefaultEventView()
-        with self.assertRaises(ImproperlyConfigured):
-            view.get_redirect_url(),
+
+        with self.assertRaises(ImproperlyConfigured) as context:
+            view.get_redirect_url()
+        self.assertIn("README", str(context.exception))
 
     def test_error_on_no_event(self):
         site = Site.objects.get()
@@ -153,8 +155,10 @@ class SiteSetupTest(TestCase):
         site.name = "hunter2.local"
         site.save()
         view = DefaultEventView()
-        with self.assertRaises(Event.DoesNotExist):
+
+        with self.assertRaises(Event.DoesNotExist) as context:
             view.get_redirect_url()
+        self.assertIn("README", str(context.exception))
 
 
 class HomePageTests(EventTestCase):
