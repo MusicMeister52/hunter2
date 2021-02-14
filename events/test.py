@@ -25,11 +25,18 @@ from .models import Event
 
 
 class EventAwareTestCase(TransactionTestCase):
-
-    def _fixture_teardown(self):
+    @staticmethod
+    def _flush_events():
         for event in Event.objects.all():
             event.delete(force_drop=True)
             Event.deactivate()
+
+    def _fixture_setup(self):
+        self._flush_events()
+        super()._fixture_setup()
+
+    def _fixture_teardown(self):
+        self._flush_events()
         super()._fixture_teardown()
 
 

@@ -19,7 +19,7 @@ import freezegun
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 from parameterized import parameterized
@@ -134,14 +134,7 @@ class FactoryTests(EventTestCase):
         AnnouncementFactory.create()
 
 
-class SiteSetupTest(TestCase):
-    def _fixture_setup(self):
-        # Ensure there are no Events left over from any EventTestCases before running
-        for event in Event.objects.all():
-            event.delete(force_drop=True)
-            Event.deactivate()
-        super()._fixture_setup()
-
+class SiteSetupTest(EventAwareTestCase):
     def test_error_on_site_not_setup(self):
         # Check there is no event setup
         self.assertEqual(0, Event.objects.count())
