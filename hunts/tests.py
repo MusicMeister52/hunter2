@@ -28,7 +28,7 @@ from channels.testing import WebsocketCommunicator
 from accounts.factories import UserProfileFactory, UserFactory
 from events.factories import EventFileFactory, AttendanceFactory
 from events.models import Event
-from events.test import EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
+from events.test import EventAwareTestCase, EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
 from hunter2.routing import application as websocket_app
 from hunter2.views import DefaultEventView
 from teams.models import TeamRole
@@ -134,15 +134,18 @@ class FactoryTests(EventTestCase):
         AnnouncementFactory.create()
 
 
-class ErrorTests(EventTestCase):
-    def test_unauthenticated_404(self):
-        url = '/does/not/exist'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-
 class SiteSetupTest(TestCase):
+    def _fixture_setup(self):
+        # Ensure there are no Events left over from any EventTestCases before running
+        for event in Event.objects.all():
+            event.delete(force_drop=True)
+            Event.deactivate()
+        super()._fixture_setup()
+
     def test_error_on_site_not_setup(self):
+        # Check there is no event setup
+        self.assertEqual(0, Event.objects.count())
+
         request = RequestFactory().get("/")
         view = DefaultEventView()
         view.setup(request)
@@ -152,6 +155,9 @@ class SiteSetupTest(TestCase):
         self.assertIn("README", str(context.exception))
 
     def test_error_on_no_event(self):
+        # Check there is no event already setup
+        self.assertEqual(0, Event.objects.count())
+
         site = Site.objects.get()
         site.domain = "hunter2.local"
         site.name = "hunter2.local"
@@ -164,6 +170,13 @@ class SiteSetupTest(TestCase):
         with self.assertRaises(Event.DoesNotExist) as context:
             view.get_redirect_url()
         self.assertIn("README", str(context.exception))
+
+
+class ErrorTests(EventTestCase):
+    def test_unauthenticated_404(self):
+        url = '/does/not/exist'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
 
 
 class HomePageTests(EventTestCase):
