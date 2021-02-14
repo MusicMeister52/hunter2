@@ -143,7 +143,9 @@ class ErrorTests(EventTestCase):
 
 class SiteSetupTest(TestCase):
     def test_error_on_site_not_setup(self):
+        request = RequestFactory().get("/")
         view = DefaultEventView()
+        view.setup(request)
 
         with self.assertRaises(ImproperlyConfigured) as context:
             view.get_redirect_url()
@@ -154,7 +156,10 @@ class SiteSetupTest(TestCase):
         site.domain = "hunter2.local"
         site.name = "hunter2.local"
         site.save()
+
+        request = RequestFactory().get("/")
         view = DefaultEventView()
+        view.setup(request)
 
         with self.assertRaises(Event.DoesNotExist) as context:
             view.get_redirect_url()
