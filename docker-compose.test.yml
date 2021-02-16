@@ -28,3 +28,11 @@ services:
   web:
     build: ./nginx
     image: ${WEB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/web}
+  locust:
+    build: locust
+    network_mode: "host"
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./locust:/mnt/locust
+    command: -f /mnt/locust/locustfile.py

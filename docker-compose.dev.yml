@@ -29,6 +29,17 @@ services:
       - assets:/opt/hunter2/assets
       - node_modules:/opt/hunter2/src/node_modules
       - babel_cache:/var/cache/babel-loader
+  locust:
+    build: locust
+    network_mode: "host"
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./locust:/mnt/locust
+        #extra_hosts:
+        #  - "hunter2.local:app"
+        #  - "dev.hunter2.local:app"
+    command: -f /mnt/locust/locustfile.py
   app:
     build:
        context: .
