@@ -7,7 +7,7 @@ license = "AGPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.9"
-Django = "==3.1.6"
+Django = "==3.1.7"
 PyYAML = "==5.4.1"
 asgiref = "3.2.10"  # Not really a direct dependency, included here to provide a version pin
 channels = "2.4.0"
