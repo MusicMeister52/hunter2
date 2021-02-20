@@ -190,6 +190,7 @@ release:app:
     - master
 
 release:db:
+  extends: .base_job
   stage: release
   dependencies:
     - image:db
