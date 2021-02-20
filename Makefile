@@ -17,7 +17,7 @@ test: dev-images
 	docker-compose run --rm app test -v2
 
 .PHONY: dev-images
-dev-images: .build/app.txt .build/webpack.txt
+dev-images: .build/app.txt .build/db.txt .build/webpack.txt
 
 BUILD_TAG ?= latest
 
@@ -30,6 +30,10 @@ export DOCKER_BUILDKIT := 1
 .build/app.txt: pyproject.toml poetry.lock Dockerfile | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) app
 	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/app:$(BUILD_TAG) > .build/app.txt
+
+.build/db.txt: postgres/* | .build
+	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) db
+	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/db:$(BUILD_TAG) > .build/db.txt
 
 .build/metrics.txt: prometheus/* | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) metrics

@@ -7,6 +7,8 @@ services:
       - redis
     environment:
       - H2_ADMINS
+      - H2_DATABASE_PASSWORD
+      - H2_DATABASE_URL
       - H2_DEBUG
       - H2_DOMAIN
       - H2_EMAIL_DOMAIN
@@ -26,7 +28,10 @@ services:
       - uploads_site:/uploads/site
       - uploads_solutions:/uploads/solutions
   db:
-    image: postgres:9.6.16-alpine@sha256:8ec15b51fd1ec3233ca7bcf3a58e800d863f57c8d07ffdc65fe4640a19f7b2e3
+    environment:
+      - H2_DATABASE_PASSWORD
+      - POSTGRES_PASSWORD
+    image: registry.gitlab.com/hunter2.app/hunter2/db:${H2_IMAGE_VERSION:-latest}
     volumes:
       - db:/var/lib/postgresql/data
   db_exporter:

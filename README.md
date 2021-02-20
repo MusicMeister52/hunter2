@@ -71,11 +71,25 @@ Link the production compose file:
 ln -s docker-compose.prod.yml docker-compose.yml
 ```
 
+Production environments require configuration of passwords for database users. Add the following to your `.env` file:
+```
+POSTGRES_PASSWORD=<password for DB superuser>
+H2_DATABASE_PASSWORD=<password for hunter2 DB user>
+```
+
+You can generate random credentials for both these users with something like
+```
+echo "POSTGRES_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
+echo "H2_DATABASE_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
+```
+
 Launch the containers and configure the database tables:
 ```shell
 docker-compose up -d
 docker-compose run --rm app migrate_schemas
 ```
+
+You can now remove the `POSTGRES_PASSWORD` from your `.env` file and store it safely for future use.
 
 To create the base objects run the following:
 ```shell
@@ -126,6 +140,42 @@ h2-flake8
 ```
 
 These commands are helpfully combined in a `h2-lint` alias to run both together.
+
+Upgrading
+=========
+
+Upgrading is ususally done by pulling images, running migrations, then updating the running containers, as follows:
+```
+docker-compose pull
+docker-compose run --rm app migrate_schemas
+docker-compose up -d
+```
+
+An `update.sh` script is provided to assist with this procedure, including reporting upgrade success/failure to Discord
+
+To upgrade to version 0.7.0 or later you need to configure DB passwords in your `.env` file and apply them as follows:
+```
+docker-compose down app
+docker-compose run --rm app dbshell
+\set h2_database_password `echo "${H2_DATABASE_PASSWORD}"`
+CREATE USER hunter2;
+ALTER USER hunter2 WITH PASSWORD :'h2_database_password';
+CREATE DATABASE hunter2 WITH TEMPLATE postgres OWNER hunter2;
+\q
+docker-compose up -d
+```
+
+Once you've upgraded successfully you can clean up the content in the `postgres` database and set the superuser password as follows:
+```
+docker-compose run --rm app dbshell
+\c hunter2 postgres
+\set postgres_password `echo ${POSTGRES_PASSWORD}"`
+ALTER USER postgres WITH PASSWORD :'postgres_password';
+DROP DATABASE postgres;
+CREATE DATABASE postgres;
+```
+
+Finally you can remove the `POSTGRES_PASSWORD` from your `.env` file and store it safely for future use.
 
 Copyright
 =========

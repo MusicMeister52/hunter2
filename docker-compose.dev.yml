@@ -2,7 +2,11 @@ version: '2.1'
 
 services:
   db:
-    image: postgres:9.6.16-alpine@sha256:8ec15b51fd1ec3233ca7bcf3a58e800d863f57c8d07ffdc65fe4640a19f7b2e3
+    build: postgres
+    environment:
+      - H2_DATABASE_PASSWORD=hunter2
+      - POSTGRES_PASSWORD=hunter2
+    image: ${DB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/db}
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +20,7 @@ services:
     environment:
       - H2_WEBPACK_DEV_HOST
       - H2_WEBPACK_DEV_PORT
-    image: ${IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/webpack}
+    image: ${WEBPACK_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/webpack}
     ports:
       - "${H2_WEBPACK_DEV_PORT:-4000}:${H2_WEBPACK_DEV_PORT:-4000}"
       - "${H2_WEBPACK_STATS_PORT:-8888}:${H2_WEBPACK_STATS_PORT:-8888}"
@@ -35,13 +39,14 @@ services:
       - db
       - redis
     environment:
+      - H2_DATABASE_PASSWORD=hunter2
       - H2_DEBUG=True
       - H2_DOMAIN
       - H2_TEST_SEED
       - H2_SENDFILE=sendfile.backends.development
       - H2_SENTRY_DSN
       - H2_SILK
-    image: ${IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
+    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
     ports:
       - "${H2_LISTEN:-127.0.0.1:8080}:8000"
     volumes:

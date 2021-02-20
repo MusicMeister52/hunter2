@@ -42,9 +42,22 @@ ADMINS             = env.list      ('H2_ADMINS',        default=[])
 SENTRY_DSN         = env.url       ('H2_SENTRY_DSN',    default=None)
 SENDFILE_BACKEND   = env.str       ('H2_SENDFILE',      default='sendfile.backends.development')
 
-DATABASES = {
-    'default': env.db('H2_DATABASE_URL', default="postgres://postgres:postgres@db:5432/postgres")
-}
+try:
+    DATABASES = {
+        'default': env.db('H2_DATABASE_URL')
+    }
+except environ.ImproperlyConfigured:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django_tenants.postgresql_backend',
+            'HOST': 'db',
+            'NAME': 'hunter2',
+            # Password is defaulted here to allow running utility commands like graph_models without a DB password
+            'PASSWORD': env.str('H2_DATABASE_PASSWORD', default=''),
+            'PORT': 5432,
+            'USER': env.str('H2_DATABASE_USER', default='hunter2'),
+        }
+    }
 CACHES = {
     'default': env.cache_url('H2_CACHE_URL', default="rediscache://redis:6379/2"),
     'stats': env.cache_url('H2_STATS_CACHE_URL', default="rediscache://redis:6379/1"),
