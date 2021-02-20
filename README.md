@@ -153,7 +153,7 @@ docker-compose up -d
 
 An `update.sh` script is provided to assist with this procedure, including reporting upgrade success/failure to Discord
 
-To upgrade to version 0.7.0 or later you need to configure DB passwords in your `.env` file and apply them as follows:
+To upgrade to version 0.5.0 or later you need to configure DB passwords in your `.env` file and apply them as follows:
 ```
 docker-compose down app
 docker-compose run --rm app dbshell
