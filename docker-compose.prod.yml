@@ -19,7 +19,7 @@ services:
       - H2_SCHEME
       - H2_SENDFILE=sendfile.backends.nginx
       - H2_SENTRY_DSN
-      - UWSGI_WORKERS
+      - ASGI_THREADS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
     volumes:
       - config:/config
