@@ -397,7 +397,7 @@ sqlparse = ">=0.2.0"
 
 [[package]]
 name = "django-enumfields"
-version = "2.0.0"
+version = "2.1.1"
 description = "Real Python Enums for Django."
 category = "main"
 optional = false
@@ -1331,7 +1331,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "02556f30c3667d295b900226aa384e810680d9feff0bea21e8681c6abb816c61"
+content-hash = "7142bda64cd4db6e0fca4bd6fa0b18c14c832fbffe95919114acf6b7ab917177"
 
 [metadata.files]
 aioredis = [
@@ -1554,8 +1554,8 @@ django-debug-toolbar = [
     {file = "django_debug_toolbar-3.2-py3-none-any.whl", hash = "sha256:9e5a25d0c965f7e686f6a8ba23613ca9ca30184daa26487706d4829f5cfb697a"},
 ]
 django-enumfields = [
-    {file = "django-enumfields-2.0.0.tar.gz", hash = "sha256:e94f6b39de7adc0716130101d75eede3834b42e2a895599c19354eb1bb7fbdd1"},
-    {file = "django_enumfields-2.0.0-py3-none-any.whl", hash = "sha256:9bc0e2c410723c9592992155f32adadcedc11c841f6888dcf721f5f638d466e3"},
+    {file = "django-enumfields-2.1.1.tar.gz", hash = "sha256:f64841732a9c343f5071220e0abcf5f51c9472c06e3c33d7c6a7ec27b6087561"},
+    {file = "django_enumfields-2.1.1-py3-none-any.whl", hash = "sha256:d32f2151801a5fc13c860276ee99495c2c9345e0a4281d0104276c39ddb22807"},
 ]
 django-environ = [
     {file = "django-environ-0.4.5.tar.gz", hash = "sha256:6c9d87660142608f63ec7d5ce5564c49b603ea8ff25da595fd6098f6dc82afde"},
