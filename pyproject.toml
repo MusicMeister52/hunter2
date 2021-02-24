@@ -19,7 +19,7 @@ django-analytical = "==3.0.0"
 django-autocomplete-light = "==3.8.2"
 django-bootstrap4 = "2.3.1"
 django-debug-toolbar = "==3.2"
-django-enumfields = "2.0.0"
+django-enumfields = "==2.1.1"
 django-environ = "0.4.5"
 django-extensions = "==3.1.1"
 django-fullclean = { git = "https://github.com/riconnon/django-fullclean.git", tag = "0.0.4+whitelist" }
