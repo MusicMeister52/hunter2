@@ -18,13 +18,15 @@ WORKDIR /opt/hunter2/src
 FROM runtime_base AS python_build
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
+    cargo \
     gcc \
     git \
     libffi-dev \
     linux-headers \
     lua5.2-dev \
     musl-dev \
-    postgresql-dev
+    postgresql-dev \
+    rust
 
 # Suppress pip version warning, we're keeping the version from the docker base image
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -40,6 +42,7 @@ RUN wget "https://raw.githubusercontent.com/python-poetry/poetry/${poetry_versio
 ARG dev_flag=" --no-dev"
 COPY poetry.lock pyproject.toml /opt/hunter2/src/
 RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cargo \
     . /opt/hunter2/venv/bin/activate \
  && poetry install${dev_flag} --no-root
 
