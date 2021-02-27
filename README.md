@@ -75,12 +75,14 @@ Production environments require configuration of passwords for database users. A
 ```
 POSTGRES_PASSWORD=<password for DB superuser>
 H2_DATABASE_PASSWORD=<password for hunter2 DB user>
+H2_DB_EXPORTER_PASSWORD=<password for metrics exporter DB user>
 ```
 
 You can generate random credentials for both these users with something like
 ```
 echo "POSTGRES_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
 echo "H2_DATABASE_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
+echo "H2_DB_EXPORTER_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
 ```
 
 Launch the containers and configure the database tables:
@@ -153,26 +155,49 @@ docker-compose up -d
 
 An `update.sh` script is provided to assist with this procedure, including reporting upgrade success/failure to Discord
 
-To upgrade to version 0.5.0 or later you need to configure DB passwords in your `.env` file and apply them as follows:
+To upgrade to version 0.5.0 or later you need to configure DB passwords in your `.env` file and migrate as follows:
 ```
-docker-compose down app
-docker-compose run --rm app dbshell
-\set h2_database_password `echo "${H2_DATABASE_PASSWORD}"`
-CREATE USER hunter2;
-ALTER USER hunter2 WITH PASSWORD :'h2_database_password';
-CREATE DATABASE hunter2 WITH TEMPLATE postgres OWNER hunter2;
-\q
-docker-compose up -d
-```
+# Stop all services
+docker-compose down
 
-Once you've upgraded successfully you can clean up the content in the `postgres` database and set the superuser password as follows:
-```
-docker-compose run --rm app dbshell
-\c hunter2 postgres
-\set postgres_password `echo ${POSTGRES_PASSWORD}"`
-ALTER USER postgres WITH PASSWORD :'postgres_password';
-DROP DATABASE postgres;
-CREATE DATABASE postgres;
+# Migrate
+docker-compose run --rm --entrypoint /bin/sh -v ${PWD}/backup:/mnt app
+psql -h db -U postgres
+CREATE DATABASE hunter2 WITH OWNER hunter2;
+\c hunter2
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO hunter2;
+ALTER SCHEMA public OWNER TO hunter2;
+\q
+pg_dump -h db -U postgres -O > /mnt/db.sql  # Dump DB without owner information
+psql -h db -U hunter2 hunter2 < /mnt/db.sql  # Restore it using new owner
+exit
+docker-compose exec db /bin/sh
+sh /docker-entrypoint-initdb.d/20-init-exporter.sh
+
+# Secure
+docker-compose exec db /bin/sh
+psql -U postgres
+\set postgres_password `echo "${POSTGRES_PASSWORD}"`
+\q
+sed -i 's/host all all all trust/host all all all md5/' /var/lib/postgresql/data/pg_hba.conf
+exit
+docker-compose restart db
+
+# Cleanup
+docker-compose exec db /bin/sh
+psql -U postgres
+### Do this for each of your events
+# DROP SCHEMA event_slug CASCADE;
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+COMMENT ON SCHEMA public IS 'standard public schema';
+GRANT ALL ON SCHEMA public TO PUBLIC;
+GRANT ALL ON SCHEMA public TO postgres;
+
+# Start services
+docker-compose up -d
 ```
 
 Finally you can remove the `POSTGRES_PASSWORD` from your `.env` file and store it safely for future use.
