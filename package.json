@@ -41,8 +41,8 @@
     "webpack-merge": "5.7.3"
   },
   "dependencies": {
-    "@sentry/browser": "6.2.0",
-    "@sentry/integrations": "6.2.0",
+    "@sentry/browser": "6.2.1",
+    "@sentry/integrations": "6.2.1",
     "bootstrap": "4.6.0",
     "bootstrap-vue": "2.21.2",
     "chart.js": "2.9.4",
