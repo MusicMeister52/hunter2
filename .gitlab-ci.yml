@@ -5,7 +5,7 @@ variables:
   DOCKER_DRIVER: overlay2
 
 services:
-  - docker:19.03.15-dind@sha256:188c5ec4f95fd280516dc520921c07cd9260f6db880d938a77ddebabc1a082ed
+  - docker:19.03.15-dind@sha256:6f849727a2aa829f6d905a8bf60b6f7f0422ea6a4cddf64a919877c6de015d1a
 
 stages:
   - build1
