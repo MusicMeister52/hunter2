@@ -31,6 +31,5 @@
       "datasourceTemplate": "github-releases"
     }
   ],
-  "unpublishSafe": true,
-  "yarnrc": ""
+  "unpublishSafe": true
 }
