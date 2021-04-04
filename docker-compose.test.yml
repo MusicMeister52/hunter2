@@ -1,76 +1,22 @@
-version: '2.1'
+version: '3.5'
 
 services:
   app:
     build: .
-    depends_on:
-      - db
-      - redis
     environment:
       # Test run needs permission to create databases
       - H2_DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - H2_DATABASE_USER=postgres
-      - H2_DEBUG
-      - H2_DOMAIN
       - H2_TEST_SEED
-      - H2_SENDFILE=sendfile.backends.nginx
-      - H2_SENTRY_DSN
     image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
-    volumes:
-      - config:/config
-      - uploads_events:/uploads/events
-      - uploads_puzzles:/uploads/puzzles
-      - uploads_site:/uploads/site
-      - uploads_solutions:/uploads/solutions
   db:
     build: postgres
     environment:
       - POSTGRES_PASSWORD
     image: ${DB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/db}
-    volumes:
-      - db:/var/lib/postgresql/data
-  db_exporter:
-    depends_on:
-      - db
-    environment:
-      - DATA_SOURCE_NAME=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres?sslmode=disable
-    image: wrouesnel/postgres_exporter:v0.8.0@sha256:520fcd04d6c8f922d800d89ae96c021f4afd22e376c4b88260a8b780e3375dbe
   metrics:
     build: ./prometheus
     image: ${METRICS_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/metrics}
-    ports:
-      - 127.0.0.1:9090:9090
-    volumes:
-      - metrics:/prometheus
-  redis:
-    image: redis:5.0.12-alpine3.13@sha256:ba50773a87966f03f00781316cb002341faf2911793511b86e47f0d2c5935f77
-    volumes:
-      - redis:/data
-  redis_exporter:
-    depends_on:
-      - redis
-    environment:
-      - REDIS_ADDR=redis://redis:6379
-    image: oliver006/redis_exporter:v1.20.0-alpine@sha256:e773954125a60e3fc5be7e203fc38dd3f22d6088eafa747a8222ace51fca0568
   web:
     build: ./nginx
-    depends_on:
-      - app
     image: ${WEB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/web}
-    ports:
-      - 8080
-    volumes:
-      - uploads_events:/media/events:ro
-      - uploads_puzzles:/media/puzzles:ro
-      - uploads_site:/media/site:ro
-      - uploads_solutions:/media/solutions:ro
-
-volumes:
-  db: {}
-  config: {}
-  metrics: {}
-  redis: {}
-  uploads_events: {}
-  uploads_puzzles: {}
-  uploads_site: {}
-  uploads_solutions: {}
