@@ -20,8 +20,12 @@ For more information on this file, see
 https://docs.djangoproject.com/en/1.7/howto/deployment/wsgi/
 """
 
-from django.core.wsgi import get_wsgi_application
 import os
+
+from django.core.wsgi import get_wsgi_application
+
+# The consumers module registers some class methods on import which needs to be explicit when running under WSGI rather than ASGI
+from hunts import consumers as _  # noqa: F401
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hunter2.settings")
 

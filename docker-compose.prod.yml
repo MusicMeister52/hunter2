@@ -5,6 +5,33 @@ services:
     depends_on:
       - db
       - redis
+    entrypoint: ["/usr/local/bin/uwsgi"]
+    environment:
+      - H2_ADMINS
+      - H2_DATABASE_PASSWORD
+      - H2_DATABASE_URL
+      - H2_DEBUG
+      - H2_DOMAIN
+      - H2_EMAIL_DOMAIN
+      - H2_EMAIL_URL
+      - H2_IMAGE_VERSION
+      - H2_PIWIK_HOST
+      - H2_PIWIK_SITE
+      - H2_SCHEME
+      - H2_SENDFILE=sendfile.backends.nginx
+      - H2_SENTRY_DSN
+      - UWSGI_WWORKERS
+    image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
+    volumes:
+      - config:/config
+      - uploads_events:/uploads/events
+      - uploads_puzzles:/uploads/puzzles
+      - uploads_site:/uploads/site
+      - uploads_solutions:/uploads/solutions
+  websocket:
+    depends_on:
+      - db
+      - redis
     environment:
       - H2_ADMINS
       - H2_DATABASE_PASSWORD
