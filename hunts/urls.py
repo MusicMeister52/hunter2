@@ -14,6 +14,10 @@
 from django.urls import include, path
 from django.views.generic import TemplateView
 
+# The consumers module registers some class methods as signal handlers on import
+# Import this explicitly here to ensure this still happens when running under WSGI rather than ASGI
+from hunts import consumers as _  # noqa: F401
+
 from . import views
 
 eventadminpatterns = [
