@@ -45,7 +45,7 @@ validators = "==0.18.2"
 wait = "0.0.3"
 unittest-xml-reporting = "3.0.4"
 schema = "==0.7.4"
-uWSGI = "2.0.19"
+uWSGI = "==2.0.19.1"
 [tool.poetry.dev-dependencies]
 django-silk = "4.1.0"
 ipython = "==7.22.0"
