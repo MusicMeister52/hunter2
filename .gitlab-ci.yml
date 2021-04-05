@@ -27,7 +27,8 @@ stages:
     - export WEB_IMAGE_TAG="${CI_REGISTRY_IMAGE}/web:${GIT_DESCRIBE}"
     - export WEB_LATEST_TAG="${WEB_IMAGE_TAG%:*}:latest"
     - chmod -R g-w,o-w .
-    - ln -s docker-compose.test.yml docker-compose.yml
+    - ln -s docker-compose.prod.yml docker-compose.yml
+    - ln -s docker-compose.test.yml docker-compose.override.yml
 
 include:
   template: SAST.gitlab-ci.yml
