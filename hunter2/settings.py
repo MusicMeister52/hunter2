@@ -185,6 +185,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'default',
         },
     },
     'loggers': {
@@ -192,9 +193,18 @@ LOGGING = {
             'handlers': ['console'],
             'level': LOG_LEVEL,
         },
+        'daphne': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+        },
         'django.db': {
         },
     },
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s %(levelname)-8s %(name)-15s: %(message)s'
+        }
+    }
 }
 
 LOGIN_REDIRECT_URL = '/'

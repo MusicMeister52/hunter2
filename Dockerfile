@@ -94,4 +94,4 @@ USER hunter2
 EXPOSE 8000
 
 ENTRYPOINT ["/opt/hunter2/venv/bin/python", "manage.py"]
-CMD ["rundaphne", "--bind", "0.0.0.0"]
+CMD ["rundaphne", "--bind", "0.0.0.0", "-v", "2"]
