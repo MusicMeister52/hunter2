@@ -198,28 +198,32 @@ function addAnswer(user, guess, correct, guess_uid) {
   guesses.push(guess_uid)
 }
 
-function receivedNewAnswer(content) {
-  if (!guesses.includes(content.guess_uid)) {
-    addAnswer(content.by, content.guess, content.correct, content.guess_uid)
-    if (content.correct) {
-      var message = $('#correct-answer-message')
-      var html = `"${content.guess} was correct! Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
-      if (message.length) {
-        // The server already replied so we already put up a temporary message; just update it
-        message.html(html)
-      } else {
-        // That did not happen, so add the message
-        var form = $('.form-inline')
-        form.after(`<div id="correct-answer-message">${html}</div>`)
-        form.remove()
+function receivedNewAnswers(content) {
+  content.forEach(info => {
+    if (!guesses.includes(info.guess_uid)) {
+      addAnswer(info.by, info.guess, info.correct, info.guess_uid)
+      if (info.correct) {
+        var message = $('#correct-answer-message')
+        var html = `"${info.guess} was correct! Taking you ${info.text}. <a class="puzzle-complete-redirect" href="${info.redirect}">go right now</a>`
+        if (message.length) {
+          // The server already replied so we already put up a temporary message; just update it
+          message.html(html)
+        } else {
+          // That did not happen, so add the message
+          var form = $('.form-inline')
+          form.after(`<div id="correct-answer-message">${html}</div>`)
+          form.remove()
+        }
+        setTimeout(function () {window.location.href = info.redirect}, 3000)
       }
-      setTimeout(function () {window.location.href = content.redirect}, 3000)
     }
-  }
+  })
 }
 
-function receivedOldAnswer(content) {
-  addAnswer(content.by, content.guess, content.correct, content.guess_uid)
+function receivedOldAnswers(content) {
+  content.forEach(info => {
+    addAnswer(info.by, info.guess, info.correct, info.guess_uid)
+  })
 }
 
 function updateUnlocks() {
@@ -365,8 +369,8 @@ function openEventSocket() {
   const socketHandlers = {
     'announcement': window.alertList.addAnnouncement,
     'delete_announcement': window.alertList.deleteAnnouncement,
-    'new_guess': receivedNewAnswer,
-    'old_guess': receivedOldAnswer,
+    'new_guesses': receivedNewAnswers,
+    'old_guesses': receivedOldAnswers,
     'new_unlock': receivedNewUnlock,
     'old_unlock': receivedNewUnlock,
     'change_unlock': receivedChangeUnlock,
