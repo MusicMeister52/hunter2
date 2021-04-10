@@ -362,19 +362,16 @@ tags = ["django-taggit"]
 
 [[package]]
 name = "django-bootstrap4"
-version = "2.3.1"
-description = "Bootstrap support for Django projects"
+version = "3.0.0"
+description = "Bootstrap 4 for Django"
 category = "main"
 optional = false
-python-versions = ">=3.6,<4.0"
+python-versions = ">=3.6"
 
 [package.dependencies]
-beautifulsoup4 = ">=4.8.0,<5.0.0"
-django = ">=2.2,<4.0"
+beautifulsoup4 = ">=4.8.0"
+Django = ">=2.2"
 importlib-metadata = {version = "<3", markers = "python_version < \"3.8\""}
-
-[package.extras]
-docs = ["sphinx (>=2.4,<3.0)", "sphinx_rtd_theme (>=0.4.3,<0.5.0)", "m2r2 (>=0.2.5,<0.3.0)"]
 
 [[package]]
 name = "django-debug-toolbar"
@@ -1329,7 +1326,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "8feba6c4dec596803c741ebb04255542fa7b72c1a77e967608520c79c3722a4b"
+content-hash = "ab846473ec3d8039358aa12a7bb112ffa81180e03b99d3fc6a0be1efa07c90dd"
 
 [metadata.files]
 aioredis = [
@@ -1542,8 +1539,8 @@ django-autocomplete-light = [
     {file = "django-autocomplete-light-3.8.2.tar.gz", hash = "sha256:25f0ea71b59a8f1f97a8a564e33e429570b0ea77c5eac81f7beb283073b4ba90"},
 ]
 django-bootstrap4 = [
-    {file = "django-bootstrap4-2.3.1.tar.gz", hash = "sha256:2c199020ac38866cdf8d1c5561ce7468116b9685b455a29843c0225ef8568879"},
-    {file = "django_bootstrap4-2.3.1-py3-none-any.whl", hash = "sha256:b68f073b647b20ec7894a252a0ca4e06b7b8dafdbad995cb0cdc783d0bb4629d"},
+    {file = "django-bootstrap4-3.0.0.tar.gz", hash = "sha256:bffc96f65386fbd49cae1474393e01d4b414c12fcab0fff50545e6142e7ba19b"},
+    {file = "django_bootstrap4-3.0.0-py3-none-any.whl", hash = "sha256:76a52fb22a8d3dbb2f7609b21908ce863e941a4462be079bf1d12025e551af37"},
 ]
 django-debug-toolbar = [
     {file = "django-debug-toolbar-3.2.tar.gz", hash = "sha256:84e2607d900dbd571df0a2acf380b47c088efb787dce9805aefeb407341961d2"},
