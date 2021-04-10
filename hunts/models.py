@@ -18,13 +18,13 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Q
 from django.utils import timezone
 from django.urls import reverse
 from django_prometheus.models import ExportModelOperationsMixin
 from enumfields import EnumField, Enum
 from ordered_model.models import OrderedModel
 from seal.models import SealableModel
+from seal.query import SealableQuerySet
 
 import accounts
 import events
@@ -421,7 +421,7 @@ class SolutionFile(models.Model):
         unique_together = (('puzzle', 'slug'), ('puzzle', 'url_path'))
 
 
-class Clue(models.Model):
+class Clue(SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     text = models.TextField(help_text="Text displayed when this clue is unlocked")
@@ -508,7 +508,7 @@ class Unlock(Clue):
         return f'"{self.text}"'
 
 
-class UnlockAnswer(models.Model):
+class UnlockAnswer(SealableModel):
     unlock = models.ForeignKey(Unlock, editable=False, on_delete=models.CASCADE)
     runtime = EnumField(
         Runtime, max_length=1, default=Runtime.STATIC,
@@ -600,27 +600,24 @@ Regex:
         except SyntaxError as e:
             raise ValidationError(e) from e
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        guesses = Guess.objects.filter(
-            Q(for_puzzle=self.for_puzzle),
-            Q(correct_for__isnull=True) | Q(correct_for=self)
-        )
-        guesses.update(correct_current=False)
-
-    def delete(self, *args, **kwargs):
-        guesses = Guess.objects.filter(
-            for_puzzle=self.for_puzzle,
-            correct_for=self
-        )
-        guesses.update(correct_current=False)
-        super().delete(*args, **kwargs)
-
     def validate_guess(self, guess):
         return self.runtime.create(self.options).validate_guess(
             self.answer,
             guess.guess,
         )
+
+
+class GuessQuerySet(SealableQuerySet):
+    def evaluate_correctness(self, answers):
+        """Refresh the correctness cache on the guesses in the queryset against the supplied answers"""
+        for guess in self:
+            guess.correct_current = True
+            guess.correct_for = None
+            for answer in answers:
+                if answer.validate_guess(guess):
+                    guess.correct_for = answer
+                    break
+        self.bulk_update(self, ['correct_current', 'correct_for'])
 
 
 class Guess(ExportModelOperationsMixin('guess'), SealableModel):
@@ -633,6 +630,8 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     # The following two fields cache whether the guess is correct. Do not use them directly.
     correct_for = models.ForeignKey(Answer, blank=True, null=True, on_delete=models.SET_NULL)
     correct_current = models.BooleanField(default=False)
+
+    objects = GuessQuerySet.as_manager()
 
     class Meta:
         verbose_name_plural = 'Guesses'
@@ -651,32 +650,22 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     def get_correct_for(self):
         """Get the first answer this guess is correct for, if such exists."""
         if not self.correct_current:
+            # TODO: progress: where previously saving a guess triggers a re-evaluation,
+            #  now saving an existing guess does nothing for progress. Hence this needs
+            #  to be reworked when reconciling the old and new progress code.
             self.save()
 
         return self.correct_for
 
-    def _evaluate_correctness(self, data=None, answers=None):
-        """Re-evaluate self.correct_current and self.correct_for.
-
-        Sets self.correct_current to True, and self.correct_for to the first
-        answer this is correct for, if such exists. Does not save the model."""
-        if data is None:
-            data = PuzzleData(self.for_puzzle, self.by_team)
-        if answers is None:
-            answers = self.for_puzzle.answer_set.all()
-
-        self.correct_for = None
-        self.correct_current = True
-
-        for answer in answers:
-            if answer.validate_guess(self):
-                self.correct_for = answer
-                return
-
     def save(self, *args, **kwargs):
-        if not self.by_team:
+        if not self.by_team_id:
             self.by_team = self.get_team()
-        self._evaluate_correctness()
+        # ensure PuzzleData exists
+        # TODO - don't do this, and enforce use of `get_or_create` or similar
+        #  elsewhere. This will be easier once `TeamPuzzleProgress` is the
+        #  model we need for stats and admin views, but we'll have the same
+        #  problem there, then.
+        PuzzleData(self.for_puzzle, self.by_team)
         super().save(*args, **kwargs)
 
     def time_on_puzzle(self):
@@ -726,6 +715,90 @@ class TeamPuzzleData(SealableModel):
 
     def __str__(self):
         return f'Data for {self.team.name} on {self.puzzle.title}'
+
+
+class TeamPuzzleProgressQuerySet(SealableQuerySet):
+    def with_first_correct_guess(self):
+        """Annotate the queryset with the ID of the first guess which is marked as correct
+
+        The added field is called `first_correct_guess_id`
+        This relies on `correct_for` being up to date
+        """
+        # NOTE: if the `correct_for` field is removed from `Guess` and added to `TeamPuzzleProgress`
+        # then an analog of this is probably not necessary
+        return self.annotate(
+            first_correct_guess_id=models.Subquery(Guess.objects.filter(
+                correct_for__isnull=False,
+                for_puzzle=models.OuterRef('puzzle'),
+                by_team=models.OuterRef('team')
+            ).order_by('given').values('pk')[:1])
+        )
+
+    def reevaluate(self):
+        """Re-evaluate these Progress objects to reflect the current correct guesses
+
+        "current correct guesses" are those whose `correct_for` is not null.
+        This method is oriented to updating *progress* only, so will not make changes
+        to which `solved_by` if the puzzle was previously solved and is still solved,
+        or previously was not solved and is still not solved.
+        """
+        qs = self.with_first_correct_guess().select_related('solved_by').seal()
+        for pr in qs:
+            # Only update if needed, i.e. if the solvedness of the puzzle has changed, or if
+            # the guess which had previously solved the puzzle is now incorrect.
+            # This means for example that if a new answer is added which makes an earlier guess
+            # correct, we maintain the record of the guess which originally brought the team forward.
+            if not (pr.solved_by_id and pr.solved_by.correct_for_id and pr.first_correct_guess_id):
+                pr.solved_by_id = pr.first_correct_guess_id
+        qs.bulk_update(qs, ['solved_by_id'])
+
+
+class TeamPuzzleProgress(SealableModel):
+    puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
+    team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
+    start_time = models.DateTimeField(blank=True, null=True)
+    solved_by = models.ForeignKey(Guess, blank=True, null=True, on_delete=models.SET_NULL)
+    unlockanswers = models.ManyToManyField(UnlockAnswer, through='TeamUnlock')
+
+    objects = TeamPuzzleProgressQuerySet.as_manager()
+
+    class Meta:
+        unique_together = (('puzzle', 'team'), )
+        verbose_name_plural = 'Team puzzle progresses'
+
+    @property
+    def unlocks(self):
+        return set(ua.unlock for ua in self.unlocks.all())
+
+    def reevaluate(self, answers, guesses):
+        """Update this instance to reflect the team's progress in the supplied guesses.
+
+        This method does not save the instance.
+
+        Args:
+            answers: all the answers for the puzzle.
+            guesses: all this team's guesses for the puzzle, ordered by time given.
+                if some can be determined not to be correct, they can be omitted.
+        """
+
+        self.solved_by = None
+
+        for guess in guesses:
+            for answer in answers:
+                if answer.validate_guess(guess):
+                    self.solved_by = guess
+                    break
+            if self.solved_by_id:
+                break
+
+
+class TeamUnlock(SealableModel):
+    team_puzzle_progress = models.ForeignKey(TeamPuzzleProgress, on_delete=models.CASCADE)
+    unlockanswer = models.ForeignKey(UnlockAnswer, on_delete=models.CASCADE)
+    unlocked_by = models.ForeignKey(Guess, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = (('team_puzzle_progress', 'unlockanswer', 'unlocked_by'))
 
 
 class UserPuzzleData(models.Model):
