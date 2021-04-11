@@ -14,7 +14,7 @@
     "url": "https://gitlab.com/hunter2.app/hunter2/issues"
   },
   "scripts": {
-    "start": "$(yarn bin nodemon) --watch webpack.common.js --watch webpack.dev.js --exec $(yarn bin webpack) -- serve --config webpack.dev.js"
+    "start": "$(yarn --modules-folder ../node_modules bin nodemon) --watch webpack.common.js --watch webpack.dev.js --exec $(yarn --modules-folder ../node_modules bin webpack) -- serve --config webpack.dev.js"
   },
   "devDependencies": {
     "@babel/core": "7.13.15",
