@@ -375,7 +375,7 @@ importlib-metadata = {version = "<3", markers = "python_version < \"3.8\""}
 
 [[package]]
 name = "django-debug-toolbar"
-version = "3.2"
+version = "3.2.1"
 description = "A configurable set of panels that display various debug information about the current request/response."
 category = "main"
 optional = false
@@ -1326,7 +1326,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "ab846473ec3d8039358aa12a7bb112ffa81180e03b99d3fc6a0be1efa07c90dd"
+content-hash = "72268a63d89530b63d6f791f15184dd202296b3c1684beb79a5e14aa7d4a5ff9"
 
 [metadata.files]
 aioredis = [
@@ -1543,8 +1543,8 @@ django-bootstrap4 = [
     {file = "django_bootstrap4-3.0.0-py3-none-any.whl", hash = "sha256:76a52fb22a8d3dbb2f7609b21908ce863e941a4462be079bf1d12025e551af37"},
 ]
 django-debug-toolbar = [
-    {file = "django-debug-toolbar-3.2.tar.gz", hash = "sha256:84e2607d900dbd571df0a2acf380b47c088efb787dce9805aefeb407341961d2"},
-    {file = "django_debug_toolbar-3.2-py3-none-any.whl", hash = "sha256:9e5a25d0c965f7e686f6a8ba23613ca9ca30184daa26487706d4829f5cfb697a"},
+    {file = "django-debug-toolbar-3.2.1.tar.gz", hash = "sha256:a5ff2a54f24bf88286f9872836081078f4baa843dc3735ee88524e89f8821e33"},
+    {file = "django_debug_toolbar-3.2.1-py3-none-any.whl", hash = "sha256:e759e63e3fe2d3110e0e519639c166816368701eab4a47fed75d7de7018467b9"},
 ]
 django-enumfields = [
     {file = "django-enumfields-2.1.1.tar.gz", hash = "sha256:f64841732a9c343f5071220e0abcf5f51c9472c06e3c33d7c6a7ec27b6087561"},
