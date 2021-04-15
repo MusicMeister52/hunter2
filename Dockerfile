@@ -70,7 +70,6 @@ FROM node:14.16.1-alpine3.13@sha256:7021600941a9caa072c592b6a89cec80e46cb341d934
 
 WORKDIR /opt/hunter2/src
 
-COPY yarnrc.docker /opt/hunter2/src/.yarnrc
 COPY package.json yarn.lock /opt/hunter2/src/
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --frozen-lockfile

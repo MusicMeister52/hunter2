@@ -14,7 +14,7 @@
     "url": "https://gitlab.com/hunter2.app/hunter2/issues"
   },
   "scripts": {
-    "start": "$(yarn bin nodemon) --watch webpack.common.js --watch webpack.dev.js --exec $(yarn bin webpack) -- serve --config webpack.dev.js"
+    "start": "/node_modules/.bin/nodemon --watch webpack.common.js --watch webpack.dev.js --exec $(yarn bin webpack) -- serve --config webpack.dev.js"
   },
   "devDependencies": {
     "@babel/core": "7.13.15",
@@ -26,7 +26,6 @@
     "imports-loader": "2.0.0",
     "mini-css-extract-plugin": "1.4.1",
     "node-sass": "5.0.0",
-    "nodemon": "2.0.7",
     "postcss": "8.2.10",
     "postcss-loader": "5.2.0",
     "precss": "4.0.0",

@@ -14,7 +14,7 @@
     "url": "https://gitlab.com/hunter2.app/hunter2/issues"
   },
   "scripts": {
-    "start": "$(yarn bin nodemon) --watch /opt/hunter2/src/package.json --exec /bin/sh -- -c 'cd /opt/hunter2/src && yarn install && yarn start'"
+    "start": "$(yarn bin nodemon) --watch /opt/hunter2/src/package.json --exec /bin/sh -- -c 'cd /opt/hunter2/src && yarn --modules-folder ../node_modules install && yarn --modules-folder ../node_modules start'"
   },
   "dependencies": {
     "nodemon": "2.0.7"
