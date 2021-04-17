@@ -35,11 +35,11 @@
 		},
 		{% endfor %}
 	]
+	</script>
 	{% if sentry_dsn %}
-	window.sentry_dsn = '{{ sentry_dsn }}'
+	<script>window.sentry_dsn = '{{ sentry_dsn }}'</script>
 	{% render_bundle 'sentry' 'js' %}
 	{% endif %}
-	</script>
 
 	{% block script %}
 	{% render_bundle 'hunter2' 'js' attrs='defer' %}
