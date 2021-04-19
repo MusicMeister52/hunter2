@@ -21,7 +21,7 @@ django-bootstrap4 = "==3.0.0"
 django-debug-toolbar = "==3.2.1"
 django-enumfields = "==2.1.1"
 django-environ = "0.4.5"
-django-extensions = "==3.1.2"
+django-extensions = "==3.1.3"
 django-fullclean = { git = "https://github.com/riconnon/django-fullclean.git", tag = "0.0.4+whitelist" }
 django-nested-admin = "==3.3.3"
 django-ordered-model = { git = "https://github.com/fish-face/django-ordered-model.git", rev = "8a2908472b7bfbedb530a845f6c18fc86da7b750" }
