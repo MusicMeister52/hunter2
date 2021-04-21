@@ -24,7 +24,7 @@
     "babel-plugin-component": "1.1.1",
     "css-loader": "5.2.1",
     "imports-loader": "2.0.0",
-    "mini-css-extract-plugin": "1.4.1",
+    "mini-css-extract-plugin": "1.5.0",
     "node-sass": "5.0.0",
     "postcss": "8.2.10",
     "postcss-loader": "5.2.0",
