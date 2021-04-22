@@ -23,7 +23,7 @@ from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.views import View
 from django.views.generic import TemplateView, RedirectView
-from sendfile import sendfile
+from django_sendfile import sendfile
 
 from accounts.models import UserInfo
 from events.utils import annotate_userinfo_queryset_with_seat
