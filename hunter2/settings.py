@@ -40,7 +40,7 @@ EMAIL_CONFIG       = env.email_url ('H2_EMAIL_URL',     default='smtp://localhos
 EMAIL_DOMAIN       = env.str       ('H2_EMAIL_DOMAIN',  default=BASE_DOMAIN)
 ADMINS             = env.list      ('H2_ADMINS',        default=[])
 SENTRY_DSN         = env.url       ('H2_SENTRY_DSN',    default=None)
-SENDFILE_BACKEND   = env.str       ('H2_SENDFILE',      default='sendfile.backends.development')
+SENDFILE_BACKEND   = env.str       ('H2_SENDFILE',      default='django_sendfile.backends.development')
 
 try:
     DATABASES = {

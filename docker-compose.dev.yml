@@ -43,7 +43,7 @@ services:
       - H2_DEBUG=True
       - H2_DOMAIN
       - H2_TEST_SEED
-      - H2_SENDFILE=sendfile.backends.development
+      - H2_SENDFILE=django_sendfile.backends.development
       - H2_SENTRY_DSN
       - H2_SILK
     image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}

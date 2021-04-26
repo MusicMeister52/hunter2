@@ -19,7 +19,7 @@ services:
       - H2_PIWIK_HOST
       - H2_PIWIK_SITE
       - H2_SCHEME
-      - H2_SENDFILE=sendfile.backends.nginx
+      - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
       - UWSGI_WWORKERS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
@@ -45,7 +45,7 @@ services:
       - H2_PIWIK_HOST
       - H2_PIWIK_SITE
       - H2_SCHEME
-      - H2_SENDFILE=sendfile.backends.nginx
+      - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
       - ASGI_THREADS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
