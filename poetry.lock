@@ -362,7 +362,7 @@ tags = ["django-taggit"]
 
 [[package]]
 name = "django-bootstrap4"
-version = "3.0.0"
+version = "3.0.1"
 description = "Bootstrap 4 for Django"
 category = "main"
 optional = false
@@ -1344,7 +1344,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "9dbfed5a51d56b7fb27b05b64d3ae5a54f3bf0970673b2a893425f64699fd1b4"
+content-hash = "242549ec291fa2fbdf260e58612db619276fb57db6bbdba7d9111d70f56dab48"
 
 [metadata.files]
 aioredis = [
@@ -1557,8 +1557,8 @@ django-autocomplete-light = [
     {file = "django-autocomplete-light-3.8.2.tar.gz", hash = "sha256:25f0ea71b59a8f1f97a8a564e33e429570b0ea77c5eac81f7beb283073b4ba90"},
 ]
 django-bootstrap4 = [
-    {file = "django-bootstrap4-3.0.0.tar.gz", hash = "sha256:bffc96f65386fbd49cae1474393e01d4b414c12fcab0fff50545e6142e7ba19b"},
-    {file = "django_bootstrap4-3.0.0-py3-none-any.whl", hash = "sha256:76a52fb22a8d3dbb2f7609b21908ce863e941a4462be079bf1d12025e551af37"},
+    {file = "django-bootstrap4-3.0.1.tar.gz", hash = "sha256:c5c97fb473bb56e3a91b4f4be52b74a3fc384ec3baae50dd0807fa922a55ec2b"},
+    {file = "django_bootstrap4-3.0.1-py3-none-any.whl", hash = "sha256:aa8a9cb5ab27cfae52a27d377a0401af268d0e4b91a5f8e660546464582cc010"},
 ]
 django-debug-toolbar = [
     {file = "django-debug-toolbar-3.2.1.tar.gz", hash = "sha256:a5ff2a54f24bf88286f9872836081078f4baa843dc3735ee88524e89f8821e33"},
