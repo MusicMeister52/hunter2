@@ -298,6 +298,7 @@ TEMPLATES = [
                 'hunter2.context_processors.login_url',
                 'hunter2.context_processors.privacy_policy',
                 'hunter2.context_processors.sentry_dsn',
+                'hunter2.context_processors.site_theme',
             ],
         },
     },

@@ -18,6 +18,16 @@ from .utils import wwwize
 from . import settings
 
 
+def site_theme(request):
+    config = Configuration.get_solo()
+    return {
+        'site_script': config.script,
+        'site_script_file': config.script_file.file.url if config.script_file else None,
+        'site_style': config.style,
+        'site_style_file': config.style_file.file.url if config.style_file else None,
+    }
+
+
 def icons(request):
     # Fetching logic is entirely in a queryset and specifically not evaluated here,
     # such that if we hit the template fragment cache we do not perform the query
