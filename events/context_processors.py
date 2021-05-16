@@ -17,8 +17,12 @@ def event_theme(request):
     context = {}
     if request.tenant:
         files = request.tenant.files_map(request)
+        if request.tenant.script_file:
+            context['event_script_file'] = Template(request.tenant.theme.script).safe_substitute(**files)
         if request.tenant.script:
             context['event_script'] = Template(request.tenant.script).safe_substitute(**files)
+        if request.tenant.style_file:
+            context['event_style_file'] = Template(request.tenant.theme.script).safe_substitute(**files)
         if request.tenant.style:
             context['event_style'] = Template(request.tenant.style).safe_substitute(**files)
     return context
