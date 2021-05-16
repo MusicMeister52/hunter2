@@ -22,15 +22,6 @@ import accounts.models
 import hunter2.models
 
 
-class Theme(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    script = models.TextField(blank=True)
-    style = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Domain(DomainMixin):
     pass
 
@@ -38,7 +29,6 @@ class Domain(DomainMixin):
 class Event(TenantMixin):
     auto_drop_schema = True
     name = models.CharField(max_length=255, unique=True)
-    theme = models.ForeignKey(Theme, on_delete=models.CASCADE, related_name='theme')
     current = SingleTrueBooleanField()
     about_text = models.TextField(help_text='Content for the event about page', blank=True)
     rules_text = models.TextField(help_text='Content for the event rules page', blank=True)
@@ -51,6 +41,9 @@ class Event(TenantMixin):
     # We could consider moving these out into another model.
     discord_url = models.URLField(blank=True)
     discord_bot_id = models.BigIntegerField(null=True, blank=True)
+
+    script = models.TextField(blank=True)
+    style = models.TextField(blank=True)
 
     def __str__(self):
         return self.name
