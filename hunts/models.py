@@ -380,6 +380,24 @@ together with the team at which they completed the puzzle."""
         """Return a list of teams who have completed this puzzle at the given event in order of completion."""
         return [team for team, time in sorted(self.finished_team_times(event), key=lambda x: x[1])]
 
+    def files_map(self, request):
+        # This assumes that a single request concerns a single puzzle, which seems reasonable for now.
+        if not hasattr(request, 'puzzle_files'):
+            event_files = request.tenant.files_map(request)
+            puzzle_files = {f.slug: reverse(
+                'puzzle_file',
+                kwargs={
+                    'episode_number': self.episode.get_relative_id(),
+                    'puzzle_number': self.get_relative_id(),
+                    'file_path': f.url_path,
+                }) for f in self.puzzlefile_set.filter(slug__isnull=False)
+            }
+            request.puzzle_files = {  # Puzzle files with matching slugs override hunt counterparts
+                **event_files,
+                **puzzle_files,
+            }
+        return request.puzzle_files
+
     def position(self, team):
         """Returns the position in which the given team finished this puzzle: 0 = first, None = not yet finished."""
         try:

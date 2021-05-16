@@ -10,6 +10,8 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
+from string import Template
+
 from django.db.models import BooleanField, ExpressionWrapper, Q
 from django.urls import reverse
 
@@ -20,10 +22,11 @@ from . import settings
 
 def site_theme(request):
     config = Configuration.get_solo()
+    files = config.files_map(request)
     return {
-        'site_script': config.script,
+        'site_script': Template(config.script).safe_substitute(**files),
         'site_script_file': config.script_file.file.url if config.script_file else None,
-        'site_style': config.style,
+        'site_style': Template(config.style).safe_substitute(**files),
         'site_style_file': config.style_file.file.url if config.style_file else None,
     }
 

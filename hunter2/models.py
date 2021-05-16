@@ -50,3 +50,11 @@ class Configuration(SingletonModel):
     script_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')
     style = models.TextField(blank=True)
     style_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')
+
+    def files_map(self, request):
+        if not hasattr(request, 'site_files'):
+            request.site_files = {
+                f.slug: f.file.url
+                for f in File.objects.filter(slug__isnull=False)
+            }
+        return request.site_files
