@@ -20,7 +20,7 @@ from django.utils import timezone
 from django_tenants.test.cases import FastTenantTestCase
 from django_tenants.test.client import TenantClient
 
-from .factories import EventFactory, DomainFactory, ThemeFactory
+from .factories import EventFactory, DomainFactory
 from .models import Event
 
 
@@ -48,11 +48,9 @@ class EventTestCase(FastTenantTestCase):
 
     @classmethod
     def setup_tenant(cls, tenant):
-        theme = ThemeFactory()
         tenant.current = True
         tenant.end_date = timezone.now() + timedelta(days=5)
         tenant.name = 'Test Event'
-        tenant.theme = theme
 
 
 class ScopeOverrideCommunicator(WebsocketCommunicator):
