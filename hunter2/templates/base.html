@@ -13,13 +13,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
 	{% render_bundle 'hunter2' 'css' %}
-	{% if site_style %}
-	<style>
-		{{ site_style }}
-	</style>
-	{% endif %}
 	{% if site_style_file %}
 	<link rel="style" href="{{ site_style_file }}" />
+	{% endif %}
+	{% if site_style %}
+	<style>
+		{{ site_style | safe }}
+	</style>
 	{% endif %}
 	{% block style %}{% endblock %}
 
