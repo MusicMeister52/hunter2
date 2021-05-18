@@ -1,4 +1,4 @@
 # syntax=docker/dockerfile:1.1.3-experimental
-FROM prom/prometheus:v2.27.0@sha256:d1a9a86b9a3e60a9ea3cde141bdc936847456acc497e0affe7e288234383efa5
+FROM prom/prometheus:v2.27.1@sha256:5accb68b56ba452e449a5e552411acaeabbbe0f087acf19a1157ce3dd10a8bed
 
 COPY prometheus.yml /etc/prometheus/prometheus.yml
