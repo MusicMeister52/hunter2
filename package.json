@@ -17,7 +17,7 @@
     "start": "/node_modules/.bin/nodemon --watch webpack.common.js --watch webpack.dev.js --exec $(yarn bin webpack) -- serve --config webpack.dev.js"
   },
   "devDependencies": {
-    "@babel/core": "7.14.2",
+    "@babel/core": "7.14.3",
     "@babel/preset-env": "7.14.2",
     "autoprefixer": "10.2.5",
     "babel-loader": "8.2.2",
