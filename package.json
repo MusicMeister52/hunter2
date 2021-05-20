@@ -50,7 +50,7 @@
     "date-fns": "2.21.3",
     "distinct-colors": "3.0.0",
     "element-ui": "2.15.1",
-    "expose-loader": "2.0.0",
+    "expose-loader": "3.0.0",
     "file-loader": "6.2.0",
     "html-entities": "2.3.2",
     "jquery": "3.6.0",
