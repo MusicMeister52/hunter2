@@ -59,7 +59,7 @@
     "popper.js": "1.16.1",
     "robust-websocket": "1.0.0",
     "urijs": "1.19.6",
-    "vue": "2.6.12",
-    "vue-template-compiler": "2.6.12"
+    "vue": "2.6.13",
+    "vue-template-compiler": "2.6.13"
   }
 }
