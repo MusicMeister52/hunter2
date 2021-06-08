@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -14,9 +14,8 @@
 from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
-from accounts.models import UserProfile
-from teams.models import Team
-from .models import Episode, Guess
+
+from ..models import Episode
 
 
 @receiver(m2m_changed, sender=Episode.prequels.through)
@@ -28,11 +27,3 @@ def episode_prequels_changed(sender, instance, action, pk_set, **kwargs):
                 raise ValidationError('Episode cannot follow itself')
             elif episode.follows(instance):
                 raise ValidationError('Circular dependency found in episodes')
-
-
-@receiver(m2m_changed, sender=Team.members.through)
-def members_changed(sender, instance, action, pk_set, **kwargs):
-    if action == 'post_add':
-        users = UserProfile.objects.filter(pk__in=pk_set)
-        guesses = Guess.objects.filter(by__in=users)
-        guesses.update(by_team=instance, correct_current=False)

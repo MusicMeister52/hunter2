@@ -52,7 +52,7 @@ from .factories import (
     UserDataFactory,
     UserPuzzleDataFactory,
 )
-from .models import PuzzleData, TeamPuzzleData
+from .models import PuzzleData, TeamPuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
 from .utils import encode_uuid
 from .runtimes import Runtime
 
@@ -1526,6 +1526,201 @@ class ProgressionTests(EventTestCase):
         self.assertEqual(puzzle1.first_correct_guesses(self.event)[self.team1], first_correct_guess)
 
 
+class ProgressSignalTests(EventTestCase):
+    def setUp(self):
+        self.answer = AnswerFactory(runtime=Runtime.REGEX, answer=r'correct\d')
+        self.puzzle = self.answer.for_puzzle
+        self.unlockanswer = UnlockAnswerFactory(unlock__puzzle=self.puzzle, runtime=Runtime.REGEX, guess=r'unlock\d')
+        self.unlock = self.unlockanswer.unlock
+        self.user = TeamMemberFactory()
+        self.team = self.user.team_at(self.tenant)
+        self.progress = TeamPuzzleProgress(team=self.team, puzzle=self.puzzle, start_time=timezone.now())
+        self.progress.save()
+
+    def test_save_guess_updates_progress_correctly(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='incorrect')
+        self.assertIsNone(TeamPuzzleProgress.objects.get(team=self.team, puzzle=self.puzzle).solved_by,
+                          'Incorrect guess resulted in puzzle marked as solved')
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlockanswer=self.unlockanswer).exists(),
+                         'Non-unlocking guess resulted in unlock being marked as unlocked')
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.assertTrue(TeamPuzzleProgress.objects.get(team=self.team, puzzle=self.puzzle).solved_by,
+                        'Correct guess resulted in puzzle marked as not solved')
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock0')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+
+    def test_add_answer_updates_progress(self):
+        guessa = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct.')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guessa)
+
+    def test_add_answer_doesnt_update_solved_puzzle(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct.')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_modify_answer_doesnt_update_solved_puzzle_when_still_solved(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        self.answer.answer = 'correct.'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_modify_answer_updates_solved_puzzle_when_still_solved(self):
+        self.answer.answer = 'correct.'
+        self.answer.save()
+        guess1 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess1)
+        self.answer.answer = r'correct\d'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_modify_answer_unsolves_puzzle(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess)
+        self.answer.answer = 'correct'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+
+    def test_modify_answer_solves_puzzle(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+        self.answer.answer = 'correct.'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess)
+
+    def test_delete_answer_unsolves_puzzle(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess)
+        self.answer.delete()
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+
+    def test_delete_answer_doesnt_change_solved_by(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct_0')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct1')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct.?\d')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        self.answer.delete()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_delete_answer_changes_solved_by(self):
+        guess1 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct1')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess1)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.STATIC, answer='correct1')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess1)
+        self.answer.delete()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def do_reevaluate(self):
+        self.progress.reevaluate(Answer.objects.all(), Guess.objects.all().order_by('given'))
+        self.progress.save()
+
+    def test_progress_reevaluation(self):
+        # TODO name of testcase
+        # TODO split?
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='incorrect')
+        self.do_reevaluate()
+        # incorrect guess -> not solved
+        self.assertIsNone(self.progress.solved_by)
+        guess0 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.do_reevaluate()
+        # guess correct by orig answer -> solved by that guess
+        self.assertEqual(self.progress.solved_by, guess0)
+        self.answer.answer = r'correct_\d'
+        self.answer.save()
+        self.do_reevaluate()
+        # change that answer -> not solved
+        self.assertIsNone(self.progress.solved_by)
+        guess1 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct_1')
+        self.do_reevaluate()
+        # add guess which works with modified answer -> solved by new guess
+        self.assertEqual(self.progress.solved_by, guess1)
+        newanswer = AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct\d')
+        self.do_reevaluate()
+        # two answers, one validating the original guess -> solved by first guess
+        self.assertEqual(self.progress.solved_by, guess0)
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct2')
+        self.do_reevaluate()
+        # add a third correct guess -> still solved by first guess
+        self.assertEqual(self.progress.solved_by, guess0)
+        guess0.delete()
+        self.do_reevaluate()
+        # delete oldest correct guess -> solved by next oldest correct guess
+        self.assertEqual(self.progress.solved_by, guess1)
+        guess1.delete()
+        self.do_reevaluate()
+        # delete next oldest -> same
+        self.assertEqual(self.progress.solved_by, guess2)
+        newanswer.delete()
+        self.do_reevaluate()
+        # delete answer which validated last guess -> not solved
+        self.assertIsNone(self.progress.solved_by)
+        # scenarios covered:
+        # one / two answers; zero-three correct guesses.
+
+    def test_add_unlockanswer_adds_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock_0')
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+        ua = UnlockAnswerFactory(unlock=self.unlock, runtime=Runtime.REGEX, guess=r'unlock_\d')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=ua).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+
+    def test_modify_unlockanswer_creates_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock_0')
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+        self.unlockanswer.guess = r'unlock_\d'
+        self.unlockanswer.save()
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+
+    def test_modify_unlockanswer_deletes_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock0')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+        self.unlockanswer.guess = r'unlock_\d'
+        self.unlockanswer.save()
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+
+    def test_delete_unlockanswer_deletes_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock0')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+        self.unlockanswer.delete()
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+
+
 class EventWinningTests(EventTestCase):
     fixtures = ["teams_test"]
 
@@ -1639,8 +1834,6 @@ class CorrectnessCacheTests(EventTestCase):
         self.answer1.save()
         guess1.refresh_from_db()
         guess2.refresh_from_db()
-        self.assertFalse(guess1.correct_current)
-        self.assertTrue(guess2.correct_current)
         correct = guess1.get_correct_for()
         self.assertTrue(guess1.correct_current)
         self.assertFalse(correct)
@@ -1655,7 +1848,6 @@ class CorrectnessCacheTests(EventTestCase):
         self.answer1.delete()
         guess1.refresh_from_db()
         guess2.refresh_from_db()
-        self.assertFalse(guess1.correct_current)
         self.assertTrue(guess2.correct_current)
         self.assertFalse(guess1.get_correct_for())
         self.assertFalse(self.puzzle1.answered_by(self.team1))
@@ -1666,7 +1858,6 @@ class CorrectnessCacheTests(EventTestCase):
         guess1.refresh_from_db()
         guess2.refresh_from_db()
         self.assertTrue(guess1.correct_current)
-        self.assertFalse(guess2.correct_current)
         self.assertFalse(self.puzzle1.answered_by(self.team1))
         self.assertTrue(guess2.get_correct_for())
         self.assertTrue(self.puzzle2.answered_by(self.team2))
