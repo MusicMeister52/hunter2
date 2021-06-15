@@ -48,7 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 
 # Build all the required Lua components
-FROM alpine:3.13.5@sha256:69e70a79f2d41ab5d637de98c1e0b055206ba40a8145e7bddb55ccc04e13cf8f AS lua_build
+FROM alpine:3.13.5@sha256:afa7330f2f36f398a1cb98a1ca5cd83b9efb2ad9dd171c2d2fdfa19bfc794b76 AS lua_build
 
 COPY hunts/runtimes/lua/luarocks/config.lua /etc/luarocks/config-5.2.lua
 
