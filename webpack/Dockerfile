@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.1.3-experimental
-FROM node:16.3.0-alpine3.13@sha256:8fdfe93e621116e8a7b663dd6d9e1dc0dbc952d6de9b87ad3218d83ba67bfb92
+FROM node:16.3.0-alpine3.13@sha256:6b56197d33a56cd45d1d1214292b8851fa1b91b2ccc678cee7e5fd4260bd8fae
 
 COPY package.json yarn.lock /
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
