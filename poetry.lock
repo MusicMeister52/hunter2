@@ -870,7 +870,7 @@ wcwidth = "*"
 
 [[package]]
 name = "psycopg2"
-version = "2.9"
+version = "2.9.1"
 description = "psycopg2 - Python-PostgreSQL Database Adapter"
 category = "main"
 optional = false
@@ -1365,7 +1365,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "e9bf69b1907c9fd05dbd189e4cfb64bd58b81032ea1231d0b1d22adb0f73e230"
+content-hash = "78c3ba7285913905648c7f521a18b731ee44ffba4ee0a195620fb90a5b607737"
 
 [metadata.files]
 aioredis = [
@@ -1877,15 +1877,14 @@ prompt-toolkit = [
     {file = "prompt_toolkit-3.0.18.tar.gz", hash = "sha256:e1b4f11b9336a28fa11810bc623c357420f69dfdb6d2dac41ca2c21a55c033bc"},
 ]
 psycopg2 = [
-    {file = "psycopg2-2.9-cp36-cp36m-win32.whl", hash = "sha256:e84c80be7a238d3c9c099b71f6890eaa35fc881146232cce888a88ab1bfb431e"},
-    {file = "psycopg2-2.9-cp36-cp36m-win_amd64.whl", hash = "sha256:f3d42bd42302293767b84206d9a446abc67ed4a133e4fe04dad8952de06c2091"},
-    {file = "psycopg2-2.9-cp37-cp37m-win32.whl", hash = "sha256:b6f47af317af8110818d255e693cfa80b7f1e435285be09778db7b66efd95789"},
-    {file = "psycopg2-2.9-cp37-cp37m-win_amd64.whl", hash = "sha256:22102cfeb904898254f287b1a77360bf66c636858e7476593acd5267e5c24ff9"},
-    {file = "psycopg2-2.9-cp38-cp38-win32.whl", hash = "sha256:03a485bf71498870e38b535c0e6e7162d6ac06a91487edddc3b959894d65f79c"},
-    {file = "psycopg2-2.9-cp38-cp38-win_amd64.whl", hash = "sha256:d549db98fc0e6db41a2aa0d65f7434c4308a9f64012adb209b9e489f26fe87c6"},
-    {file = "psycopg2-2.9-cp39-cp39-win32.whl", hash = "sha256:e44e39a46af7c30566b7667fb27e701e652ab0a51e05c263a01d3ff0e223b765"},
-    {file = "psycopg2-2.9-cp39-cp39-win_amd64.whl", hash = "sha256:8f4c1800e57ad128d20b2e91d222ca238fffd316cef65be781361cdf35e37979"},
-    {file = "psycopg2-2.9.tar.gz", hash = "sha256:b12073fdf2002e828e5921be2c39ff9c6eab361c5c0bd6c529619fc23677accc"},
+    {file = "psycopg2-2.9.1-cp36-cp36m-win32.whl", hash = "sha256:7f91312f065df517187134cce8e395ab37f5b601a42446bdc0f0d51773621854"},
+    {file = "psycopg2-2.9.1-cp36-cp36m-win_amd64.whl", hash = "sha256:830c8e8dddab6b6716a4bf73a09910c7954a92f40cf1d1e702fb93c8a919cc56"},
+    {file = "psycopg2-2.9.1-cp37-cp37m-win32.whl", hash = "sha256:89409d369f4882c47f7ea20c42c5046879ce22c1e4ea20ef3b00a4dfc0a7f188"},
+    {file = "psycopg2-2.9.1-cp37-cp37m-win_amd64.whl", hash = "sha256:7640e1e4d72444ef012e275e7b53204d7fab341fb22bc76057ede22fe6860b25"},
+    {file = "psycopg2-2.9.1-cp38-cp38-win32.whl", hash = "sha256:079d97fc22de90da1d370c90583659a9f9a6ee4007355f5825e5f1c70dffc1fa"},
+    {file = "psycopg2-2.9.1-cp38-cp38-win_amd64.whl", hash = "sha256:2c992196719fadda59f72d44603ee1a2fdcc67de097eea38d41c7ad9ad246e62"},
+    {file = "psycopg2-2.9.1-cp39-cp39-win32.whl", hash = "sha256:2087013c159a73e09713294a44d0c8008204d06326006b7f652bef5ace66eebb"},
+    {file = "psycopg2-2.9.1-cp39-cp39-win_amd64.whl", hash = "sha256:bf35a25f1aaa8a3781195595577fcbb59934856ee46b4f252f56ad12b8043bcf"},
 ]
 ptpython = [
     {file = "ptpython-3.0.17-py2.py3-none-any.whl", hash = "sha256:65c79e8ca860f2bdeaa61dbcc362449b3d54286dc449ff32dc013a93f8c4d628"},
