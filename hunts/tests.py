@@ -47,6 +47,7 @@ from .factories import (
     SolutionFileFactory,
     TeamDataFactory,
     TeamPuzzleDataFactory,
+    TeamPuzzleProgressFactory,
     UnlockAnswerFactory,
     UnlockFactory,
     UserDataFactory,
@@ -108,6 +109,10 @@ class FactoryTests(EventTestCase):
         answer = AnswerFactory(runtime=runtime)
         guess = GuessFactory(for_puzzle=answer.for_puzzle, correct=False)
         self.assertFalse(answer.for_puzzle.answered_by(guess.by_team), "Puzzle not answered by incorrect guess")
+
+    @staticmethod
+    def test_team_puzzle_progress_factory_default_construction():
+        TeamPuzzleProgressFactory.create()
 
     @staticmethod
     def test_team_data_factory_default_construction():
