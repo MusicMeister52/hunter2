@@ -53,7 +53,7 @@ from .factories import (
     UserDataFactory,
     UserPuzzleDataFactory,
 )
-from .models import PuzzleData, TeamPuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
+from .models import PuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
 from .utils import encode_uuid
 from .runtimes import Runtime
 
@@ -324,13 +324,13 @@ class PuzzleStartTimeTests(EventTestCase):
         response = self.client.get(self.puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
 
-        first_time = TeamPuzzleData.objects.get().start_time
+        first_time = TeamPuzzleProgress.objects.get().start_time
         self.assertIsNot(first_time, None, msg='Start time is set on first access to a puzzle')
 
         response = self.client.get(self.puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
 
-        second_time = TeamPuzzleData.objects.get().start_time
+        second_time = TeamPuzzleProgress.objects.get().start_time
         self.assertEqual(first_time, second_time, msg='Start time does not alter on subsequent access')
 
 
@@ -879,77 +879,76 @@ class ClueDisplayTests(EventTestCase):
         self.user = UserProfileFactory()
         self.puzzle = PuzzleFactory(episode=self.episode)
         self.team = TeamFactory(at_event=self.episode.event, members={self.user})
-        self.data = PuzzleData(self.puzzle, self.team, self.user)  # Don't actually need to use a factory here.
+        self.progress = TeamPuzzleProgressFactory(puzzle=self.puzzle, team=self.team)
 
     def test_hint_display(self):
         hint = HintFactory(puzzle=self.puzzle)
 
         with freezegun.freeze_time() as frozen_datetime:
-            self.data.tp_data.start_time = timezone.now()
-            self.assertFalse(hint.unlocked_by(self.team, self.data.tp_data), "Hint not unlocked by team at start")
+            self.progress.start_time = timezone.now()
+            self.assertFalse(hint.unlocked_by(self.team, self.progress), "Hint not unlocked by team at start")
 
             frozen_datetime.tick(hint.time / 2)
-            self.assertFalse(hint.unlocked_by(self.team, self.data.tp_data), "Hint not unlocked by less than hint time duration.")
+            self.assertFalse(hint.unlocked_by(self.team, self.progress), "Hint not unlocked by less than hint time duration.")
 
             frozen_datetime.tick(hint.time)
-            self.assertTrue(hint.unlocked_by(self.team, self.data.tp_data), "Hint unlocked by team after required time elapsed.")
+            self.assertTrue(hint.unlocked_by(self.team, self.progress), "Hint unlocked by team after required time elapsed.")
 
     def test_hint_unlocks_at(self):
         hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(seconds=42))
 
         with freezegun.freeze_time() as frozen_datetime:
             now = timezone.now()
-            self.assertEqual(hint.unlocks_at(self.team, self.data.tp_data), None)
-            self.data.tp_data.start_time = now
+            self.progress.start_time = now
             target = now + datetime.timedelta(seconds=42)
 
-            self.assertEqual(hint.unlocks_at(self.team, self.data.tp_data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
             frozen_datetime.tick(datetime.timedelta(seconds=12))
-            self.assertEqual(hint.unlocks_at(self.team, self.data.tp_data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
 
         unlock = UnlockFactory(puzzle=self.puzzle)
         hint.start_after = unlock
 
         with freezegun.freeze_time() as frozen_datetime:
             now = timezone.now()
-            self.assertEqual(hint.unlocks_at(self.team, self.data), None)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), None)
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess=unlock.unlockanswer_set.get().guess)
             target = now + datetime.timedelta(seconds=42)
 
-            self.assertEqual(hint.unlocks_at(self.team, self.data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
             frozen_datetime.tick(datetime.timedelta(seconds=12))
-            self.assertEqual(hint.unlocks_at(self.team, self.data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
 
     def test_dependent_hints(self):
         unlock = UnlockFactory(puzzle=self.puzzle)
         hint = HintFactory(puzzle=self.puzzle, start_after=unlock)
 
         with freezegun.freeze_time() as frozen_datetime:
-            self.data.tp_data.start_time = timezone.now()
-            self.assertFalse(hint.unlocked_by(self.team, self.data), "Hint unlocked by team at start")
+            self.progress.start_time = timezone.now()
+            self.assertFalse(hint.unlocked_by(self.team, self.progress), "Hint unlocked by team at start")
 
             frozen_datetime.tick(hint.time * 2)
-            self.assertFalse(hint.unlocked_by(self.team, self.data),
+            self.assertFalse(hint.unlocked_by(self.team, self.progress),
                              "Hint unlocked by team when dependent unlock not unlocked.")
 
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess=unlock.unlockanswer_set.get().guess)
-            self.assertFalse(hint.unlocked_by(self.team, self.data),
+            self.assertFalse(hint.unlocked_by(self.team, self.progress),
                              "Hint unlocked by team as soon as dependent unlock unlocked")
 
             frozen_datetime.tick(hint.time / 2)
-            self.assertFalse(hint.unlocked_by(self.team, self.data),
+            self.assertFalse(hint.unlocked_by(self.team, self.progress),
                              "Hint unlocked by team before time after dependent unlock was unlocked elapsed")
 
             frozen_datetime.tick(hint.time)
-            self.assertTrue(hint.unlocked_by(self.team, self.data),
+            self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint not unlocked by team after time after dependent unlock was unlocked elapsed")
 
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess=unlock.unlockanswer_set.get().guess)
-            self.assertTrue(hint.unlocked_by(self.team, self.data),
+            self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint re-locked by subsequent unlock-validating guess!")
 
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='NOT_CORRECT')
-            self.assertTrue(hint.unlocked_by(self.team, self.data),
+            self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint re-locked by subsequent non-unlock-validating guess!")
 
     def test_unlock_display(self):
@@ -1191,11 +1190,6 @@ class AdminContentTests(EventTestCase):
     def test_admin_team_detail_content(self):
         team = self.guesses[0].by_team
         puzzle2 = PuzzleFactory()
-        tp_data1 = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-        # FIXME: the above does not give tp_data1 a start_time :S
-        tp_data1.start_time = timezone.now()
-        tp_data1.save()
-        TeamPuzzleDataFactory(team=team, puzzle=puzzle2)
         GuessFactory(by=team.members.all()[0], for_puzzle=puzzle2, correct=True)
 
         self.client.force_login(self.admin_user.user)
@@ -1219,15 +1213,13 @@ class AdminContentTests(EventTestCase):
         user = TeamMemberFactory(team__at_event=self.tenant)
         team = user.team_at(self.tenant)
         now = timezone.now()
+        # We have to make the TeamPuzzleProgress before the guesses since Guess does a `get_or_create` in a `post_save` signal
+        TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now() - datetime.timedelta(minutes=20))
         guesses = GuessFactory.create_batch(10, for_puzzle=self.puzzle, by=user)
         # The guesses get forced to the current time when created, we have to override afterwards
         for i, guess in enumerate(guesses):
             guess.given = now - datetime.timedelta(minutes=i)
             guess.save()
-        tp_data = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-        # FIXME: the above does not give tp_data a start_time :S
-        tp_data.start_time = timezone.now() - datetime.timedelta(minutes=20)
-        tp_data.save()
 
         self.client.force_login(self.admin_user.user)
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
@@ -1251,9 +1243,7 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
 
         with freezegun.freeze_time() as frozen_datetime:
-            tp_data = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-            tp_data.start_time = timezone.now()
-            tp_data.save()
+            TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now())
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
             response = self.client.get(url)
@@ -1325,14 +1315,10 @@ class AdminContentTests(EventTestCase):
         team1 = self.guesses[0].by_team
         team2 = self.guesses[1].by_team
 
-        tp_data1 = TeamPuzzleDataFactory(team=team1, puzzle=self.puzzle)
-        # FIXME: the above does not give tp_data1 a start_time :S
-        now = timezone.now()
-        tp_data1.start_time = now
-        tp_data1.save()
+        TeamPuzzleProgressFactory(team=team1, puzzle=self.puzzle, start_time=timezone.now())
 
         GuessFactory(by=team2.members.all()[0], for_puzzle=self.puzzle, correct=True)
-        team3 = TeamPuzzleDataFactory(puzzle=self.puzzle).team
+        team3 = TeamPuzzleProgressFactory(puzzle=self.puzzle).team
 
         self.client.force_login(self.admin_user.user)
         url = reverse('admin_progress_content')
@@ -1377,9 +1363,7 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_progress_content')
 
         with freezegun.freeze_time() as frozen_datetime:
-            tp_data = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-            tp_data.start_time = timezone.now()
-            tp_data.save()
+            TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now())
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
             response = self.client.get(url)
@@ -2034,11 +2018,9 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
     def test_initial_connection(self):
         ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz)
         UnlockAnswerFactory(unlock__puzzle=self.pz, guess=ua1.guess + '_different')
-        HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
+        h1 = HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
         profile = TeamMemberFactory()
-        data = PuzzleData(self.pz, profile.team_at(self.tenant), profile)
-        data.tp_data.start_time = timezone.now()
-        data.save()
+        TeamPuzzleProgressFactory(puzzle=self.pz, team=profile.team_at(self.tenant), start_time=timezone.now())
         g1 = GuessFactory(for_puzzle=self.pz, by=profile)
         g1.given = timezone.now() - datetime.timedelta(days=1)
         g1.save()
@@ -2081,8 +2063,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['unlock'], ua1.unlock.text)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
-        self.run_async(comm.send_json_to)({'type': 'hints-plz'})
+        self.run_async(comm.send_json_to)({'type': 'hints-plz', 'from': dt.timestamp() * 1000})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for hints')
+
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint'], h1.text)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         self.run_async(comm.disconnect)()
@@ -2311,7 +2296,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
         data = PuzzleData(self.pz, team, user)
-        data.tp_data.start_time = timezone.now()
+        progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
         data.save()
         hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay))
 
@@ -2320,7 +2305,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertTrue(connected)
 
         # account for delays getting started
-        remaining = hint.delay_for_team(team, data.tp_data).total_seconds()
+        remaining = hint.delay_for_team(team, progress).total_seconds()
         if remaining < 0:
             raise Exception('Websocket hint scheduling test took too long to start up')
 
@@ -2329,7 +2314,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
         # advance time by all the remaining time
         time.sleep(remaining / 2)
-        self.assertTrue(hint.unlocked_by(team, data.tp_data))
+        self.assertTrue(hint.unlocked_by(team, progress))
 
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
@@ -2343,9 +2328,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
-        data = PuzzleData(self.pz, team, user)
-        data.tp_data.start_time = timezone.now()
-        data.save()
+        progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
         unlock = UnlockFactory(puzzle=self.pz)
         unlockanswer = unlock.unlockanswer_set.get()
         hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay), start_after=unlock)
@@ -2360,13 +2343,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         guess = GuessFactory(for_puzzle=self.pz, by=user, guess=unlockanswer.guess)
         self.receive_json(comm, 'Websocket did not send unlock')
         self.receive_json(comm, 'Websocket did not send guess')
-        remaining = hint.delay_for_team(team, data.tp_data).total_seconds()
-        self.assertFalse(hint.unlocked_by(team, data.tp_data))
+        remaining = hint.delay_for_team(team, progress).total_seconds()
+        self.assertFalse(hint.unlocked_by(team, progress))
         self.assertTrue(self.run_async(comm.receive_nothing)(remaining / 2))
 
         # advance time by all the remaining time
         time.sleep(remaining / 2)
-        self.assertTrue(hint.unlocked_by(team, data.tp_data))
+        self.assertTrue(hint.unlocked_by(team, progress))
 
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
@@ -2401,10 +2384,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         unlockanswer.guess = guess.guess
         unlockanswer.save()
         self.receive_json(comm, 'Websocket did not send unlock')
-        self.assertFalse(hint.unlocked_by(team, data.tp_data))
+        self.assertFalse(hint.unlocked_by(team, progress))
         self.assertTrue(self.run_async(comm.receive_nothing)(delay / 2))
         time.sleep(delay / 2)
-        self.assertTrue(hint.unlocked_by(team, data.tp_data))
+        self.assertTrue(hint.unlocked_by(team, progress))
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
         self.assertEqual(output['type'], 'new_hint')
@@ -2416,13 +2399,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         with freezegun.freeze_time() as frozen_datetime:
             user = TeamMemberFactory()
             team = user.team_at(self.tenant)
-            data = PuzzleData(self.pz, team, user)
-            data.tp_data.start_time = timezone.now()
-            data.save()
+            progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
 
             hint = HintFactory(text='hint_text', puzzle=self.pz, time=datetime.timedelta(seconds=1))
             frozen_datetime.tick(delta=datetime.timedelta(seconds=2))
-            self.assertTrue(hint.unlocked_by(team, data.tp_data))
+            self.assertTrue(hint.unlocked_by(team, progress))
 
             comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
             connected, subprotocol = self.run_async(comm.connect)()
@@ -2600,7 +2581,7 @@ class PlayerStatsViewTests(EventTestCase):
             # Ensure the event has a winning episode containing a puzzle, with a correct guess by a user
             puzzle = PuzzleFactory(episode__event=self.tenant, episode__winning=True)
             for i, user in enumerate(users):
-                TeamPuzzleDataFactory(puzzle=puzzle, team=user.team_at(self.tenant))
+                TeamPuzzleProgressFactory(puzzle=puzzle, team=user.team_at(self.tenant))
                 GuessFactory(for_puzzle=puzzle, correct=True, by=user, given=now - datetime.timedelta(minutes=len(users) - i))
             self.tenant.end_date = now + datetime.timedelta(minutes=1)
             self.tenant.save()

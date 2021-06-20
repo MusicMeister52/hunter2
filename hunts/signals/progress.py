@@ -70,8 +70,13 @@ def saved_guess(sender, instance, raw, created, *args, **kwargs):
         return  # nocover
     guess = instance
     answers = guess.for_puzzle.answer_set.all()
-    progress, _ = models.TeamPuzzleProgress.objects.get_or_create(
-        team=guess.by_team, puzzle=guess.for_puzzle
+    progress, created = models.TeamPuzzleProgress.objects.get_or_create(
+        team=guess.by_team, puzzle=guess.for_puzzle,
+        defaults={
+            # If we do have to create this then we don't know the start time.
+            # Use the guess time as the start time since it's the only bound we have.
+            'start_time': guess.given,
+        },
     )
     unlocks = guess.for_puzzle.unlock_set.all().prefetch_related('unlockanswer_set').seal()
 

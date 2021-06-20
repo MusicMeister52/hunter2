@@ -454,25 +454,25 @@ class Hint(Clue):
     def __str__(self):
         return f'Hint unlocked after {self.time}'
 
-    def unlocked_by(self, team, tp_data, possible_guesses=None):
+    def unlocked_by(self, team, progress, possible_guesses=None):
         """Returns whether the hint is unlocked by the given team.
 
-        The TeamPuzzleData associated with the team and puzzle must be supplied.
+        The TeamPuzzleProgress associated with the team and puzzle must be supplied.
         An iterable of possible guesses may be supplied in order to speed up any
             calls to `Unlock.unlocked_by`.
         """
-        unlocks_at = self.unlocks_at(team, tp_data, possible_guesses)
+        unlocks_at = self.unlocks_at(team, progress, possible_guesses)
         return unlocks_at is not None and unlocks_at < timezone.now()
 
-    def delay_for_team(self, team, tp_data, possible_guesses=None):
+    def delay_for_team(self, team, progress, possible_guesses=None):
         """Returns how long until the hint unlocks for the given team.
 
         Parameters as for `unlocked_by`.
         """
-        unlocks_at = self.unlocks_at(team, tp_data, possible_guesses)
+        unlocks_at = self.unlocks_at(team, progress, possible_guesses)
         return None if unlocks_at is None else unlocks_at - timezone.now()
 
-    def unlocks_at(self, team, tp_data, possible_guesses=None):
+    def unlocks_at(self, team, progress, possible_guesses=None):
         """Returns when the hint unlocks for the given team.
 
         Parameters as for `unlocked_by`.
@@ -483,8 +483,8 @@ class Hint(Clue):
                 start_time = guesses[0].given
             else:
                 return None
-        elif tp_data.start_time:
-            start_time = tp_data.start_time
+        elif progress.start_time:
+            start_time = progress.start_time
         else:
             return None
 
@@ -669,14 +669,14 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
         super().save(*args, **kwargs)
 
     def time_on_puzzle(self):
-        data = TeamPuzzleData.objects.filter(
+        progress = TeamPuzzleProgress.objects.filter(
             puzzle=self.for_puzzle,
             team=self.by_team
         ).get()
-        if not data.start_time:
-            # This should never happen, but can do with sample data.
+        if not progress.start_time:
+            # This should never happen, but can do with sample progress.
             return '0'
-        return self.given - data.start_time
+        return self.given - progress.start_time
 
 
 class TeamData(models.Model):
