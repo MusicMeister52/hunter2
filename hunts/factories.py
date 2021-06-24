@@ -297,7 +297,6 @@ class TeamPuzzleDataFactory(DataFactory):
 
     puzzle = factory.SubFactory(PuzzleFactory)
     team = factory.SubFactory(TeamFactory)
-    start_time = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
 
 
 class UserPuzzleDataFactory(DataFactory):

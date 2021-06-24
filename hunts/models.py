@@ -706,7 +706,6 @@ class UserData(models.Model):
 class TeamPuzzleData(SealableModel):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
-    start_time = models.DateTimeField(blank=True, null=True)
     data = models.JSONField(blank=True, null=True)
 
     class Meta:
