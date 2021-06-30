@@ -27,7 +27,7 @@ django-nested-admin = "==3.3.3"
 django-ordered-model = { git = "https://github.com/fish-face/django-ordered-model.git", rev = "8a2908472b7bfbedb530a845f6c18fc86da7b750" }
 django-prometheus = "2.1.0"
 django-redis-cache = "3.0.0"
-django-seal = "==1.4.3"
+django-seal = "==1.4.4"
 django-solo = "==1.1.5"
 django-sortedm2m = "3.0.2"
 django-tenants = "==3.3.2"
