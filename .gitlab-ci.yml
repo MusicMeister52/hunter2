@@ -159,7 +159,7 @@ test:app:
     - docker load -i "db.tar"
     - install -d -m 777 coverage reports
     - echo "POSTGRES_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
-    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" --entrypoint "/opt/hunter2/venv/bin/python" --rm app -Wd -m coverage run --source . manage.py test -v 2
+    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" --entrypoint "/opt/hunter2/venv/bin/python" --rm app -Wd -m coverage run --source . manage.py test -v 2 --parallel
     - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${IMAGE_TAG}" -m coverage html
     - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${IMAGE_TAG}" -m coverage report
   after_script:
