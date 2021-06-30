@@ -26,7 +26,7 @@ from django.utils import timezone
 from events.consumers import EventMixin
 from teams.models import Team
 from teams.consumers import TeamMixin
-from .models import Guess
+from .models import Guess, TeamPuzzleProgress
 from . import models, utils
 
 
@@ -218,8 +218,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         except KeyError:
             pass
 
-        data = models.PuzzleData(self.puzzle, self.team)
-        delay = hint.delay_for_team(self.team, data.tp_data)
+        progress, _ = models.TeamPuzzleProgress.objects.get_or_create(puzzle=self.puzzle, team=self.team)
+        delay = hint.delay_for_team(self.team, progress)
         if delay is None:
             return
         delay = delay.total_seconds()
@@ -422,15 +422,15 @@ class PuzzleEventWebsocket(HuntWebsocket):
                 'content': content
             })
 
-    def send_old_hints(self, start='all'):
+    def send_old_hints(self, start):
         hints = models.Hint.objects.filter(puzzle=self.puzzle).order_by('time')
-        data = models.PuzzleData(self.puzzle, self.team)
-        hints = [h for h in hints if h.unlocked_by(self.team, data.tp_data)]
+        progress = self.puzzle.teampuzzleprogress_set.get(team=self.team)
+        hints = [h for h in hints if h.unlocked_by(self.team, progress)]
         if start != 'all':
             start = datetime.fromtimestamp(int(start) // 1000, timezone.utc)
             # The following finds the hints which were *not* unlocked at the start time given.
             # combined with the existing filter this gives the ones the client might have missed.
-            hints = [h for h in hints if data.tp_data.start_time + h.time > start]
+            hints = [h for h in hints if progress.start_time + h.time > start]
             msg_type = 'new_hint'
         else:
             msg_type = 'old_hint'
@@ -554,17 +554,16 @@ class PuzzleEventWebsocket(HuntWebsocket):
         if old and hint.puzzle != old.puzzle:
             raise NotImplementedError
 
-        for team in Team.objects.all():
-            data = models.PuzzleData(hint.puzzle, team)
+        for progress in TeamPuzzleProgress.objects.filter(puzzle=hint.puzzle):
             layer = get_channel_layer()
-            if hint.unlocked_by(team, data.tp_data):
-                async_to_sync(layer.group_send)(cls._puzzle_groupname(hint.puzzle, team), {'type': 'cancel_scheduled_hint', 'hint_uid': str(hint.id)})
-                cls.send_new_hint_to_team(team, hint)
+            if hint.unlocked_by(progress.team, progress):
+                async_to_sync(layer.group_send)(cls._puzzle_groupname(hint.puzzle, progress.team), {'type': 'cancel_scheduled_hint', 'hint_uid': str(hint.id)})
+                cls.send_new_hint_to_team(progress.team, hint)
             else:
-                if old and old.unlocked_by(team, data.tp_data):
-                    cls.send_delete_hint(team, hint)
+                if old and old.unlocked_by(progress.team, progress):
+                    cls.send_delete_hint(progress.team, hint)
                 async_to_sync(layer.group_send)(
-                    cls._puzzle_groupname(hint.puzzle, team),
+                    cls._puzzle_groupname(hint.puzzle, progress.team),
                     {'type': 'schedule_hint_msg', 'hint_uid': str(hint.id), 'send_expired': True}
                 )
 
@@ -625,8 +624,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         hint = instance
 
         for team in Team.objects.all():
-            tp_data = models.TeamPuzzleData.objects.get(puzzle=hint.puzzle, team=team)
-            if hint.unlocked_by(team, tp_data):
+            progress = hint.puzzle.teampuzzleprogress_set.get(team=team)
+            if hint.unlocked_by(team, progress):
                 cls.send_delete_hint(team, hint)
 
 

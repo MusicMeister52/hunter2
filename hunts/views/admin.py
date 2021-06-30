@@ -260,15 +260,15 @@ class StatsContent(LoginRequiredMixin, View):
                 team_guesses[guess.by_team] = guess
 
         # Get when each team started each puzzle, and in how much time they solved each puzzle if they did.
-        puzzle_datas = models.TeamPuzzleData.objects.filter(puzzle__in=puzzles, team__in=all_teams).select_related('puzzle', 'team')
+        puzzle_progresses = models.TeamPuzzleProgress.objects.filter(puzzle__in=puzzles, team__in=all_teams).select_related('puzzle', 'team')
         start_times = defaultdict(lambda: defaultdict(dict))
         solved_times = defaultdict(list)
-        for data in puzzle_datas:
-            if data.team in correct_guesses[data.puzzle] and data.start_time:
-                start_times[data.team][data.puzzle] = None
-                solved_times[data.puzzle].append(correct_guesses[data.puzzle][data.team].given - data.start_time)
+        for progress in puzzle_progresses:
+            if progress.team in correct_guesses[progress.puzzle] and progress.start_time:
+                start_times[progress.team][progress.puzzle] = None
+                solved_times[progress.puzzle].append(correct_guesses[progress.puzzle][progress.team].given - progress.start_time)
             else:
-                start_times[data.team][data.puzzle] = data.start_time
+                start_times[progress.team][progress.puzzle] = progress.start_time
 
         # How long a team has been on a puzzle.
         stuckness = {
@@ -403,7 +403,7 @@ class ProgressContent(LoginRequiredMixin, View):
                 'guesses': pz_team['guesses'],
             }
 
-        all_puzzle_data = models.TeamPuzzleData.objects.filter(
+        all_puzzle_progress = models.TeamPuzzleProgress.objects.filter(
             team__at_event=request.tenant
         ).select_related(
             'team', 'puzzle'
@@ -422,9 +422,9 @@ class ProgressContent(LoginRequiredMixin, View):
             ),
             'puzzle__unlock_set__unlockanswer_set',
         ).seal()
-        puzzle_data = defaultdict(dict)
-        for pzd in all_puzzle_data:
-            puzzle_data[pzd.team.id][pzd.puzzle.id] = pzd
+        puzzle_progress = defaultdict(dict)
+        for progress in all_puzzle_progress:
+            puzzle_progress[progress.team.id][progress.puzzle.id] = progress
 
         def team_puzzle_state(team, puzzle):
             hints_scheduled = None
@@ -434,7 +434,7 @@ class ProgressContent(LoginRequiredMixin, View):
             if any(g.get_correct_for() for g in all_guesses if g.for_puzzle == puzzle and g.by_team == team):
                 state = 'solved'
                 guesses = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('guesses', 0)
-            elif not puzzle_data[team.id].get(puzzle.id) or not puzzle_data[team.id][puzzle.id].start_time:
+            elif not puzzle_progress[team.id].get(puzzle.id) or not puzzle_progress[team.id][puzzle.id].start_time:
                 state = 'not_opened'
             else:
                 state = 'open'
@@ -443,7 +443,8 @@ class ProgressContent(LoginRequiredMixin, View):
                 hints_scheduled = any([
                     True
                     for h in puzzle.hint_set.all()
-                    if h.unlocks_at(team, puzzle_data[team.id][puzzle.id]) and not h.unlocked_by(team, puzzle_data[team.id][puzzle.id], puzzle.guess_set.all())
+                    if h.unlocks_at(team, puzzle_progress[team.id][puzzle.id])
+                    and not h.unlocked_by(team, puzzle_progress[team.id][puzzle.id], puzzle.guess_set.all())
                 ])
             return {
                 'puzzle_id': puzzle.id,
@@ -462,7 +463,7 @@ class ProgressContent(LoginRequiredMixin, View):
                                  if g.for_puzzle == pz and g.by_team == team)
                           ])
             looked_at = len([1 for pz in puzzles
-                             if puzzle_data[team.id].get(pz.id) and puzzle_data[team.id][pz.id].start_time])
+                             if puzzle_progress[team.id].get(pz.id) and puzzle_progress[team.id][pz.id].start_time])
             # for linear episodes, that would be be always be 1, so add in the number of solved puzzles
             # to discriminate.
             return looked_at - solved, -solved
@@ -575,12 +576,12 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
             if correct:
                 solved_puzzles[pz.id] = correct[0]
 
-        # Grab the TeamPuzzleData necessary to calculate hint timings
-        tp_datas = models.TeamPuzzleData.objects.filter(
+        # Grab the TeamPuzzleProgress necessary to calculate hint timings
+        tp_progresses = models.TeamPuzzleProgress.objects.filter(
             puzzle__in=puzzles,
             team_id=team_id
         )
-        tp_datas = {tp_data.puzzle_id: tp_data for tp_data in tp_datas}
+        tp_progresses = {tp_progress.puzzle_id: tp_progress for tp_progress in tp_progresses}
 
         # Collate visible hints and unlocks
         clues_visible = {
@@ -593,9 +594,9 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
             ] + [{
                 'type': 'Hint',
                 'text': h.text,
-                'received_at': h.unlocks_at(team, tp_datas[puzzle.id], puzzle.guess_set.all())}
+                'received_at': h.unlocks_at(team, tp_progresses[puzzle.id], puzzle.guess_set.all())}
                 for h in puzzle.hint_set.all()
-                if h.unlocked_by(team, tp_datas[puzzle.id], puzzle.guess_set.all())
+                if h.unlocked_by(team, tp_progresses[puzzle.id], puzzle.guess_set.all())
             ]
             for puzzle in puzzles
         }
@@ -605,10 +606,10 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
             puzzle.id: sorted([
                 {
                     'text': h.text,
-                    'time': h.unlocks_at(team, tp_datas[puzzle.id])
+                    'time': h.unlocks_at(team, tp_progresses[puzzle.id])
                 }
                 for h in puzzle.hint_set.all()
-                if h.unlocks_at(team, tp_datas[puzzle.id]) and not h.unlocked_by(team, tp_datas[puzzle.id], puzzle.guess_set.all())
+                if h.unlocks_at(team, tp_progresses[puzzle.id]) and not h.unlocked_by(team, tp_progresses[puzzle.id], puzzle.guess_set.all())
             ], key=lambda x: x['time'])
             for puzzle in puzzles
         }
@@ -621,8 +622,8 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
                 'title': puzzle.title,
                 'episode_name': puzzle.episode.name,
                 'id': puzzle.id,
-                'time_started': tp_datas[puzzle.id].start_time,
-                'time_on': latest - tp_datas[puzzle.id].start_time,
+                'time_started': tp_progresses[puzzle.id].start_time,
+                'time_on': latest - tp_progresses[puzzle.id].start_time,
                 'num_guesses': puzzle.num_guesses,
                 'guesses': [{
                     'user': guess.by.username,
@@ -639,7 +640,7 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
                 'title': puzzle.title,
                 'id': puzzle.id,
                 'time_finished': solved_puzzles[puzzle.id].given,
-                'time_taken': solved_puzzles[puzzle.id].given - tp_datas[puzzle.id].start_time,
+                'time_taken': solved_puzzles[puzzle.id].given - tp_progresses[puzzle.id].start_time,
                 'num_guesses': puzzle.num_guesses}
                 for puzzle in puzzles
                 if puzzle.id in solved_puzzles

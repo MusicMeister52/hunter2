@@ -20,7 +20,7 @@ from schema import And, Schema
 
 from teams.models import TeamRole
 from .abstract import AbstractGenerator
-from ..models import Episode, TeamPuzzleData
+from ..models import Episode, TeamPuzzleProgress
 
 
 class ProgressGenerator(AbstractGenerator):
@@ -66,7 +66,7 @@ class ProgressGenerator(AbstractGenerator):
 
         for episode in episodes:
             by_team = {}
-            tp_datas = TeamPuzzleData.objects.filter(
+            tp_progresses = TeamPuzzleProgress.objects.filter(
                 team__role=TeamRole.PLAYER,
                 puzzle__episode=episode,
                 start_time__isnull=False,
@@ -83,16 +83,16 @@ class ProgressGenerator(AbstractGenerator):
                 'team',
             )
 
-            for tp_data in tp_datas:
-                team_id = tp_data.team.id
+            for tp_progress in tp_progresses:
+                team_id = tp_progress.team.id
                 # If users changed team they may have a solving guess for a puzzle from before their new team's start time which is wonky
                 # Take the minimum of progress time and start time to be the start time
-                adjusted_start_time = min(tp_data.start_time, tp_data.completion_time) if tp_data.completion_time else tp_data.start_time
+                adjusted_start_time = min(tp_progress.start_time, tp_progress.completion_time) if tp_progress.completion_time else tp_progress.start_time
                 if team_id not in by_team:
                     by_team[team_id] = {
                         'team_id': team_id,
                         # We have to escape team names here since they are encoded in JSON which is marked safe later
-                        'team_name': escape(tp_data.team.get_display_name()),
+                        'team_name': escape(tp_progress.team.get_display_name()),
                         'puzzle_times': [{
                             'puzzle_name': '',
                             # Keep the overall start time as a Python datetime to allow comparison below
@@ -104,10 +104,10 @@ class ProgressGenerator(AbstractGenerator):
                 elif adjusted_start_time < by_team[team_id]['puzzle_times'][0]['date']:
                     by_team[team_id]['puzzle_times'][0]['date'] = adjusted_start_time
 
-                if tp_data.completion_time:
+                if tp_progress.completion_time:
                     by_team[team_id]['puzzle_times'].append({
-                        'puzzle_name': tp_data.puzzle.title,
-                        'date': tp_data.completion_time.isoformat(),
+                        'puzzle_name': tp_progress.puzzle.title,
+                        'date': tp_progress.completion_time.isoformat(),
                     })
 
             # Format the start dates now we've finished comparing them

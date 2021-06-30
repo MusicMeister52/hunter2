@@ -253,6 +253,16 @@ class GuessFactory(factory.django.DjangoModelFactory):
     # by_team, correct_for and correct_current are all handled internally.
 
 
+class TeamPuzzleProgressFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = 'hunts.TeamPuzzleProgress'
+        django_get_or_create = ('puzzle', 'team')
+
+    start_time = factory.Faker('past_datetime', start_date='-1h', tzinfo=pytz.utc)
+    puzzle = factory.SubFactory(PuzzleFactory)
+    team = factory.SubFactory(TeamFactory)
+
+
 class DataFactory(factory.django.DjangoModelFactory):
     class Meta:
         abstract = True
@@ -287,7 +297,6 @@ class TeamPuzzleDataFactory(DataFactory):
 
     puzzle = factory.SubFactory(PuzzleFactory)
     team = factory.SubFactory(TeamFactory)
-    start_time = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
 
 
 class UserPuzzleDataFactory(DataFactory):
