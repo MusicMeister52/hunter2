@@ -58,19 +58,23 @@ class EpisodeUnlockedMixin():
 
 class PuzzleUnlockedMixin():
     def dispatch(self, request, episode_number, puzzle_number, *args, **kwargs):
-        # Views using this mixin inevitable want the episode and puzzle objects so keep it on the request
+        # Views using this mixin inevitably want the episode and puzzle objects so keep it on the request
         request.episode, request.puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
         request.admin = is_admin_for_event.test(request.user, request.tenant)
 
-        if (not request.episode.started(request.team) or not request.episode.unlocked_by(request.team)) and not request.admin:
+        if request.admin or request.puzzle.available(request.team):
+            return super().dispatch(request, *args, episode_number=episode_number, puzzle_number=puzzle_number, **kwargs)
+
+        if not request.episode.available(request.team):
             if not request.accepts('text/html'):
                 raise PermissionDenied
             event_url = reverse('event')
             return redirect(f'{event_url}#episode-{episode_number}')
 
-        if not request.puzzle.started(request.team) and not request.admin:
-            if not request.accepts('text/html'):
-                raise PermissionDenied
+        if not request.accepts('text/html'):
+            raise PermissionDenied
+
+        if not request.puzzle.started(None):
             return TemplateResponse(
                 request,
                 'hunts/puzzlenotstarted.html',
@@ -80,14 +84,9 @@ class PuzzleUnlockedMixin():
                 status=403,
             )
 
-        if not request.puzzle.unlocked_by(request.team) and not request.admin:
-            if not request.accepts('text/html'):
-                raise PermissionDenied
-            return TemplateResponse(
-                request, 'hunts/puzzlelocked.html', status=403
-            )
-
-        return super().dispatch(request, *args, episode_number=episode_number, puzzle_number=puzzle_number, **kwargs)
+        return TemplateResponse(
+            request, 'hunts/puzzlelocked.html', status=403
+        )
 
 
 class PuzzleAdminMixin():
