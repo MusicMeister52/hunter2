@@ -171,7 +171,7 @@ tests = ["pytest (>=4.4,<5.0)", "pytest-django (>=3.4,<4.0)", "pytest-asyncio (>
 
 [[package]]
 name = "channels-redis"
-version = "3.2.0"
+version = "3.3.0"
 description = "Redis-backed ASGI channel layer implementation"
 category = "main"
 optional = false
@@ -185,7 +185,7 @@ msgpack = ">=1.0,<2.0"
 
 [package.extras]
 cryptography = ["cryptography (>=1.3.0)"]
-tests = ["cryptography (>=1.3.0)", "pytest", "pytest-asyncio", "async-generator", "async-timeout"]
+tests = ["cryptography (>=1.3.0)", "pytest", "pytest-asyncio (==0.14.0)", "async-generator", "async-timeout"]
 
 [[package]]
 name = "chardet"
@@ -1289,7 +1289,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "2ff8a2ec1773c6492c2cc6f916d1900464544b64139ad43f978a4d114886c93d"
+content-hash = "c589edbab7d9a7945354c30a683986306fdc22d23a1b035817da09b4e7fb9407"
 
 [metadata.files]
 aioredis = [
@@ -1397,8 +1397,8 @@ channels = [
     {file = "channels-2.4.0.tar.gz", hash = "sha256:08e756406d7165cb32f6fc3090c0643f41ca9f7e0f7fada0b31194662f20f414"},
 ]
 channels-redis = [
-    {file = "channels_redis-3.2.0-py2.py3-none-any.whl", hash = "sha256:18d63f6462a58011740dc8eeb57ea4b31ec220eb551cb71b27de9c6779a549de"},
-    {file = "channels_redis-3.2.0.tar.gz", hash = "sha256:2fb31a63b05373f6402da2e6a91a22b9e66eb8b56626c6bfc93e156c734c5ae6"},
+    {file = "channels_redis-3.3.0-py3-none-any.whl", hash = "sha256:1abd5820ff1ed4ac627f8a219ad389e4c87e52e47a230929a7a474e95dd2c6c2"},
+    {file = "channels_redis-3.3.0.tar.gz", hash = "sha256:0a18ce279c15ba79b7985bb12b2d6dd0ac8a14e4ad6952681f4422a4cc4a5ea9"},
 ]
 chardet = [
     {file = "chardet-4.0.0-py2.py3-none-any.whl", hash = "sha256:f864054d66fd9118f2e67044ac8981a54775ec5b67aed0441892edb553d21da5"},
