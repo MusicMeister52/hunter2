@@ -49,7 +49,7 @@
     "d3": "6.7.0",
     "date-fns": "2.22.1",
     "distinct-colors": "3.0.0",
-    "element-ui": "2.15.2",
+    "element-ui": "2.15.3",
     "expose-loader": "3.0.0",
     "file-loader": "6.2.0",
     "html-entities": "2.3.2",
