@@ -152,6 +152,7 @@ SHARED_APPS = (
     'django.contrib.staticfiles',
     'django_extensions',
     'django_fullclean',
+    'django_postgresql_dag',
     'django_prometheus',
     'django_tenants',
     'nested_admin',

@@ -52,7 +52,7 @@ class EpisodeFactory(factory.django.DjangoModelFactory):
         if extracted:
             # A list of prequels were passed in, use them
             for prequel in (extracted if isinstance(extracted, abc.Iterable) else (extracted,)):
-                self.prequels.add(prequel)
+                self.add_prequel(prequel)
 
     @factory.post_generation
     def headstart_from(self, create, extracted, **kwargs):

@@ -808,9 +808,9 @@ class EpisodeSequenceTests(EventTestCase):
     def test_episode_prequel_validation(self):
         # Because we intentionally throw exceptions we need to use transaction.atomic() to avoid a TransactionManagementError
         with self.assertRaises(ValidationError), transaction.atomic():
-            self.episode1.prequels.add(self.episode1)
+            self.episode1.add_parent(self.episode1)
         with self.assertRaises(ValidationError), transaction.atomic():
-            self.episode1.prequels.add(self.episode2)
+            self.episode1.add_parent(self.episode2)
 
     def test_episode_unlocking(self):
         puzzle = PuzzleFactory(episode=self.episode1)
