@@ -11,23 +11,11 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 from accounts.models import UserProfile
 from teams.models import Team
-from .models import Episode, Guess
-
-
-@receiver(m2m_changed, sender=Episode.prequels.through)
-def episode_prequels_changed(sender, instance, action, pk_set, **kwargs):
-    if action == 'pre_add':
-        for episode_id in pk_set:
-            episode = Episode.objects.get(pk=episode_id)
-            if episode == instance:
-                raise ValidationError('Episode cannot follow itself')
-            elif episode.follows(instance):
-                raise ValidationError('Circular dependency found in episodes')
+from .models import Guess
 
 
 @receiver(m2m_changed, sender=Team.members.through)

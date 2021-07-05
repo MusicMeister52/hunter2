@@ -322,7 +322,6 @@ class EpisodeAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdmin):
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.fields['prequels'].queryset = models.Episode.objects.exclude(id__exact=self.instance.id)
             self.fields['headstart_from'].queryset = models.Episode.objects.exclude(id__exact=self.instance.id)
 
     form = Form
