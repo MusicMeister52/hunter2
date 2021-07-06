@@ -6,7 +6,7 @@ FROM ${IMAGE_TAG} AS app
 USER root
 RUN /opt/hunter2/venv/bin/python manage.py collectstatic
 
-FROM openresty/openresty:1.19.3.1-2-alpine@sha256:0446c459cf3924dd46e5d975b2d2d1974d51842701dd546a061ae474f713f602
+FROM openresty/openresty:1.19.3.2-2-alpine@sha256:93a6b195771191d7402b66f91d5b6f52ca4797c8584261ebc1743b970478f6aa
 
 RUN --mount=type=cache,target=/var/cache/apk apk add -t opm \
     curl \

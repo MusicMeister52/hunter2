@@ -11,4 +11,4 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from . import progress, validation  # noqa: F401
+from . import progress  # noqa: F401

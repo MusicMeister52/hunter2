@@ -27,11 +27,6 @@ class APIToken(models.Model):
         return str(self.token)
 
 
-class Configuration(SingletonModel):
-    index_content = models.TextField()
-    privacy_policy = models.TextField(blank=True)
-
-
 class File(models.Model):
     slug = models.SlugField(unique=True)
     file = models.FileField(
@@ -46,3 +41,12 @@ class Icon(models.Model):
 
     def url(self):
         return self.file.file.url
+
+
+class Configuration(SingletonModel):
+    index_content = models.TextField()
+    privacy_policy = models.TextField(blank=True)
+    script = models.TextField(blank=True)
+    script_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')
+    style = models.TextField(blank=True)
+    style_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')

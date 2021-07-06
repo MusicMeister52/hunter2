@@ -10,7 +10,6 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
-import itertools
 import secrets
 import uuid
 from datetime import timedelta
@@ -20,6 +19,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.urls import reverse
+from django_postgresql_dag.models import node_factory, edge_factory
 from django_prometheus.models import ExportModelOperationsMixin
 from enumfields import EnumField, Enum
 from ordered_model.models import OrderedModel
@@ -34,14 +34,15 @@ from . import utils
 from .runtimes import Runtime
 
 
-class Episode(models.Model):
+# App label qualified lazy model name is required for the django-extensions graph_models to work
+# It gets confused because the referencing field is actually in the base class in a different app
+class EpisodePrequel(edge_factory('hunts.Episode', concrete=False)):
+    pass
+
+
+class Episode(node_factory(EpisodePrequel)):
     name = models.CharField(max_length=255)
     flavour = models.TextField(blank=True)
-    prequels = models.ManyToManyField(
-        'self', blank=True,
-        help_text='Set of episodes which must be completed before starting this one', related_name='sequels',
-        symmetrical=False,
-    )
     start_date = models.DateTimeField()
     event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING)
     parallel = models.BooleanField(default=False, help_text='Allow players to answer riddles in this episode in any order they like')
@@ -59,18 +60,34 @@ class Episode(models.Model):
     def __str__(self):
         return f'{self.event.name} - {self.name}'
 
+    # The following 6 @property methods are aliasing the methods provided by the DAG implementation to names which make sense for our use case
+
+    @property
+    def prequels(self):
+        return self.parents
+
+    @property
+    def add_prequel(self):
+        return self.add_parent
+
+    @property
+    def all_prequels(self):
+        return self.ancestors
+
+    @property
+    def sequels(self):
+        return self.children
+
+    @property
+    def add_sequel(self):
+        return self.add_child
+
+    @property
+    def all_sequels(self):
+        return self.descendants
+
     def get_absolute_url(self):
         return reverse('event') + '#episode-{}'.format(self.get_relative_id())
-
-    def all_sequels(self):
-        return set(itertools.chain(self.sequels.all(), *[e.all_sequels() for e in self.sequels.all()]))
-
-    def follows(self, episode):
-        """Does this episode follow the provied episode by one or more prequel relationships?"""
-        if episode in self.prequels.all():
-            return True
-        else:
-            return any([p.follows(episode) for p in self.prequels.all()])
 
     def get_puzzle(self, puzzle_number):
         n = int(puzzle_number)

@@ -12,7 +12,7 @@ services:
     volumes:
       - db:/var/lib/postgresql/data
   redis:
-    image: redis:6.2.2-alpine3.13@sha256:f9577ac6e68c70b518e691406f2bebee49d8db22118fc87bad3b39c16a1cb46e
+    image: redis:6.2.4-alpine3.13@sha256:6833ca04ec87a2222928157125dffcca22c68e2db304164cc050ee9cc6b05b4e
     volumes:
       - redis:/data
   webpack:
@@ -43,7 +43,7 @@ services:
       - H2_DEBUG=True
       - H2_DOMAIN
       - H2_TEST_SEED
-      - H2_SENDFILE=sendfile.backends.development
+      - H2_SENDFILE=django_sendfile.backends.development
       - H2_SENTRY_DSN
       - H2_SILK
     image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}

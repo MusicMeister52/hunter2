@@ -13,6 +13,14 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
 	{% render_bundle 'hunter2' 'css' %}
+	{% if site_style_file %}
+	<link rel="style" href="{{ site_style_file }}" />
+	{% endif %}
+	{% if site_style %}
+	<style>
+		{{ site_style | safe }}
+	</style>
+	{% endif %}
 	{% block style %}{% endblock %}
 
 	<title>{% block title %}{{ request.site.name }}{% endblock %}</title>
@@ -44,6 +52,15 @@
 	{% block script %}
 	{% render_bundle 'hunter2' 'js' attrs='defer' %}
 	{% endblock %}
+
+	{% if site_script %}
+	<script defer>
+		{{ site_script }}
+	</script>
+	{% endif %}
+	{% if site_script_file %}
+	<script src="{{ site_script_file }}" defer></script>
+	{% endif %}
 
 	{% cache 300 icons %}
 	{% for icon in icons %}

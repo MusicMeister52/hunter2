@@ -19,7 +19,7 @@ services:
       - H2_PIWIK_HOST
       - H2_PIWIK_SITE
       - H2_SCHEME
-      - H2_SENDFILE=sendfile.backends.nginx
+      - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
       - UWSGI_WWORKERS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
@@ -45,7 +45,7 @@ services:
       - H2_PIWIK_HOST
       - H2_PIWIK_SITE
       - H2_SCHEME
-      - H2_SENDFILE=sendfile.backends.nginx
+      - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
       - ASGI_THREADS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
@@ -78,7 +78,7 @@ services:
     volumes:
       - metrics:/prometheus
   redis:
-    image: redis:6.2.2-alpine3.13@sha256:f9577ac6e68c70b518e691406f2bebee49d8db22118fc87bad3b39c16a1cb46e
+    image: redis:6.2.4-alpine3.13@sha256:6833ca04ec87a2222928157125dffcca22c68e2db304164cc050ee9cc6b05b4e
     volumes:
       - redis:/data
   redis_exporter:
@@ -86,7 +86,7 @@ services:
       - redis
     environment:
       - REDIS_ADDR=redis://redis:6379
-    image: oliver006/redis_exporter:v1.23.0-alpine@sha256:d99c1b916981c824e29dfda6641be13770740848f78b759ab2eece69c33de68d
+    image: oliver006/redis_exporter:v1.24.0-alpine@sha256:a8645cd1af96c2a72db0ca240e3687116fa9e7aa649529ffa9371111db3c3323
   web:
     depends_on:
       - app
