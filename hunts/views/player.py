@@ -28,7 +28,6 @@ from django_sendfile import sendfile
 from accounts.models import UserInfo
 from events.utils import annotate_userinfo_queryset_with_seat
 from teams.models import TeamRole
-from teams.mixins import TeamMixin
 from teams.rules import is_admin_for_event
 from .mixins import EpisodeUnlockedMixin, EventMustBeOverMixin, PuzzleUnlockedMixin
 from .. import models, utils
@@ -48,12 +47,12 @@ class Index(TemplateView):
         }
 
 
-class EpisodeIndex(LoginRequiredMixin, TeamMixin, EpisodeUnlockedMixin, View):
+class EpisodeIndex(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
         return redirect(request.episode.get_absolute_url(), permanent=True)
 
 
-class EpisodeContent(LoginRequiredMixin, TeamMixin, EpisodeUnlockedMixin, View):
+class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
         puzzles = request.episode.unlocked_puzzles(request.team)
         for puzzle in puzzles:
@@ -128,7 +127,7 @@ class EventIndex(LoginRequiredMixin, View):
         )
 
 
-class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number):
         puzzle = request.puzzle
 
@@ -232,7 +231,7 @@ class AbsolutePuzzleView(RedirectView):
             return puzzle.get_absolute_url() + path
 
 
-class SolutionContent(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number):
         episode, puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -272,7 +271,7 @@ class SolutionContent(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         return HttpResponse(text)
 
 
-class PuzzleFile(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class PuzzleFile(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number, file_path):
         puzzle_file = get_object_or_404(request.puzzle.puzzlefile_set, url_path=file_path)
         return sendfile(request, puzzle_file.file.path)
@@ -290,7 +289,7 @@ class SolutionFile(View):
         return sendfile(request, solution_file.file.path)
 
 
-class Answer(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
         if not request.admin and request.puzzle.answered_by(request.team):
             return JsonResponse({'error': 'already answered'}, status=422)
@@ -340,7 +339,7 @@ class Answer(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         return JsonResponse(response)
 
 
-class Callback(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class Callback(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
         if request.content_type != 'application/json':
             return HttpResponse(status=415)

@@ -28,6 +28,10 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     objects = UserProfileManager()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._team_at = {}
+
     @property
     def username(self):
         return self.user.username
@@ -46,7 +50,11 @@ class UserProfile(models.Model):
         return self.user.info.attendance_set.get(event=event)
 
     def team_at(self, event):
-        return self.teams.get(at_event=event)
+        if event in self._team_at:
+            return self._team_at[event]
+        team = self.teams.get(at_event=event)
+        self._team_at[event] = team
+        return team
 
 
 # Today this is a new model because it needs an unenumerable key since it will be used in a URL.
