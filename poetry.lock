@@ -837,7 +837,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "ptpython"
-version = "3.0.18"
+version = "3.0.19"
 description = "Python REPL build on top of prompt_toolkit"
 category = "dev"
 optional = false
@@ -1301,7 +1301,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "ead34db265ae3e8372c5da7eb0f2fadbd1fcfd3734ff6f08c99ea56e3d1a81e0"
+content-hash = "ca6c9c7703be4d24d191d50d00b5d7cbee642dc8d0c5436c88358818632de2c4"
 
 [metadata.files]
 aioredis = [
@@ -1812,8 +1812,8 @@ psycopg2 = [
     {file = "psycopg2-2.9.1.tar.gz", hash = "sha256:de5303a6f1d0a7a34b9d40e4d3bef684ccc44a49bbe3eb85e3c0bffb4a131b7c"},
 ]
 ptpython = [
-    {file = "ptpython-3.0.18-py2.py3-none-any.whl", hash = "sha256:0e156603adfab0436aedd3e149cd7af04edbf4deb7fd67eea06f21760700f3ae"},
-    {file = "ptpython-3.0.18.tar.gz", hash = "sha256:1a641021f550d03580576ddf49eb15a94693b39de9a8334786d85e180834da9d"},
+    {file = "ptpython-3.0.19-py2.py3-none-any.whl", hash = "sha256:c0f5d6516077d95175169fbc9bf9ade9211bbfdbd2e665c96e34637e3b0f9ae2"},
+    {file = "ptpython-3.0.19.tar.gz", hash = "sha256:b3d41ce7c2ce0e7e55051347eae400fc56b9b42b1c4a9db25b19ccf6195bfc12"},
 ]
 ptyprocess = [
     {file = "ptyprocess-0.7.0-py2.py3-none-any.whl", hash = "sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35"},
