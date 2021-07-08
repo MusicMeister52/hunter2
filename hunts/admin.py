@@ -316,13 +316,26 @@ class PuzzleAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdminMixin, Order
 @admin.register(models.Episode)
 class EpisodeAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdmin):
     class Form(forms.ModelForm):
+        prequels = forms.ModelMultipleChoiceField(
+            queryset=models.Episode.objects.all(),
+            required=False,
+        )
+
         class Meta:
             model = models.Episode
-            exclude = ['event']
+            fields = ['name', 'flavour', 'start_date', 'parallel', 'headstart_from', 'winning']
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.fields['headstart_from'].queryset = models.Episode.objects.exclude(id__exact=self.instance.id)
+            self.fields['prequels'].queryset = models.Episode.objects.exclude(id__exact=self.instance.id)
+            if self.instance.pk:
+                self.fields['prequels'].initial = self.instance.prequels.values_list('id', flat=True)
+
+        def _save_m2m(self):
+            for e in self.cleaned_data['prequels']:
+                self.instance.add_parent(e)
+            super()._save_m2m()
 
     form = Form
     ordering = ['start_date', 'pk']
