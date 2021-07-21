@@ -8,7 +8,7 @@ def populate_episode_dag(apps, schema_editor):
     Episode = apps.get_model('hunts', 'Episode')
     for episode in Episode.objects.all():
         for prequel in episode.prequels.all():
-            episode.add_parent(prequel)
+            Episode.children.through(parent=prequel, child=episode).save()
 
 
 def populate_episode_prequels(apps, schema_editor):
