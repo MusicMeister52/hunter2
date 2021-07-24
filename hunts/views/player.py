@@ -291,24 +291,20 @@ class SolutionFile(View):
 
 class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
-        if not request.admin and request.puzzle.answered_by(request.team):
+        if not request.admin and models.TeamPuzzleProgress.objects.filter(
+            team=request.team, puzzle=request.puzzle, solved_by__isnull=False
+        ).exists():
             return JsonResponse({'error': 'already answered'}, status=422)
 
         now = timezone.now()
 
         minimum_time = timedelta(seconds=5)
-        try:
-            latest_guess = models.Guess.objects.filter(
-                for_puzzle=request.puzzle,
-                by=request.user.profile
-            ).order_by(
-                '-given'
-            )[0]
-        except IndexError:
-            pass
-        else:
-            if latest_guess.given + minimum_time > now:
-                return JsonResponse({'error': 'too fast'}, status=429)
+        if models.Guess.objects.filter(
+            for_puzzle=request.puzzle,
+            by=request.user.profile,
+            given__gt=now - minimum_time
+        ).exists():
+            return JsonResponse({'error': 'too fast'}, status=429)
 
         given_answer = request.POST.get('answer', '')
         if given_answer == '':
@@ -325,7 +321,10 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         )
         guess.save()
 
-        correct = any([a.validate_guess(guess) for a in request.puzzle.answer_set.all()])
+        # progress record is updated by signals on save - get that info now.
+        correct = models.TeamPuzzleProgress.objects.filter(
+            team=request.team, puzzle=request.puzzle, solved_by=guess
+        ).exists()
 
         # Build the response JSON depending on whether the answer was correct
         response = {}
