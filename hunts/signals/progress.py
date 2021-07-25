@@ -84,6 +84,7 @@ def saved_guess(sender, instance, raw, created, *args, **kwargs):
         for answer in answers:
             if answer.validate_guess(guess):
                 progress.solved_by = guess
+                guess.is_correct = True
                 progress.save()
                 break
 

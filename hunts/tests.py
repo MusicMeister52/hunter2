@@ -263,6 +263,14 @@ class AnswerSubmissionTests(EventTestCase):
         },)
         self.client.force_login(self.user.user)
 
+    def test_answer_correct(self):
+        response = self.client.post(self.url, {
+            'last_updated': '0',
+            'answer': GuessFactory.build(for_puzzle=self.puzzle, correct=True).guess
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['correct'], 'true')
+
     def test_no_answer_given(self):
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 400)

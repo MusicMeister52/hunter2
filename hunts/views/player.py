@@ -322,9 +322,10 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         guess.save()
 
         # progress record is updated by signals on save - get that info now.
-        correct = models.TeamPuzzleProgress.objects.filter(
-            team=request.team, puzzle=request.puzzle, solved_by=guess
-        ).exists()
+        try:
+            correct = guess.is_correct
+        except AttributeError:
+            correct = False
 
         # Build the response JSON depending on whether the answer was correct
         response = {}
