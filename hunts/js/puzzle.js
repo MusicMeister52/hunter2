@@ -1,6 +1,8 @@
 import $ from 'jquery'
 import 'bootstrap/js/dist/collapse'
 import { easeLinear, format, select } from 'd3'
+import durationFilters from './human-duration'
+import { Duration } from 'luxon'
 import RobustWebSocket from 'robust-websocket'
 import { encode } from 'html-entities'
 
@@ -26,7 +28,7 @@ function incorrect_answer(guess, timeout_length, timeout) {
 }
 
 function correct_answer() {
-  var form = $('.form-inline')
+  var form = $('#answer-form')
   if (form.length) {
     // We got a direct response before the WebSocket notified us (possibly because the WebSocket is broken
     // in this case, we still want to tell the user that they got the right answer. If the WebSocket is
@@ -37,7 +39,7 @@ function correct_answer() {
 
 function message(message, error) {
   var error_msg = $('<div class="submission-error-container"><p class="submission-error" title="' + error + '">' + message + '</p></div>')
-  error_msg.appendTo($('.form-inline')).delay(5000).fadeOut(2000, function(){$(this).remove()})
+  error_msg.appendTo($('#answer-form')).delay(5000).fadeOut(2000, function(){$(this).remove()})
 }
 
 function evaluateButtonDisabledState(button) {
@@ -202,20 +204,6 @@ function receivedNewAnswers(content) {
   content.forEach(info => {
     if (!guesses.includes(info.guess_uid)) {
       addAnswer(info.by, info.guess, info.correct, info.guess_uid)
-      if (info.correct) {
-        var message = $('#correct-answer-message')
-        var html = `"${info.guess} was correct! Taking you ${info.text}. <a class="puzzle-complete-redirect" href="${info.redirect}">go right now</a>`
-        if (message.length) {
-          // The server already replied so we already put up a temporary message; just update it
-          message.html(html)
-        } else {
-          // That did not happen, so add the message
-          var form = $('.form-inline')
-          form.after(`<div id="correct-answer-message">${html}</div>`)
-          form.remove()
-        }
-        setTimeout(function () {window.location.href = info.redirect}, 3000)
-      }
     }
   })
 }
@@ -224,6 +212,23 @@ function receivedOldAnswers(content) {
   content.forEach(info => {
     addAnswer(info.by, info.guess, info.correct, info.guess_uid)
   })
+}
+
+function receivedSolvedMsg(content) {
+  let message = $('#correct-answer-message')
+  const time = durationFilters.filters.durationForHumans(Duration.fromMillis(content.time * 1000).toISO())
+  const html = `"${content.guess} by ${content.by} was correct! You spent ${time} on the puzzle.` +
+    `Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
+  if (message.length) {
+    // The server already replied so we already put up a temporary message; just update it
+    message.html(html)
+  } else {
+    // That did not happen, so add the message
+    var form = $('#answer-form')
+    form.after(`<div id="correct-answer-message">${html}</div>`)
+    form.remove()
+  }
+  setTimeout(function () {window.location.href = content.redirect}, 3000)
 }
 
 function updateUnlocks() {
@@ -308,6 +313,9 @@ function receivedDeleteUnlockGuess(content) {
   var unlockguesses = unlocks.get(content.unlock_uid).guesses
   var i = unlockguesses.indexOf(content.guess)
   unlockguesses.splice(i, 1)
+  if (unlockguesses.length == 0) {
+    unlocks.delete(content.unlock_uid)
+  }
   updateUnlocks()
 }
 
@@ -371,6 +379,7 @@ function openEventSocket() {
     'delete_announcement': window.alertList.deleteAnnouncement,
     'new_guesses': receivedNewAnswers,
     'old_guesses': receivedOldAnswers,
+    'solved': receivedSolvedMsg,
     'new_unlock': receivedNewUnlock,
     'old_unlock': receivedNewUnlock,
     'change_unlock': receivedChangeUnlock,
@@ -430,7 +439,7 @@ $(function() {
 
   openEventSocket()
 
-  $('.form-inline').submit(function(e) {
+  $('#answer-form').submit(function(e) {
     e.preventDefault()
     if (!field.val()) {
       field.focus()

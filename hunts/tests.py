@@ -2141,6 +2141,14 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertTrue(self.pz.answered_by(user.team_at(self.tenant)))
 
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        # We should be notified that we solved the puzzle. Since the episode had just one puzzle,
+        # we are now done with that episode and should be redirected back to the episode.
+        self.assertEqual(output['type'], 'solved')
+        self.assertEqual(output['content']['guess'], g.guess)
+        self.assertEqual(output['content']['by'], user.user.username)
+        self.assertLessEqual(output['content']['time'], 1)
+        self.assertEqual(output['content']['redirect'], self.ep.get_absolute_url(), 'Websocket did not redirect to the episode after completing that episode')
+        output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # We should be notified of the correct guess. Since the episode had just one puzzle,
@@ -2150,14 +2158,21 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content'][0]['guess'], g.guess)
         self.assertEqual(output['content'][0]['correct'], True)
         self.assertEqual(output['content'][0]['by'], user.user.username)
-        self.assertEqual(output['content'][0]['redirect'], self.ep.get_absolute_url(),
-                         'Websocket did not redirect to the episode after completing that episode')
 
         # Now add another puzzle. We should be redirected to that puzzle, since it is the
         # unique unfinished puzzle on the episode.
         pz2 = PuzzleFactory(episode=self.ep)
         g.delete()
         g.save()
+
+        output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        self.assertEqual(output['type'], 'solved')
+        self.assertEqual(output['content']['guess'], g.guess)
+        self.assertEqual(output['content']['by'], user.user.username)
+        self.assertLessEqual(output['content']['time'], 1)
+        self.assertEqual(output['content']['redirect'], pz2.get_absolute_url(),
+                         'Websocket did not redirect to the next available puzzle when completing'
+                         'one of two puzzles on an episode')
 
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm.receive_nothing)())
@@ -2168,9 +2183,6 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(received['guess'], g.guess)
         self.assertEqual(received['correct'], True)
         self.assertEqual(received['by'], user.user.username)
-        self.assertEqual(received['redirect'], pz2.get_absolute_url(),
-                         'Websocket did not redirect to the next available puzzle when completing'
-                         'one of two puzzles on an episode')
 
         self.run_async(comm.disconnect)()
 
@@ -2265,25 +2277,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         # Delete the entire unlock, check we are told
         old_id = ua.unlock.id
         ua.unlock.delete()
-        output1 = self.receive_json(comm, 'Websocket did nothing in response to a deleted, unlocked unlock')
-        output2 = self.receive_json(comm, 'Websocket did nothing in response to a deleted, unlocked unlock')
+        output = self.receive_json(comm, 'Websocket did nothing in response to a deleted, unlocked unlock')
 
-        # Right now deleting an unlock cascades to the unlockanswers so we get events for both of them.
-        # We only actually care about the deleted unlock in this case, but we still check for precise behaviour
-        # here since this test ought to be changed if the event no longer cascades.
-        try:
-            if output1['type'] == 'delete_unlock' and output2['type'] == 'delete_unlockguess':
-                delete_unlock = output1
-                delete_unlockguess = output2
-            elif output2['type'] == 'delete_unlock' and output1['type'] == 'delete_unlockguess':
-                delete_unlock = output2
-                delete_unlockguess = output1
-            else:
-                self.fail('Websocket did not receive exactly one each of delete_unlock and delete_unlockguess')
-        except KeyError:
-            self.fail('Websocket did not receive exactly one each of delete_unlock and delete_unlockguess')
-
-        self.assertEqual(delete_unlock['content']['unlock_uid'], encode_uuid(old_id))
+        self.assertEqual(output['type'], 'delete_unlockguess')
+        self.assertEqual(output['content']['guess'], 'different_unlock_guess')
+        self.assertEqual(output['content']['unlock_uid'], encode_uuid(old_id))
 
         # Everything is done, check member of another team didn't overhear anything
         self.assertTrue(self.run_async(comm_eve.receive_nothing)(), 'Websocket sent user updates they should not have received')
@@ -2361,12 +2359,15 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['hint'], hint.text)
         self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
 
-        # alter the unlockanswer again, check hint re-appears
-        guess.guess = '__DIFFERENT_2__'
-        guess.save()
-        unlockanswer.guess = guess.guess
+        # alter the unlockanswer to an already-made gss, check hint re-appears
+        GuessFactory(for_puzzle=self.pz, by=user, guess='__DIFFERENT__')
+        self.receive_json(comm, 'Websocket did not receive new guess')
+        unlockanswer.guess = '__DIFFERENT__'
         unlockanswer.save()
-        self.receive_json(comm, 'Websocket did not resend unlock')
+        output = self.receive_json(comm, 'Websocket did not delete unlock')
+        self.assertEqual(output['type'], 'delete_unlockguess')
+        output = self.receive_json(comm, 'Websocket did not resend unlock')
+        self.assertEqual(output['type'], 'new_unlock')
         output = self.receive_json(comm, 'Websocket did not resend hint')
         self.assertEqual(output['type'], 'new_hint')
         self.assertEqual(output['content']['hint_uid'], hint.compact_id)
@@ -2374,7 +2375,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         # delete the unlockanswer, check for notification
         unlockanswer.delete()
 
-        self.receive_json(comm, 'Websocket did not delete unlockanswer')
+        output = self.receive_json(comm, 'Websocket did not delete unlockanswer')
+        self.assertEqual(output['type'], 'delete_unlockguess')
 
         # guesses are write-only - no notification
         guess.delete()

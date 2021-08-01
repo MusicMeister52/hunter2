@@ -78,7 +78,8 @@ def saved_guess(sender, instance, raw, created, *args, **kwargs):
             'start_time': guess.given,
         },
     )
-    unlocks = guess.for_puzzle.unlock_set.all().prefetch_related('unlockanswer_set').seal()
+    # hints are prefetched for the consumer signal handler
+    unlocks = guess.for_puzzle.unlock_set.all().prefetch_related('unlockanswer_set', 'hint_set').seal()
 
     if not progress.solved_by_id:
         for answer in answers:
@@ -137,11 +138,22 @@ def saved_unlockanswer(sender, instance, raw, *args, **kwargs):
     unlock = unlockanswer.unlock
     puzzle = unlock.puzzle
 
-    progresses = {tpp.team_id: tpp for tpp in models.TeamPuzzleProgress.objects.filter(puzzle=puzzle).seal()}
     guesses = models.Guess.objects.filter(for_puzzle=puzzle).seal()
-    models.TeamUnlock.objects.filter(unlockanswer=unlockanswer).delete()
+    do_not_delete = []
     for guess in guesses:
         if unlockanswer.validate_guess(guess):
+            do_not_delete.append(guess)
+    # TODO can't seal these because select_related doesn't propagate to the deletion handler, but sealing does???
+    affected = models.TeamUnlock.objects.filter(unlockanswer=unlockanswer).exclude(unlocked_by__in=do_not_delete)
+    affected.delete()
+
+    if not do_not_delete:
+        return
+
+    progresses = {tpp.team_id: tpp for tpp in models.TeamPuzzleProgress.objects.filter(puzzle=puzzle).select_related('team', 'puzzle').seal()}
+    affected_guess_ids = {v[0] for v in affected.values_list('unlocked_by')}
+    for guess in do_not_delete:
+        if guess.id not in affected_guess_ids:
             tpp = progresses[guess.by_team_id]
             models.TeamUnlock(team_puzzle_progress=tpp, unlockanswer=unlockanswer, unlocked_by=guess).save()
 
