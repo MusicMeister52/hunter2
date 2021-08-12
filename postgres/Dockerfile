@@ -1,3 +1,3 @@
-FROM postgres:9.6.22-alpine@sha256:4f88d1cad1372cf872043a9ffd569a8ba1aed7d17c5a5c88fd1b675f5fec62a9
+FROM postgres:9.6.23-alpine@sha256:a8d5fb9e899e919ce33fad29716729572749b821b6aae99fa6748bc109f82044
 
 COPY initdb/* /docker-entrypoint-initdb.d/
