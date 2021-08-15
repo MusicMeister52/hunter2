@@ -1765,10 +1765,10 @@ chart.js@2.9.4:
     chartjs-color "^2.1.0"
     moment "^2.10.2"
 
-chartjs-adapter-luxon@1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/chartjs-adapter-luxon/-/chartjs-adapter-luxon-1.0.0.tgz#4f37164295859a468b64cc24ec2718356aa63d94"
-  integrity sha512-oy4iH4o6+8FqDoHYsEmUAB8+q8QO+vERDDHkmODm+MwWW1cet02wHN2KYvidwgBLYUX0laNWaWGN7l8Thac2Zg==
+chartjs-adapter-luxon@1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/chartjs-adapter-luxon/-/chartjs-adapter-luxon-1.1.0.tgz#0a0d9213db5de0ad3285fae896b4c4b74db9007b"
+  integrity sha512-CS+xBWEyXYVLBZ3dSY/MwlSXhz8er4JjkApazY84ft/++oOLsmkt6TaXBCsUFudum7QdoYmpxiL/gSp20+emkw==
 
 chartjs-color-string@^0.6.0:
   version "0.6.0"
