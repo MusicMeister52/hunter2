@@ -16,10 +16,12 @@ module.exports = merge(common, {
   },
 
   devServer: {
-    publicPath: PUBLIC_PATH,
+    allowedHosts: 'all',
+    devMiddleware: {
+      publicPath: PUBLIC_PATH,
+    },
     host: '0.0.0.0',
     port: DEV_SERVER_PORT,
-    disableHostCheck: true,
   },
 
   plugins: [
