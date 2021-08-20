@@ -774,14 +774,10 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
         super().save(*args, **kwargs)
 
     def time_on_puzzle(self):
-        progress = TeamPuzzleProgress.objects.filter(
-            puzzle=self.for_puzzle,
-            team=self.by_team
-        ).get()
-        if not progress.start_time:
+        if not self.progress.start_time:
             # This should never happen, but can do with sample progress.
             return '0'
-        return self.given - progress.start_time
+        return self.given - self.progress.start_time
 
 
 class TeamData(models.Model):

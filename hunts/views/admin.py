@@ -10,7 +10,6 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
-from distutils.util import strtobool
 from os import path
 from urllib.parse import quote_plus
 import tarfile
@@ -21,7 +20,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Count, Max, OuterRef, Prefetch, Subquery
+from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -130,23 +129,32 @@ class GuessesList(LoginRequiredMixin, View):
         ).order_by(
             '-given'
         ).select_related(
-            'for_puzzle', 'by_team', 'by__user', 'correct_for'
+            'for_puzzle', 'for_puzzle__episode', 'by_team', 'by__user', 'correct_for', 'progress',
         ).only(
             'given', 'guess', 'correct_current',
             'for_puzzle__id', 'for_puzzle__title',
+            'for_puzzle__episode__id', 'for_puzzle__episode__name',
+            'for_puzzle__episode__event__id',
             'by_team__id', 'by_team__name',
             'by__user__id', 'by__user__username',
-            'correct_for__id'
+            'correct_for__id', 'progress__start_time',
         ).annotate(
             byseat=Subquery(
                 Attendance.objects.filter(user_info__user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
-            )
+            ),
+            unlocked=Exists(models.TeamUnlock.objects.filter(unlocked_by=OuterRef('id')).only('id')),
         ).prefetch_related(
             Prefetch(
                 'for_puzzle__episode',
                 queryset=models.Episode.objects.only('id', 'name').all()
-            )
-        )
+            ),
+            Prefetch(
+                'for_puzzle__episode__event__episode_set',
+            ),
+            Prefetch(
+                'for_puzzle__episode__puzzle_set',
+            ),
+        ).seal()
 
         if team:
             all_guesses = all_guesses.filter(by_team_id=team)
@@ -189,15 +197,9 @@ class GuessesList(LoginRequiredMixin, View):
                     'name': g.by.username,
                     'seat': g.byseat,
                 },
-                'unlocked': False,
+                'unlocked': g.unlocked,
             } for g in guesses
         ]
-
-        highlight_unlocks = request.GET.get('highlight_unlocks')
-        if highlight_unlocks is not None and strtobool(highlight_unlocks):
-            for g, gl in zip(guesses, guesses_list):
-                unlockanswers = models.UnlockAnswer.objects.filter(unlock__puzzle=g.for_puzzle)
-                gl['unlocked'] = any([a.validate_guess(g) for a in unlockanswers])
 
         return JsonResponse({
             'guesses': guesses_list,
