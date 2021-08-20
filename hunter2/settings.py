@@ -19,6 +19,9 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 from .utils import load_or_create_secret_key
 
+# Tell django-tenants to use the prometheus instrumented postgresql backend
+ORIGINAL_BACKEND = 'django_prometheus.db.backends.postgresql'
+
 # Load the current environment profile
 root = environ.Path(__file__) - 2
 env = environ.Env()
@@ -334,6 +337,8 @@ ASGI_APPLICATION = 'hunter2.routing.application'
 WSGI_APPLICATION = 'hunter2.wsgi.application'
 
 X_FRAME_OPTIONS = 'DENY'
+
+PROMETHEUS_METRICS_EXPORT_PORT = 8001
 
 if USE_SILK:  # nocover
     SILKY_PYTHON_PROFILER = True
