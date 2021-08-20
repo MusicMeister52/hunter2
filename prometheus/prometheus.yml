@@ -4,7 +4,13 @@ scrape_configs:
       - names:
           - app
         type: A
-        port: 8000
+        port: 8001
+  - job_name: hunter2_websocket
+    dns_sd_configs:
+      - names:
+          - websocket
+        type: A
+        port: 8001
   - job_name: hunter2_db
     dns_sd_configs:
       - names:
