@@ -15,19 +15,16 @@ import json
 import uuid
 
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
 from django.urls import reverse
-from django.views import View
-from django_tenants.test.client import TenantRequestFactory
+from unittest.mock import Mock
 
 from accounts.factories import UserFactory, UserProfileFactory
 from accounts.models import UserProfile
 from events.factories import EventFactory, EventFileFactory
-from events.models import Event
 from events.test import EventAwareTestCase, EventTestCase
 from hunter2.models import APIToken
+from .middleware import TeamMiddleware
 from .factories import TeamFactory, TeamMemberFactory
-from .mixins import TeamMixin
 from .models import Team, TeamRole
 from . import rules
 
@@ -39,11 +36,6 @@ class FactoryTests(EventTestCase):
 
     def test_team_member_factory_default_construction(self):
         TeamMemberFactory.create()
-
-
-class EmptyTeamView(TeamMixin, View):
-    def get(self, request, *args, **kwargs):
-        return HttpResponse()
 
 
 class TeamMultiEventTests(EventAwareTestCase):
@@ -106,16 +98,21 @@ class TeamCreateTests(EventTestCase):
         team = Team.objects.get(name=team_template.name)
         self.assertTrue(creator in team.members.all())
 
-    def test_automatic_creation(self):
-        factory = TenantRequestFactory(self.tenant)
-        request = factory.get('/irrelevant')  # Path is not used because we call the view function directly
-        request.tenant = Event.objects.get()
+    def test_team_middleware(self):
+        request = Mock()
+        request.tenant = self.tenant
         request.user = UserFactory()
-        view = EmptyTeamView.as_view()
-        response = view(request)
-
-        self.assertEqual(response.status_code, 200)
+        # Apply the middleware (ignore the result; we only care about what it does in the db)
+        TeamMiddleware(Mock())(request)
         profile = UserProfile.objects.get(user=request.user)
+        Team.objects.get(members=profile)
+
+    def test_automatic_creation(self):
+        user = UserFactory()
+        self.client.force_login(user)
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        profile = UserProfile.objects.get(user=user)
         Team.objects.get(members=profile)
 
 

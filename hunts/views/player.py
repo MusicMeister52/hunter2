@@ -28,7 +28,6 @@ from django_sendfile import sendfile
 from accounts.models import UserInfo
 from events.utils import annotate_userinfo_queryset_with_seat
 from teams.models import TeamRole
-from teams.mixins import TeamMixin
 from teams.rules import is_admin_for_event
 from .mixins import EpisodeUnlockedMixin, EventMustBeOverMixin, PuzzleUnlockedMixin
 from .. import models, utils
@@ -48,12 +47,12 @@ class Index(TemplateView):
         }
 
 
-class EpisodeIndex(LoginRequiredMixin, TeamMixin, EpisodeUnlockedMixin, View):
+class EpisodeIndex(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
         return redirect(request.episode.get_absolute_url(), permanent=True)
 
 
-class EpisodeContent(LoginRequiredMixin, TeamMixin, EpisodeUnlockedMixin, View):
+class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
         puzzles = request.episode.unlocked_puzzles(request.team)
         for puzzle in puzzles:
@@ -128,13 +127,22 @@ class EventIndex(LoginRequiredMixin, View):
         )
 
 
-class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number):
         puzzle = request.puzzle
 
         data = models.PuzzleData(puzzle, request.team, request.user.profile)
 
-        progress, _ = request.puzzle.teampuzzleprogress_set.get_or_create(team=request.team)
+        progress, _ = request.puzzle.teampuzzleprogress_set.select_related(
+            'solved_by',
+            'solved_by__by',
+            'team',
+        ).prefetch_related(
+            'teamunlock_set__unlockanswer__unlock',
+            'teamunlock_set__unlocked_by',
+            'guesses',
+            'puzzle__hint_set__start_after__unlockanswer_set',
+        ).seal().get_or_create(puzzle=request.puzzle, team=request.team)
 
         now = timezone.now()
 
@@ -142,18 +150,14 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
             progress.start_time = now
             progress.save()
 
-        answered = puzzle.answered_by(request.team)
-        hints = [
-            h for h in puzzle.hint_set.filter(start_after=None).order_by('time') if h.unlocked_by(request.team, progress)
-        ]
+        correct_guess = progress.solved_by
+        hints = progress.hints()
 
         unlocks = []
-        for u in puzzle.unlock_set.order_by('text'):
-            guesses = u.unlocked_by(request.team)
-            if not guesses:
-                continue
+        unlocks_to_guesses = progress.unlocks_to_guesses()
 
-            guesses = [g.guess for g in guesses]
+        for u in progress.unlocks:
+            guesses = [g.guess for g in unlocks_to_guesses[u.id]]
             # Get rid of duplicates but preserve order
             duplicates = set()
             guesses = [g for g in guesses if not (g in duplicates or duplicates.add(g))]
@@ -162,7 +166,7 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
                 'compact_id': u.compact_id,
                 'guesses': guesses,
                 'text': unlock_text,
-                'hints': [h for h in u.hint_set.all() if h.unlocked_by(request.team, progress)]
+                'hints': hints[u.id],
             })
 
         event_files = {f.slug: f.file.url for f in request.tenant.eventfile_set.filter(slug__isnull=False)}
@@ -192,11 +196,11 @@ class Puzzle(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
             request,
             'hunts/puzzle.html',
             context={
-                'answered': answered,
+                'answered': correct_guess,
                 'admin': request.admin,
                 'ended': ended,
                 'episode_number': episode_number,
-                'hints': hints,
+                'hints': hints[None],
                 'puzzle_number': puzzle_number,
                 'grow_section': puzzle.runtime.grow_section,
                 'title': puzzle.title,
@@ -227,7 +231,7 @@ class AbsolutePuzzleView(RedirectView):
             return puzzle.get_absolute_url() + path
 
 
-class SolutionContent(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number):
         episode, puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -267,7 +271,7 @@ class SolutionContent(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         return HttpResponse(text)
 
 
-class PuzzleFile(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class PuzzleFile(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number, file_path):
         puzzle_file = get_object_or_404(request.puzzle.puzzlefile_set, url_path=file_path)
         return sendfile(request, puzzle_file.file.path)
@@ -285,7 +289,7 @@ class SolutionFile(View):
         return sendfile(request, solution_file.file.path)
 
 
-class Answer(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
         if not request.admin and request.puzzle.answered_by(request.team):
             return JsonResponse({'error': 'already answered'}, status=422)
@@ -335,7 +339,7 @@ class Answer(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
         return JsonResponse(response)
 
 
-class Callback(LoginRequiredMixin, TeamMixin, PuzzleUnlockedMixin, View):
+class Callback(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
         if request.content_type != 'application/json':
             return HttpResponse(status=415)

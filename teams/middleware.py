@@ -19,19 +19,14 @@ class TeamMiddleware(object):
         self.get_response = get_response
 
     def __call__(self, request):
-        return self.get_response(request)
-
-    def process_view(self, request, view_func, view_args, view_kwargs):
         request.team = None
 
-        if not request.user.is_authenticated:
-            return
-
-        if request.tenant is not None:
+        if request.user.is_authenticated and request.tenant is not None:
             try:
                 request.team = request.user.profile.teams.get(at_event=request.tenant)
             except Team.DoesNotExist:
-                request.team = None
-                # TODO: User has no team for this event. Redirect to team creation?
-                pass
-            return
+                request.team = Team(at_event=request.tenant)
+                request.team.save()
+                request.team.members.add(request.user.profile)
+
+        return self.get_response(request)

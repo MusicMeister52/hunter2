@@ -61,12 +61,8 @@
 
 <section id="puzzle-answer">
 {% if answered %}
-<h2>Your correct answer{{ answered|pluralize }}</h2>
-<div id="answer">
-{% for guess in answered %}
-<p>"{{ guess.guess }}" &mdash; entered by {{ guess.by.username }}</p>
-{% endfor %}
-</div>
+<h2>Your correct answer</h2>
+<p>"{{ answered.guess }}" &mdash; entered by {{ answered.by.username }}</p>
 {% elif ended %}
 <h2>Event is over</h2>
 {% endif %}

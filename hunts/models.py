@@ -12,11 +12,13 @@
 
 import secrets
 import uuid
+from collections import defaultdict
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Sum
 from django.utils import timezone
 from django.urls import reverse
 from django_postgresql_dag.models import node_factory, edge_factory
@@ -115,7 +117,23 @@ class Episode(node_factory(EpisodePrequel)):
 
         return None
 
-    def started(self, team=None):
+    def available(self, team):
+        """Returns whether puzzles on the episode could be available"""
+        now = timezone.now()
+        if self.event.end_date < now:
+            return True
+
+        if self.start_date - self.headstart_applied(team) > now:
+            return False
+
+        # Compare number of puzzles in the prequel episodes solved by the team to the total number of such puzzles
+        return TeamPuzzleProgress.objects.filter(
+            puzzle__episode__in=self.prequels.all(),
+            team=team,
+            solved_by__isnull=False,
+        ).count() == Puzzle.objects.filter(episode__in=self.prequels.all()).count()
+
+    def started(self, team):
         date = self.start_date
         if team:
             date -= self.headstart_applied(team)
@@ -170,17 +188,27 @@ class Episode(node_factory(EpisodePrequel)):
         return [team for team, time in sorted(self.finished_times(), key=lambda x: x[1])]
 
     def headstart_applied(self, team):
-        """The headstart that the team has acquired that will be applied to this episode"""
-        seconds = sum([e.headstart_granted(team).total_seconds() for e in self.headstart_from.all()])
+        """Get how much headstart the given team has acquired for the episode
+
+        This is formed from the headstart granted from those episodes which the given one specifies
+        in its `headstart_from` field, plus any adjustment added for the team.
+        """
+        headstart = sum(TeamPuzzleProgress.objects.filter(
+            team=team, puzzle__episode__in=self.headstart_from.all()
+        ).headstart_granted().values(), start=timedelta(0))
         try:
-            seconds += self.headstart_set.get(team=team).headstart_adjustment.total_seconds()
+            headstart += self.headstart_set.get(team=team).headstart_adjustment
         except Headstart.DoesNotExist:
             pass
-        return timedelta(seconds=seconds)
+        return headstart
 
     def headstart_granted(self, team):
         """The headstart that the team has acquired by completing puzzles in this episode"""
-        seconds = sum([p.headstart_granted.total_seconds() for p in self.puzzle_set.all() if p.answered_by(team)])
+        seconds = sum([
+            p.headstart_granted.total_seconds()
+            for p in self.puzzle_set.all()
+            if p.answered_by(team)
+        ])
         return timedelta(seconds=seconds)
 
     def _puzzle_unlocked_by(self, puzzle, team):
@@ -325,6 +353,33 @@ class Puzzle(OrderedModel):
         if self.episode is None:
             return str(self.id)
         return f'{self.episode.get_relative_id()}.{self.get_relative_id()}'
+
+    def available(self, team):
+        """Returns whether the puzzle is available to look at and guess on"""
+        now = timezone.now()
+        episode = self.episode
+
+        if episode.event.end_date < now:
+            return True
+
+        if not episode.available(team):
+            return False
+
+        if episode.parallel:
+            return self.start_date < timezone.now()
+
+        prev_puzzles = Puzzle.objects.filter(
+            episode=episode,
+            order__lt=self.order
+        ).count()
+        prev_solved_puzzles = TeamPuzzleProgress.objects.filter(
+            puzzle__episode=episode,
+            team=team,
+            solved_by__isnull=False,
+            puzzle__order__lt=self.order
+        ).count()
+
+        return prev_puzzles == prev_solved_puzzles
 
     def started(self, team):
         """Determine whether this puzzle should be visible to teams yet.
@@ -637,6 +692,28 @@ class GuessQuerySet(SealableQuerySet):
         self.bulk_update(self, ['correct_current', 'correct_for'])
 
 
+class Relationship(models.ForeignObject):
+    """Defines a relationship that can be traversed in the database and ORM,
+    but which doesn't add any columns to the table
+    """
+
+    def __init__(self, model, from_fields, to_fields, **kwargs):
+        super().__init__(
+            model,
+            on_delete=models.DO_NOTHING,
+            from_fields=from_fields,
+            to_fields=to_fields,
+            null=True,
+            blank=True,
+            **kwargs,
+        )
+
+    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
+        # override the default to always make it private
+        # this ensures that no additional columns are created
+        super().contribute_to_class(cls, name, private_only=True, **kwargs)
+
+
 class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     for_puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
@@ -648,6 +725,12 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     correct_for = models.ForeignKey(Answer, blank=True, null=True, on_delete=models.SET_NULL)
     correct_current = models.BooleanField(default=False)
 
+    # Directly provide a means of accessing the unique progress object associated with this guess
+    # most often we're interested in using this in the opposite direction
+    progress = Relationship(
+        'TeamPuzzleProgress', ('by_team', 'for_puzzle'), ('team', 'puzzle'), related_name='guesses'
+    )
+
     objects = GuessQuerySet.as_manager()
 
     class Meta:
@@ -655,6 +738,11 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
 
     def __str__(self):
         return f'"{self.guess}" by {self.by} ({self.by_team}) @ {self.given}'
+
+    def full_clean(self, exclude=("progress",), validate_unique=True):
+        if "progress" not in exclude:
+            exclude = exclude + ("progress",)
+        super().full_clean(exclude, validate_unique)
 
     @property
     def compact_id(self):
@@ -768,12 +856,29 @@ class TeamPuzzleProgressQuerySet(SealableQuerySet):
                 pr.solved_by_id = pr.first_correct_guess_id
         qs.bulk_update(qs, ['solved_by_id'])
 
+    def headstart_granted(self):
+        """Transform the queryset into a dictionary of:
+        (team_id, episode_id): total headstart in seconds
+
+        Note: not every (team, episode) combination will exist as a key.
+        """
+
+        # values(<fields>) gives us a GROUP BY on those fields.
+        headstart_values = self.filter(
+            solved_by__isnull=False,
+            puzzle__episode__isnull=False
+        ).values('team', 'puzzle__episode').annotate(
+            total_headstart=Sum('puzzle__headstart_granted')
+        )
+        # Assemble the dictionary
+        return dict(((v['team'], v['puzzle__episode']), v['total_headstart']) for v in headstart_values)
+
 
 class TeamPuzzleProgress(SealableModel):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
     start_time = models.DateTimeField(blank=True, null=True)
-    solved_by = models.ForeignKey(Guess, blank=True, null=True, on_delete=models.SET_NULL)
+    solved_by = models.ForeignKey(Guess, blank=True, null=True, on_delete=models.SET_NULL, related_name="+")
     unlockanswers = models.ManyToManyField(UnlockAnswer, through='TeamUnlock')
 
     objects = TeamPuzzleProgressQuerySet.as_manager()
@@ -784,7 +889,27 @@ class TeamPuzzleProgress(SealableModel):
 
     @property
     def unlocks(self):
-        return set(ua.unlock for ua in self.unlocks.all())
+        return set(tu.unlockanswer.unlock for tu in self.teamunlock_set.all())
+
+    def hints(self):
+        """Returns a dictionary of {unlock_id: visible hint}
+
+        a key of `None` is used for hints that aren't dependent on an unlock
+        """
+        hints = self.puzzle.hint_set.all()
+        hint_dict = defaultdict(list)
+        for hint in hints:
+            if hint.unlocked_by(self.team, self, self.guesses.all()):
+                hint_dict[hint.start_after_id].append(hint)
+
+        return hint_dict
+
+    def unlocks_to_guesses(self):
+        d = defaultdict(list)
+        for teamunlock in self.teamunlock_set.all():
+            d[teamunlock.unlockanswer.unlock.id].append(teamunlock.unlocked_by)
+
+        return dict(d)
 
     def reevaluate(self, answers, guesses):
         """Update this instance to reflect the team's progress in the supplied guesses.

@@ -709,9 +709,19 @@ class EpisodeBehaviourTest(EventTestCase):
         user = UserProfileFactory()
         team = TeamFactory(at_event=episode1.event, members=user)
 
+        def headstart_from(episode, team):
+            return TeamPuzzleProgress.objects.filter(
+                team=team, puzzle__episode=episode
+            ).headstart_granted().get((team.id, episode.id), datetime.timedelta(0))
+
         # Check that the headstart granted is the sum of the puzzle headstarts
         headstart = datetime.timedelta()
         self.assertEqual(episode1.headstart_granted(team), datetime.timedelta(minutes=0), "No headstart when puzzles unanswered")
+        self.assertEqual(
+            headstart_from(episode1, team),
+            datetime.timedelta(0),
+            "No headstart when puzzles unanswered"
+        )
 
         for i in range(1, episode1.puzzle_set.count() + 1):
             # Start answering puzzles
@@ -721,6 +731,11 @@ class EpisodeBehaviourTest(EventTestCase):
             # Check headstart summing logic.
             headstart += episode1.get_puzzle(i).headstart_granted
             self.assertEqual(episode1.headstart_granted(team), headstart, "Episode headstart is sum of answered puzzle headstarts")
+            self.assertEqual(
+                headstart_from(episode1, team),
+                headstart,
+                "Episode headstart is sum of answered puzzle headstarts"
+            )
 
         # All of these headstarts should be applied to the second episode.
         self.assertEqual(episode2.headstart_applied(team), headstart)
