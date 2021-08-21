@@ -291,9 +291,7 @@ class SolutionFile(View):
 
 class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
-        if not request.admin and models.TeamPuzzleProgress.objects.filter(
-            team=request.team, puzzle=request.puzzle, solved_by__isnull=False
-        ).exists():
+        if not request.admin and request.puzzle.answered_by(request.team):
             return JsonResponse({'error': 'already answered'}, status=422)
 
         now = timezone.now()

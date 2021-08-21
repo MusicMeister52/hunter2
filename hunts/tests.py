@@ -1451,25 +1451,6 @@ class ProgressionTests(EventTestCase):
         self.team1 = TeamFactory(at_event=self.event, members={self.user1})
         self.team2 = TeamFactory(at_event=self.event, members={self.user2})
 
-    def test_answered_by_ordering(self):
-        puzzle1 = PuzzleFactory(episode=self.episode)
-
-        # Submit two correct answers, 1 an hour after the other
-        with freezegun.freeze_time() as frozen_datetime:
-            guess1 = GuessFactory(for_puzzle=puzzle1, by=self.user1, correct=True)
-            frozen_datetime.tick(datetime.timedelta(hours=1))
-            guess2 = GuessFactory(for_puzzle=puzzle1, by=self.user1, correct=True)
-
-            # Fudge another before the first to test ordering.
-            frozen_datetime.tick(datetime.timedelta(hours=-2))
-            guess3 = GuessFactory(for_puzzle=puzzle1, by=self.user1, correct=True)
-
-            # Ensure the first given answer is reported first
-            self.assertEqual(len(puzzle1.answered_by(self.team1)), 3)
-            self.assertEqual(puzzle1.answered_by(self.team1)[0], guess3)
-            self.assertEqual(puzzle1.answered_by(self.team1)[1], guess1)
-            self.assertEqual(puzzle1.answered_by(self.team1)[2], guess2)
-
     def test_episode_finishing(self):
         # Ensure at least one puzzle in episode.
         puzzles = PuzzleFactory.create_batch(3, episode=self.episode)
@@ -1850,11 +1831,6 @@ class CorrectnessCacheTests(EventTestCase):
         self.assertTrue(guess1.correct_current)
         self.assertFalse(correct)
         self.assertFalse(self.puzzle1.answered_by(self.team1))
-
-        # Update the first guess and check
-        guess1.guess = GuessFactory.build(for_puzzle=self.puzzle1, correct=True).guess
-        guess1.save()
-        self.assertTrue(self.puzzle1.answered_by(self.team1))
 
         # Delete the first answer and check
         self.answer1.delete()
