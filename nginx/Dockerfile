@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.1.3-experimental
 ARG BUILD_TAG=latest
 ARG IMAGE_TAG=registry.gitlab.com/hunter2.app/hunter2/app:${BUILD_TAG}
 FROM ${IMAGE_TAG} AS app

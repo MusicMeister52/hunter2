@@ -6,7 +6,7 @@ services:
       - db
       - redis
     entrypoint: ["/opt/hunter2/venv/bin/uwsgi"]
-    command: ["--module", "hunter2.wsgi:application", "--socket", "0.0.0.0:3031"]
+    command: ["--ini", "uwsgi.ini"]
     environment:
       - H2_ADMINS
       - H2_DATABASE_PASSWORD
@@ -21,10 +21,12 @@ services:
       - H2_SCHEME
       - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
-      - UWSGI_WWORKERS
+      - PYTHONFAULTHANDLER=true
+      - UWSGI_WORKERS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
     volumes:
       - config:/config
+      - metrics_spool:/var/spool/django_prometheus
       - uploads_events:/uploads/events
       - uploads_puzzles:/uploads/puzzles
       - uploads_site:/uploads/site
@@ -86,7 +88,7 @@ services:
       - redis
     environment:
       - REDIS_ADDR=redis://redis:6379
-    image: oliver006/redis_exporter:v1.24.0-alpine@sha256:a8645cd1af96c2a72db0ca240e3687116fa9e7aa649529ffa9371111db3c3323
+    image: oliver006/redis_exporter:v1.25.0-alpine@sha256:ee4b2a4c46538ea8d0fdc369b89e385f9ca64a1493605bb469cb7b1f6cfa8aad
   web:
     depends_on:
       - app
@@ -105,6 +107,7 @@ volumes:
   db: {}
   config: {}
   metrics: {}
+  metrics_spool: {}
   redis: {}
   uploads_events: {}
   uploads_puzzles: {}

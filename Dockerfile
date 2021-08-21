@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.1.3-experimental
 # Construct a common base image for creating python wheels and the final image
 FROM python:3.8.7-alpine3.13@sha256:4b710739b8088ba0e14751845bba81609c05628547bb941968a7928cb7364bf4 AS runtime_base
 
@@ -48,7 +47,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 
 # Build all the required Lua components
-FROM alpine:3.13.5@sha256:f51ff2d96627690d62fee79e6eecd9fa87429a38142b5df8a3bfbb26061df7fc AS lua_build
+FROM alpine:3.13.5@sha256:1d30d1ba3cb90962067e9b29491fbd56997979d54376f23f01448b5c5cd8b462 AS lua_build
 
 COPY hunts/runtimes/lua/luarocks/config.lua /etc/luarocks/config-5.2.lua
 
@@ -66,7 +65,7 @@ RUN --mount=type=cache,target=/root/.cache/luarocks \
 
 
 # Build the production webpack'ed assets
-FROM node:16.5.0-alpine3.13@sha256:50b33102c307e04f73817dad87cdae145b14782875495ddd950b5a48e4937c70 as webpack_build
+FROM node:16.7.0-alpine3.13@sha256:597864180891b2498e104ace823507882aa9ae132115af63dd8fc611bb300984 as webpack_build
 
 WORKDIR /opt/hunter2/src
 
@@ -87,7 +86,7 @@ COPY --from=webpack_build /opt/hunter2/assets /opt/hunter2/assets
 COPY --from=webpack_build /opt/hunter2/src/webpack-stats.json /opt/hunter2/src/webpack-stats.json
 COPY . .
 
-RUN install -d -g hunter2 -o hunter2 /config /uploads/events /uploads/puzzles /uploads/site /uploads/solutions
+RUN install -d -g hunter2 -o hunter2 /config /uploads/events /uploads/puzzles /uploads/site /uploads/solutions /var/spool/django_prometheus
 VOLUME ["/config", "/uploads/events", "/uploads/puzzles", "/uploads/site", "/uploads/solutions"]
 
 USER hunter2

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2018-2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -20,7 +20,6 @@ from django_tenants.middleware import TenantMainMiddleware
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 
-from accounts.models import UserInfo, UserProfile
 from .models import Domain
 
 
@@ -33,10 +32,7 @@ class EventMiddleware(object):
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         if request.user.is_authenticated and request.tenant is not None:
-            UserProfile.objects.get_or_create(user=request.user)
-            (user, _) = UserInfo.objects.get_or_create(user=request.user)
-            user.attendance_set.get_or_create(
-                user_info=request.user.info,
+            request.user.info.attendance_set.get_or_create(
                 event=request.tenant,
             )
         return
