@@ -218,6 +218,7 @@ MIDDLEWARE = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
+    'accounts.middleware.AccountMiddleware',
     'events.middleware.EventMiddleware',
     'teams.middleware.TeamMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
