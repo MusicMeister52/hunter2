@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2021 The Hunter2 Contributors.
+# Copyright (C) 2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -10,11 +10,10 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
+from .models import UserInfo, UserProfile
 
-from .models import Team
 
-
-class TeamMiddleware(object):
+class AccountMiddleware(object):
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -22,16 +21,7 @@ class TeamMiddleware(object):
         return self.get_response(request)
 
     def process_view(self, request, view_func, view_args, view_kwargs):
-        request.team = None
-
-        if not request.user.is_authenticated:
-            return
-
-        if request.tenant is not None:
-            try:
-                request.team = request.user.profile.teams.get(at_event=request.tenant)
-            except Team.DoesNotExist:
-                request.team = None
-                # TODO: User has no team for this event. Redirect to team creation?
-                pass
-            return
+        if request.user.is_authenticated:
+            # Pre-fetch / create the UserInfo and UserProfile for the current user
+            request.user.info, _ = UserInfo.objects.get_or_create(user=request.user)
+            request.user.profile, _ = UserProfile.objects.get_or_create(user=request.user)
