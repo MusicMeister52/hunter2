@@ -236,7 +236,15 @@ class PuzzleAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdminMixin, Order
         make_textinput('options', db_field, kwargs)
         make_textinput('cb_options', db_field, kwargs)
         make_textinput('soln_options', db_field, kwargs)
-        return super().formfield_for_dbfield(db_field, **kwargs)
+
+        formfield = super().formfield_for_dbfield(db_field, **kwargs)
+
+        if db_field.attname == 'episode_id':
+            formfield.widget.can_delete_related = False
+            formfield.widget.can_change_related = False
+            formfield.widget.can_add_related = False
+
+        return formfield
 
     def onlyinlines_view(self, inline):
         """Construct a view that only shows the given inline"""
