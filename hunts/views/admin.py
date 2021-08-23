@@ -13,6 +13,7 @@
 from distutils.util import strtobool
 from os import path
 from urllib.parse import quote_plus
+import itertools
 import tarfile
 
 from collections import defaultdict
@@ -543,108 +544,142 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
 
         # All the data is keyed off puzzles. Only return puzzles which
         # are unsolved but have a guess.
-        puzzles = models.Puzzle.objects.filter(
-            guess__by_team=team_id
-        ).distinct().annotate(
-            num_guesses=Count('guess')
+        tp_progresses = models.TeamPuzzleProgress.objects.filter(
+            team=team,
+            start_time__isnull=False,
+        ).annotate(
+            num_guesses=Count('guesses'),
+        ).filter(
+            num_guesses__gt=0,
+        ).select_related(
+            'puzzle',
+            'puzzle__episode',
+            'team',
+            'solved_by',
+        ).only(
+            'puzzle__title',
+            'puzzle__episode__name',
+            'solved_by__given',
+            'start_time',
+            'team__id',
         ).prefetch_related(
+            Prefetch(
+                'teamunlock_set',
+                queryset=models.TeamUnlock.objects.select_related(
+                    'unlockanswer',
+                    'unlockanswer__unlock',
+                    'unlocked_by',
+                ).only(
+                    'team_puzzle_progress__id',
+                    'unlockanswer__unlock__text',
+                    'unlocked_by__given',
+                )
+            ),
             # Only prefetch guesses by the requested team; puzzle.guess_set.all()
             # will not be all, which means we don't need to filter again.
             Prefetch(
-                'guess_set',
-                queryset=models.Guess.objects.filter(
-                    by_team_id=team_id
-                ).order_by(
-                    '-given'
-                ).select_related('by', 'by__user')
+                'guesses',
+                queryset=models.Guess.objects.order_by(
+                    '-given',
+                ).select_related(
+                    'by', 'by__user',
+                ).only(
+                    'by__user__username',
+                    'by_team_id',
+                    'for_puzzle_id',
+                    'given',
+                    'guess',
+                )
             ),
             Prefetch(
-                'hint_set',
+                'puzzle__hint_set',
                 queryset=models.Hint.objects.select_related(
                     'start_after', 'start_after__puzzle'
-                ).prefetch_related('start_after__unlockanswer_set')
+                ).only(
+                    'puzzle__id',
+                    'start_after_id',
+                    'text',
+                    'time',
+                ).prefetch_related(
+                    'start_after__unlockanswer_set'
+                )
             ),
-            'unlock_set',
-            'unlock_set__unlockanswer_set',
-        )
+        ).seal()
 
-        # Most info is only needed for un-solved puzzles; find which are solved
-        # now so we can save some work
-        solved_puzzles = {}
-        for pz in puzzles:
-            correct = [g for g in pz.guess_set.all() if g.correct_for]
-            if correct:
-                solved_puzzles[pz.id] = correct[0]
-
-        # Grab the TeamPuzzleProgress necessary to calculate hint timings
-        tp_progresses = models.TeamPuzzleProgress.objects.filter(
-            puzzle__in=puzzles,
-            team_id=team_id
-        )
-        tp_progresses = {tp_progress.puzzle_id: tp_progress for tp_progress in tp_progresses}
-
-        # Collate visible hints and unlocks
-        clues_visible = {
-            puzzle.id: [{
-                'type': 'Unlock',
-                'text': u.text,
-                'received_at': u.unlocked_by(team, puzzle.guess_set.all())[0].given}
-                for u in puzzle.unlock_set.all()
-                if u.unlocked_by(team, puzzle.guess_set.all())
-            ] + [{
-                'type': 'Hint',
-                'text': h.text,
-                'received_at': h.unlocks_at(team, tp_progresses[puzzle.id], puzzle.guess_set.all())}
-                for h in puzzle.hint_set.all()
-                if h.unlocked_by(team, tp_progresses[puzzle.id], puzzle.guess_set.all())
-            ]
-            for puzzle in puzzles
-        }
-
-        # Hints which depend on not-unlocked unlocks are not included
-        hints_scheduled = {
-            puzzle.id: sorted([
-                {
-                    'text': h.text,
-                    'time': h.unlocks_at(team, tp_progresses[puzzle.id])
-                }
-                for h in puzzle.hint_set.all()
-                if h.unlocks_at(team, tp_progresses[puzzle.id]) and not h.unlocked_by(team, tp_progresses[puzzle.id], puzzle.guess_set.all())
-            ], key=lambda x: x['time'])
-            for puzzle in puzzles
-        }
+        solved_puzzles = []
+        unsolved_puzzles = []
 
         # Unsolved puzzles from last year's hunts haven't been "on" for a year :)
         latest = min(timezone.now(), event.end_date)
 
+        for tp_progress in tp_progresses:
+            puzzle_info = {
+                'title': tp_progress.puzzle.title,
+                'id': tp_progress.puzzle.id,
+                'num_guesses': tp_progress.num_guesses,
+            }
+            if tp_progress.solved_by:
+                solved_puzzles.append({
+                    **puzzle_info,
+                    'time_finished': tp_progress.solved_by.given,
+                    'time_taken': tp_progress.solved_by.given - tp_progress.start_time,
+                })
+            else:
+                # Collate visible hints and unlocks
+                clues_visible = [
+                    {
+                        'type': 'Unlock',
+                        'text': tu.unlockanswer.unlock.text,
+                        'received_at': tu.unlocked_by.given
+                    }
+                    for tu in tp_progress.teamunlock_set.all()
+                ] + [
+                    {
+                        'type': 'Hint',
+                        'text': h.text,
+                        'received_at': h.unlocks_at(team, tp_progress)
+                    }
+                    for h in itertools.chain(*tp_progress.hints().values())
+                ]
+
+                # Hints which depend on not-unlocked unlocks are not included
+                unlocked_unlocks = {
+                    tu.unlockanswer.unlock.id: tu.unlocked_by.given
+                    for tu in tp_progress.teamunlock_set.all()
+                }
+                hints_scheduled = sorted(
+                    [
+                        {
+                            'text': h.text,
+                            'time': h.unlocks_at(team, tp_progress)
+                        }
+                        for h in tp_progress.puzzle.hint_set.all()
+                        if (
+                            h.unlocks_at(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlocks)
+                            and not h.unlocked_by(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlocks)
+                        )
+                    ],
+                    key=lambda x: x['time'],
+                )
+
+                unsolved_puzzles.append({
+                    **puzzle_info,
+                    'episode_name': tp_progress.puzzle.episode.name,
+                    'time_started': tp_progress.start_time,
+                    'time_on': latest - tp_progress.start_time,
+                    'guesses': [{
+                        'user': guess.by.username,
+                        'guess': guess.guess,
+                        'given': guess.given}
+                        for guess in tp_progress.guesses.all()[:5]
+                    ],
+                    'clues_visible': clues_visible,
+                    'hints_scheduled': hints_scheduled,
+                })
+
         response = {
-            'puzzles': [{
-                'title': puzzle.title,
-                'episode_name': puzzle.episode.name,
-                'id': puzzle.id,
-                'time_started': tp_progresses[puzzle.id].start_time,
-                'time_on': latest - tp_progresses[puzzle.id].start_time,
-                'num_guesses': puzzle.num_guesses,
-                'guesses': [{
-                    'user': guess.by.username,
-                    'guess': guess.guess,
-                    'given': guess.given}
-                    for guess in puzzle.guess_set.all()[:5]
-                ],
-                'clues_visible': clues_visible[puzzle.id],
-                'hints_scheduled': hints_scheduled[puzzle.id]}
-                for puzzle in puzzles
-                if puzzle.id not in solved_puzzles
-            ],
-            'solved_puzzles': [{
-                'title': puzzle.title,
-                'id': puzzle.id,
-                'time_finished': solved_puzzles[puzzle.id].given,
-                'time_taken': solved_puzzles[puzzle.id].given - tp_progresses[puzzle.id].start_time,
-                'num_guesses': puzzle.num_guesses}
-                for puzzle in puzzles
-                if puzzle.id in solved_puzzles
-            ],
+            'puzzles': unsolved_puzzles,
+            'solved_puzzles': solved_puzzles,
         }
 
         return JsonResponse(response)
