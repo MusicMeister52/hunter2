@@ -19,6 +19,7 @@ from django_tenants.models import TenantMixin, DomainMixin
 from .fields import SingleTrueBooleanField
 
 import accounts.models
+import hunter2.models
 
 
 class Theme(models.Model):
@@ -59,6 +60,19 @@ class Event(TenantMixin):
 
     def save(self, verbosity=0, *args, **kwargs):
         super().save(verbosity, *args, **kwargs)
+
+    def files_map(self, request):
+        if not hasattr(request, 'event_files'):
+            site_files = hunter2.models.Configuration.get_solo().files_map(request)
+            event_files = {
+                f.slug: f.file.url
+                for f in self.eventfile_set.filter(slug__isnull=False)
+            }
+            request.event_files = {
+                **site_files,
+                **event_files,
+            }
+        return request.event_files
 
 
 def event_file_path(instance, filename):

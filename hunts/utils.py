@@ -23,9 +23,11 @@ def event_episode(event, episode_number):
     episodes = event.episode_set.order_by('start_date')
     ep_int = int(episode_number)
     try:
-        return episodes[ep_int - 1:ep_int].get()
+        ep = episodes[ep_int - 1:ep_int].get()
     except Episode.DoesNotExist as e:
         raise Http404 from e
+    ep.relative_id = ep_int
+    return ep
 
 
 def event_episode_puzzle(event, episode_number, puzzle_number):
