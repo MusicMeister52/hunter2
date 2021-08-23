@@ -395,17 +395,10 @@ class Puzzle(OrderedModel):
             self.episode.unlocked_by(team) and self.episode._puzzle_unlocked_by(self, team)
 
     def answered_by(self, team):
-        """Return a list of correct guesses for this puzzle by the given team, ordered by when they were given."""
-        # Select related since get_correct_for() will want it
-        guesses = Guess.objects.filter(
-            by__in=team.members.all(),
-            for_puzzle=self,
-        ).order_by(
-            'given'
-        ).select_related('correct_for')
-
-        # TODO: Should return bool
-        return [g for g in guesses if g.get_correct_for()]
+        """Return whether the team has answered this puzzle. Always results in a query."""
+        return TeamPuzzleProgress.objects.filter(
+            team=team, puzzle=self, solved_by__isnull=False
+        ).exists()
 
     def first_correct_guesses(self, event):
         """Returns a dictionary of teams to guesses, where the guess is that team's earliest correct, validated guess for this puzzle"""
