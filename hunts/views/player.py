@@ -138,10 +138,10 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
             'solved_by__by',
             'team',
         ).prefetch_related(
-            'teamunlock_set__unlockanswer__unlock',
-            'teamunlock_set__unlocked_by',
             'guesses',
             'puzzle__hint_set__start_after__unlockanswer_set',
+            'teamunlock_set__unlocked_by',
+            'unlockanswers__unlock',
         ).seal().get_or_create(puzzle=request.puzzle, team=request.team)
 
         now = timezone.now()

@@ -519,35 +519,39 @@ class Hint(Clue):
     def __str__(self):
         return f'Hint unlocked after {self.time}'
 
-    def unlocked_by(self, team, progress, possible_guesses=None):
+    def unlocked_by(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns whether the hint is unlocked by the given team.
 
         The TeamPuzzleProgress associated with the team and puzzle must be supplied.
-        An iterable of possible guesses may be supplied in order to speed up any
-            calls to `Unlock.unlocked_by`.
+        The following parameters can be supplied in order to speed up any calls to `Unlock.unlocked_by`:
+          - An iterable of possible guesses
+          - A mapping from unlock ID to unlocked time
         """
-        unlocks_at = self.unlocks_at(team, progress, possible_guesses)
+        unlocks_at = self.unlocks_at(team, progress, possible_guesses, unlocked_unlocks)
         return unlocks_at is not None and unlocks_at < timezone.now()
 
-    def delay_for_team(self, team, progress, possible_guesses=None):
+    def delay_for_team(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns how long until the hint unlocks for the given team.
 
         Parameters as for `unlocked_by`.
         """
-        unlocks_at = self.unlocks_at(team, progress, possible_guesses)
+        unlocks_at = self.unlocks_at(team, progress, possible_guesses, unlocked_unlocks)
         return None if unlocks_at is None else unlocks_at - timezone.now()
 
-    def unlocks_at(self, team, progress, possible_guesses=None):
+    def unlocks_at(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns when the hint unlocks for the given team.
 
         Parameters as for `unlocked_by`.
         """
         if self.start_after:
-            guesses = self.start_after.unlocked_by(team, possible_guesses)
-            if guesses:
-                start_time = guesses[0].given
+            if unlocked_unlocks:
+                start_time = unlocked_unlocks[self.start_after.id]
             else:
-                return None
+                guesses = self.start_after.unlocked_by(team, possible_guesses)
+                if guesses:
+                    start_time = guesses[0].given
+                else:
+                    return None
         elif progress.start_time:
             start_time = progress.start_time
         else:
@@ -882,7 +886,7 @@ class TeamPuzzleProgress(SealableModel):
 
     @property
     def unlocks(self):
-        return set(tu.unlockanswer.unlock for tu in self.teamunlock_set.all())
+        return set(ua.unlock for ua in self.unlockanswers.all())
 
     def hints(self):
         """Returns a dictionary of {unlock_id: visible hint}
