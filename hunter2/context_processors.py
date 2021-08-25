@@ -13,13 +13,13 @@
 from django.db.models import BooleanField, ExpressionWrapper, Q
 from django.urls import reverse
 
-from .models import Configuration, Icon
+from .models import Icon
 from .utils import wwwize
 from . import settings
 
 
 def site_theme(request):
-    config = Configuration.get_solo()
+    config = request.site_configuration
     return {
         'site_script': config.script,
         'site_script_file': config.script_file.file.url if config.script_file else None,
@@ -57,7 +57,7 @@ def sentry_dsn(request):
 
 
 def privacy_policy(request):
-    has_privacy_policy = Configuration.get_solo().privacy_policy != ''
+    has_privacy_policy = request.site_configuration.privacy_policy != ''
     return {
         'footer_column_class': 'col-md-3' if has_privacy_policy else 'col-md-4',
         'has_privacy_policy': has_privacy_policy,
