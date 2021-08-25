@@ -60,7 +60,7 @@ class UserSignupForm(UserInfoForm):
             )
 
     def signup(self, request, user):
-        if Configuration.get_solo().privacy_policy and request.POST['privacy'] != "on":
+        if 'privacy' in self.fields and request.POST['privacy'] != "on":
             raise SuspiciousOperation("You must accept the privacy policy")
         user.info = models.UserInfo(user=user, contact=request.POST['contact'])
         user.info.save()
