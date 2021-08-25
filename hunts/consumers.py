@@ -286,8 +286,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         content = cls._new_guess_json(guess)
 
         cls._send_message(cls._puzzle_groupname(guess.for_puzzle, guess.by_team), {
-            'type': 'new_guess',
-            'content': content
+            'type': 'new_guesses',
+            'content': [content]
         })
 
     @classmethod
@@ -411,16 +411,16 @@ class PuzzleEventWebsocket(HuntWebsocket):
             # The client requested guesses from a certain point in time, i.e. it already has some.
             # Even though these are "old" they're "new" in the sense that the user will never have
             # seen them before so should trigger the same UI effect.
-            msg_type = 'new_guess'
+            msg_type = 'new_guesses'
         else:
-            msg_type = 'old_guess'
+            msg_type = 'old_guesses'
 
-        for g in guesses:
-            content = self._new_guess_json(g)
-            self.send_json({
-                'type': msg_type,
-                'content': content
-            })
+        guesses = guesses.select_related('by').seal()
+
+        self.send_json({
+            'type': msg_type,
+            'content': [self._new_guess_json(g) for g in guesses]
+        })
 
     def send_old_hints(self, start):
         hints = models.Hint.objects.filter(puzzle=self.puzzle).order_by('time')

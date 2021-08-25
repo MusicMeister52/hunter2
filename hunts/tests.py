@@ -2033,14 +2033,12 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.send_json_to)({'type': 'guesses-plz', 'from': 'all'})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for old guesses')
 
-        self.assertEqual(output['type'], 'old_guess')
-        self.assertEqual(output['content']['guess'], g1.guess)
-        self.assertEqual(output['content']['by'], profile.user.username)
-
-        output = self.receive_json(comm, 'Websocket did not send all old guesses')
-        self.assertEqual(output['type'], 'old_guess')
-        self.assertEqual(output['content']['guess'], g2.guess)
-        self.assertEqual(output['content']['by'], profile.user.username)
+        self.assertEqual(output['type'], 'old_guesses')
+        self.assertEqual(len(output['content']), 2, 'Websocket did not send the correct number of old guesses')
+        self.assertEqual(output['content'][0]['guess'], g1.guess)
+        self.assertEqual(output['content'][0]['by'], profile.user.username)
+        self.assertEqual(output['content'][1]['guess'], g2.guess)
+        self.assertEqual(output['content'][1]['by'], profile.user.username)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # Use utcnow() because the JS uses Date.now() which uses UTC - hence the consumer code also uses UTC.
@@ -2050,9 +2048,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did nothing in response to request for old guesses')
         self.assertTrue(self.run_async(comm.receive_nothing)(), 'Websocket sent guess from before requested cutoff')
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g2.guess)
-        self.assertEqual(output['content']['by'], profile.user.username)
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1, 'Websocket did not send the correct number of old guesses')
+        self.assertEqual(output['content'][0]['guess'], g2.guess)
+        self.assertEqual(output['content'][0]['by'], profile.user.username)
 
         self.run_async(comm.send_json_to)({'type': 'unlocks-plz'})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for unlocks')
@@ -2093,18 +2092,20 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm1, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm1.receive_nothing)())
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], False)
-        self.assertEqual(output['content']['by'], u1.user.username)
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['correct'], False)
+        self.assertEqual(output['content'][0]['by'], u1.user.username)
 
         output = self.receive_json(comm2, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm2.receive_nothing)())
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], False)
-        self.assertEqual(output['content']['by'], u1.user.username)
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['correct'], False)
+        self.assertEqual(output['content'][0]['by'], u1.user.username)
 
         self.run_async(comm1.disconnect)()
         self.run_async(comm2.disconnect)()
@@ -2144,11 +2145,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
         # We should be notified of the correct guess. Since the episode had just one puzzle,
         # we are now done with that episode and should be redirected back to the episode.
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], True)
-        self.assertEqual(output['content']['by'], user.user.username)
-        self.assertEqual(output['content']['redirect'], self.ep.get_absolute_url(), 'Websocket did not redirect to the episode after completing that episode')
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['correct'], True)
+        self.assertEqual(output['content'][0]['by'], user.user.username)
+        self.assertEqual(output['content'][0]['redirect'], self.ep.get_absolute_url(),
+                         'Websocket did not redirect to the episode after completing that episode')
 
         # Now add another puzzle. We should be redirected to that puzzle, since it is the
         # unique unfinished puzzle on the episode.
@@ -2159,11 +2162,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], True)
-        self.assertEqual(output['content']['by'], user.user.username)
-        self.assertEqual(output['content']['redirect'], pz2.get_absolute_url(),
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        received = output['content'][0]
+        self.assertEqual(received['guess'], g.guess)
+        self.assertEqual(received['correct'], True)
+        self.assertEqual(received['by'], user.user.username)
+        self.assertEqual(received['redirect'], pz2.get_absolute_url(),
                          'Websocket did not redirect to the next available puzzle when completing'
                          'one of two puzzles on an episode')
 
@@ -2189,14 +2194,14 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         try:
-            if output1['type'] == 'new_unlock' and output2['type'] == 'new_guess':
+            if output1['type'] == 'new_unlock' and output2['type'] == 'new_guesses':
                 new_unlock = output1
-            elif output2['type'] == 'new_unlock' and output1['type'] == 'new_guess':
+            elif output2['type'] == 'new_unlock' and output1['type'] == 'new_guesses':
                 new_unlock = output2
             else:
-                self.fail('Websocket did not receive exactly one each of new_guess and new_unlock')
+                self.fail('Websocket did not receive exactly one each of new_guesses and new_unlock')
         except KeyError:
-            self.fail('Websocket did not receive exactly one each of new_guess and new_unlock')
+            self.fail('Websocket did not receive exactly one each of new_guesses and new_unlock')
 
         self.assertEqual(new_unlock['content']['unlock'], ua.unlock.text)
         self.assertEqual(new_unlock['content']['unlock_uid'], ua.unlock.compact_id)
