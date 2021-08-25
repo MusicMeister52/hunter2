@@ -1266,7 +1266,8 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
 
         with freezegun.freeze_time() as frozen_datetime:
-            TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now())
+            TeamPuzzleProgress.objects.get(team=team, puzzle=self.puzzle)
+
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
             response = self.client.get(url)
@@ -1478,8 +1479,8 @@ class ProgressionTests(EventTestCase):
         GuessFactory.create(for_puzzle=puzzle2, by=self.user1, correct=True)
 
         # Check only the first team has finished the first questions
-        self.assertEqual(len(puzzle1.finished_teams(self.event)), 1)
-        self.assertEqual(puzzle1.finished_teams(self.event)[0], self.team1)
+        self.assertEqual(len(puzzle1.finished_teams()), 1)
+        self.assertEqual(puzzle1.finished_teams()[0], self.team1)
         self.assertEqual(puzzle1.position(self.team1), 0)
         self.assertEqual(puzzle1.position(self.team2), None)
 
