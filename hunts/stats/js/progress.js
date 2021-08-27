@@ -1,6 +1,25 @@
-import Chart from 'chart.js'
+import {
+  Chart,
+  LineElement,
+  PointElement,
+  LineController,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  Legend,
+} from 'chart.js'
 import 'chartjs-adapter-luxon'
 import distinctColors from 'distinct-colors'
+
+Chart.register(
+  LineElement,
+  PointElement,
+  LineController,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  Legend,
+)
 
 let dateAxis = 'x'
 let puzzleAxis = 'y'
@@ -19,7 +38,6 @@ function generateTeamColours(episode_progress) {
   for (let i = 0; i < teams.length; ++i) {
     team_colours.set(teams[i], colours[i])
   }
-  console.log(team_colours)
   return team_colours
 }
 
@@ -31,23 +49,22 @@ function timesToChartForm(data, puzfn) {
   return result
 }
 
-function getChartDataSets(teamdata, team_colours) {
-  let puzfn = function (n) {
+function getChartDataSets(teamData, team_colours) {
+  let puzFn = function (n) {
     return n
   }
-  if (Object.prototype.hasOwnProperty.call(teamdata, 'puzzle_names')) {
-    puzfn = function(n) {
-      return (n > 0) ? teamdata.puzzle_names[n-1] : puz0name
+  if (Object.prototype.hasOwnProperty.call(teamData, 'puzzle_names')) {
+    puzFn = function(n) {
+      return (n > 0) ? teamData.puzzle_names[n-1] : puz0name
     }
   }
 
-  let teamchartdatasets = []
-  console.log(teamdata)
-  for (let team of teamdata.teams) {
-    let colour = team_colours.get(team.team_id)
-    console.log(`${team.team_id} ${colour}`)
-    teamchartdatasets.push({
-      data: timesToChartForm(team, puzfn),
+  let teamChartDatasets = []
+  for (let team of teamData.teams) {
+    let colour = team_colours.get(team.team_id).css()
+    teamChartDatasets.push({
+      data: timesToChartForm(team, puzFn),
+      backgroundColor: colour,
       borderColor: colour,
       borderWidth: 2,
       hoverBorderColor: colour,
@@ -59,7 +76,7 @@ function getChartDataSets(teamdata, team_colours) {
       pointHoverRadius: 2,
     })
   }
-  return teamchartdatasets
+  return teamChartDatasets
 }
 
 function setAllHidden(chart, hidden) {
@@ -74,18 +91,16 @@ function setAllHidden(chart, hidden) {
 let team_colours = generateTeamColours(window.episode_progress)
 
 for (let canvas of document.getElementsByClassName('progress-graph')) {
-  let puzaxis = {}
+  let puzAxis = {}
 
   let episode_data = window.episode_progress[canvas.dataset.episode]
 
   if (Object.prototype.hasOwnProperty.call(episode_data, 'puzzle_names')) {
-    puzaxis.type = 'category'
-    puzaxis.labels = [puz0name].concat(episode_data.puzzle_names)
-    if (puzzleAxis == 'y')
-      puzaxis.labels = puzaxis.labels.reverse() // Y axis categories start from the top... :|
+    puzAxis.type = 'category'
+    puzAxis.labels = [puz0name].concat(episode_data.puzzle_names).reverse()
   } else {
-    puzaxis.type = 'linear'
-    puzaxis.ticks = {
+    puzAxis.type = 'linear'
+    puzAxis.ticks = {
       stepSize: 1,
       suggestedMin: 0,
       precision: 0,
@@ -93,7 +108,7 @@ for (let canvas of document.getElementsByClassName('progress-graph')) {
     }
   }
 
-  let teamchartdatasets = getChartDataSets(episode_data, team_colours)
+  let teamChartDatasets = getChartDataSets(episode_data, team_colours)
 
   let height = 0.2 * window.innerHeight
   canvas.height = height
@@ -102,7 +117,7 @@ for (let canvas of document.getElementsByClassName('progress-graph')) {
   let chart = new Chart(ctx, {
     type: 'line',
     data: {
-      datasets: teamchartdatasets,
+      datasets: teamChartDatasets,
     },
     options: {
       hover: {
@@ -117,14 +132,14 @@ for (let canvas of document.getElementsByClassName('progress-graph')) {
         },
       },
       scales: {
-        [dateAxis + 'Axes']: [{
+        x: {
           type: 'time',
           time: {
             unit: 'hour',
             displayFormats: {hour: 'HH:mm'},
           },
-        }],
-        [puzzleAxis + 'Axes']: [puzaxis],
+        },
+        y: puzAxis,
       },
     },
   })
