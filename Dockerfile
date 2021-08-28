@@ -1,5 +1,5 @@
 # Construct a common base image for creating python wheels and the final image
-FROM python:3.8.7-alpine3.13@sha256:4b710739b8088ba0e14751845bba81609c05628547bb941968a7928cb7364bf4 AS runtime_base
+FROM python:3.8.11-alpine3.14@sha256:49ca410e25f2415ffec7d0bbbcdba48c54ea675df02f2aed72026fae96b84e92 AS runtime_base
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
     lua5.2 \
@@ -65,7 +65,7 @@ RUN --mount=type=cache,target=/root/.cache/luarocks \
 
 
 # Build the production webpack'ed assets
-FROM node:16.8.0-alpine3.13@sha256:1ee1478ef46a53fc0584729999a0570cf2fb174fbfe0370edbf09680b2378b56 as webpack_build
+FROM node:16.8.0-alpine3.14@sha256:e9dec0675a05bded5e881c6839461c2209a4abd8bd16239daf2e59db57c4adaf as webpack_build
 
 WORKDIR /opt/hunter2/src
 
