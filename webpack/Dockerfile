@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1.1.3-experimental
-FROM node:16.8.0-alpine3.13@sha256:1ee1478ef46a53fc0584729999a0570cf2fb174fbfe0370edbf09680b2378b56
+FROM node:16.8.0-alpine3.14@sha256:e9dec0675a05bded5e881c6839461c2209a4abd8bd16239daf2e59db57c4adaf as webpack_build
 
 COPY package.json yarn.lock /
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
