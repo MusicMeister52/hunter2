@@ -16,7 +16,7 @@ from string import Template
 def event_theme(request):
     context = {}
     if request.tenant:
-        files = {f.slug: f.file.url for f in request.tenant.eventfile_set.filter(slug__isnull=False)}
+        files = request.tenant.files_map(request)
         if request.tenant.theme.script:
             context['event_script'] = Template(request.tenant.theme.script).safe_substitute(**files)
         if request.tenant.theme.style:

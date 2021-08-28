@@ -70,7 +70,7 @@ services:
       - db
     environment:
       - DATA_SOURCE_NAME=postgresql://postgres_exporter:${H2_DB_EXPORTER_PASSWORD}@db:5432/postgres?sslmode=disable
-    image: wrouesnel/postgres_exporter:v0.8.0@sha256:520fcd04d6c8f922d800d89ae96c021f4afd22e376c4b88260a8b780e3375dbe
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.10.0@sha256:edc929fd808c7ee5d0a50d4199ff067cb23f8c7b9551053acdee78ac46ba0305
   metrics:
     environment:
       - H2_IMAGE_VERSION
@@ -88,7 +88,7 @@ services:
       - redis
     environment:
       - REDIS_ADDR=redis://redis:6379
-    image: oliver006/redis_exporter:v1.25.0-alpine@sha256:ee4b2a4c46538ea8d0fdc369b89e385f9ca64a1493605bb469cb7b1f6cfa8aad
+    image: oliver006/redis_exporter:v1.26.0-alpine@sha256:92d99d8217cc44bc44fd13d9fd97d983164d6081ab720c5190651fd65b9ab8f8
   web:
     depends_on:
       - app

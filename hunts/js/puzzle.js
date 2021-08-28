@@ -271,7 +271,7 @@ function createBlankUnlock(uid) {
 }
 
 function receivedNewUnlock(content) {
-  if (!(content.unlock_uid in unlocks)) {
+  if (!(unlocks.has(content.unlock_uid))) {
     createBlankUnlock(content.unlock_uid)
   }
   unlocks.get(content.unlock_uid).unlock = content.unlock
@@ -283,7 +283,7 @@ function receivedNewUnlock(content) {
 }
 
 function receivedChangeUnlock(content) {
-  if (!(content.unlock_uid in unlocks)) {
+  if (!(unlocks.has(content.unlock_uid))) {
     throw `WebSocket changed invalid unlock: ${content.unlock_uid}`
   }
   unlocks.get(content.unlock_uid).unlock = content.unlock
@@ -291,7 +291,7 @@ function receivedChangeUnlock(content) {
 }
 
 function receivedDeleteUnlock(content) {
-  if (!(content.unlock_uid in unlocks)) {
+  if (!(unlocks.has(content.unlock_uid))) {
     throw `WebSocket deleted invalid unlock: ${content.unlock_uid}`
   }
   delete unlocks[content.unlock_uid]
@@ -299,7 +299,7 @@ function receivedDeleteUnlock(content) {
 }
 
 function receivedDeleteUnlockGuess(content) {
-  if (!(content.unlock_uid in unlocks)) {
+  if (!(unlocks.has(content.unlock_uid))) {
     throw `WebSocket deleted guess for invalid unlock: ${content.unlock_uid}`
   }
   if (!(unlocks.get(content.unlock_uid).guesses.includes(content.guess))) {

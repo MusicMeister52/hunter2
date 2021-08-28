@@ -69,7 +69,7 @@ class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
         else:
             position = None
 
-        files = {f.slug: f.file.url for f in request.tenant.eventfile_set.filter(slug__isnull=False)}
+        files = request.tenant.files_map(request)
         flavour = Template(request.episode.flavour).safe_substitute(**files)
 
         return TemplateResponse(
@@ -169,17 +169,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
                 'hints': hints[u.id],
             })
 
-        event_files = {f.slug: f.file.url for f in request.tenant.eventfile_set.filter(slug__isnull=False)}
-        puzzle_files = {f.slug: reverse(
-            'puzzle_file',
-            kwargs={
-                'episode_number': episode_number,
-                'puzzle_number': puzzle_number,
-                'file_path': f.url_path,
-            }) for f in puzzle.puzzlefile_set.filter(slug__isnull=False)
-        }
-        files = {**event_files, **puzzle_files}  # Puzzle files with matching slugs override hunt counterparts
-
+        files = puzzle.files_map(request)
         text = Template(puzzle.runtime.create(puzzle.options).evaluate(
             puzzle.content,
             data.tp_data,
@@ -241,15 +231,7 @@ class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
 
         data = models.PuzzleData(request.puzzle, request.team, request.user.profile)
 
-        event_files = {f.slug: f.file.url for f in request.tenant.eventfile_set.filter(slug__isnull=False)}
-        puzzle_files = {f.slug: reverse(
-            'puzzle_file',
-            kwargs={
-                'episode_number': episode_number,
-                'puzzle_number': puzzle_number,
-                'file_path': f.url_path,
-            }) for f in puzzle.puzzlefile_set.filter(slug__isnull=False)
-        }
+        puzzle_files = puzzle.files_map(request)
         solution_files = {f.slug: reverse(
             'solution_file',
             kwargs={
@@ -258,7 +240,10 @@ class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
                 'file_path': f.url_path,
             }) for f in puzzle.solutionfile_set.filter(slug__isnull=False)
         }
-        files = {**event_files, **puzzle_files, **solution_files}  # Solution files override puzzle files, which override event files.
+        files = {  # Solution files override puzzle files, which override event files.
+            **puzzle_files,
+            **solution_files,
+        }
 
         text = Template(request.puzzle.soln_runtime.create(request.puzzle.soln_options).evaluate(
             request.puzzle.soln_content,
@@ -401,7 +386,7 @@ class AboutView(TemplateView):
         context = super().get_context_data(**kwargs)
         author_team = self.request.tenant.teams.get(role=TeamRole.AUTHOR)
 
-        files = {f.slug: f.file.url for f in self.request.tenant.eventfile_set.filter(slug__isnull=False)}
+        files = self.request.tenant.files_map(self.request)
         content = Template(self.request.tenant.about_text).safe_substitute(**files)
 
         author_members = UserInfo.objects.filter(user__profile__in=author_team.members.all())
@@ -424,7 +409,7 @@ class RulesView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        files = {f.slug: f.file.url for f in self.request.tenant.eventfile_set.filter(slug__isnull=False)}
+        files = self.request.tenant.files_map(self.request)
         content = Template(self.request.tenant.rules_text).safe_substitute(**files)
 
         context.update({
@@ -440,7 +425,7 @@ class HelpView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        files = {f.slug: f.file.url for f in self.request.tenant.eventfile_set.filter(slug__isnull=False)}
+        files = self.request.tenant.files_map(self.request)
         content = Template(self.request.tenant.help_text).safe_substitute(**files)
 
         context.update({
@@ -456,7 +441,7 @@ class ExamplesView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        files = {f.slug: f.file.url for f in self.request.tenant.eventfile_set.filter(slug__isnull=False)}
+        files = self.request.tenant.files_map(self.request)
         content = Template(self.request.tenant.examples_text).safe_substitute(**files)
 
         context.update({

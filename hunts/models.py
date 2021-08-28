@@ -93,7 +93,9 @@ class Episode(node_factory(EpisodePrequel)):
 
     def get_puzzle(self, puzzle_number):
         n = int(puzzle_number)
-        return self.puzzle_set.all()[n - 1:n].get()
+        pz = self.puzzle_set.all()[n - 1:n].get()
+        pz.relative_id = n
+        return pz
 
     def next_puzzle(self, team):
         """return the relative id of the next puzzle the player should attempt, or None.
@@ -141,11 +143,14 @@ class Episode(node_factory(EpisodePrequel)):
         return date < timezone.now()
 
     def get_relative_id(self):
-        episodes = self.event.episode_set.all()
-        for index, e in enumerate(episodes):
-            if e == self:
-                return index + 1
-        return -1
+        if not hasattr(self, 'relative_id'):
+            self.relative_id = -1
+            episodes = self.event.episode_set.all()
+            for index, e in enumerate(episodes):
+                if e == self:
+                    self.relative_id = index + 1
+                    break
+        return self.relative_id
 
     def unlocked_by(self, team):
         result = self.event.end_date < timezone.now() or \
@@ -337,16 +342,20 @@ class Puzzle(OrderedModel):
         return reverse('puzzle', kwargs=params)
 
     def get_relative_id(self):
-        if self.episode is None:
-            raise ValueError("Puzzle %s is not on an episode and so has no relative id" % self.title)
+        try:
+            return self.relative_id
+        except AttributeError:
+            if self.episode is None:
+                raise ValueError("Puzzle %s is not on an episode and so has no relative id" % self.title)
 
-        puzzles = self.episode.puzzle_set.all()
+            puzzles = self.episode.puzzle_set.all()
 
-        for i, p in enumerate(puzzles, start=1):
-            if self.pk == p.pk:
-                return i
+            for i, p in enumerate(puzzles, start=1):
+                if self.pk == p.pk:
+                    self.relative_id = i
+                    return i
 
-        raise RuntimeError("Could not find Puzzle pk when iterating episode's puzzle list")
+            raise RuntimeError("Could not find Puzzle pk when iterating episode's puzzle list")
 
     @property
     def abbr(self):
@@ -427,6 +436,24 @@ together with the team at which they completed the puzzle."""
     def finished_teams(self, event):
         """Return a list of teams who have completed this puzzle at the given event in order of completion."""
         return [team for team, time in sorted(self.finished_team_times(event), key=lambda x: x[1])]
+
+    def files_map(self, request):
+        # This assumes that a single request concerns a single puzzle, which seems reasonable for now.
+        if not hasattr(request, 'puzzle_files'):
+            event_files = request.tenant.files_map(request)
+            puzzle_files = {f.slug: reverse(
+                'puzzle_file',
+                kwargs={
+                    'episode_number': self.episode.get_relative_id(),
+                    'puzzle_number': self.get_relative_id(),
+                    'file_path': f.url_path,
+                }) for f in self.puzzlefile_set.filter(slug__isnull=False)
+            }
+            request.puzzle_files = {  # Puzzle files with matching slugs override hunt counterparts
+                **event_files,
+                **puzzle_files,
+            }
+        return request.puzzle_files
 
     def position(self, team):
         """Returns the position in which the given team finished this puzzle: 0 = first, None = not yet finished."""
