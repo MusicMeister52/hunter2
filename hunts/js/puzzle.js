@@ -392,7 +392,17 @@ function openEventSocket() {
   }
 
   var ws_scheme = (window.location.protocol == 'https:' ? 'wss' : 'ws') + '://'
-  var sock = new RobustWebSocket(ws_scheme + window.location.host + '/ws' + window.location.pathname)
+  var sock = new RobustWebSocket(
+    ws_scheme + window.location.host + '/ws' + window.location.pathname, undefined,
+    {
+      timeout: 30000,
+      shouldReconnect: function(event, ws) {
+        if (event.code === 1008 || event.code === 1011) return
+        // reconnect with exponential back-off and 10% jitter until 7 attempts (32 second intervals thereafter)
+        return (ws.attempts < 7 ? Math.pow(2, ws.attempts) * 500 : 32000) * (1 + Math.random() * 0.1)
+      },
+    },
+  )
   sock.onmessage = function(e) {
     var data = JSON.parse(e.data)
     lastUpdated = Date.now()
@@ -405,10 +415,26 @@ function openEventSocket() {
     }
   }
   sock.onerror = function() {
-    //TODO this message is ugly and disappears after a while
-    message('Websocket is broken. You will not receive new information without refreshing the page.')
+    let conn_status = $('#connection-status')
+    conn_status.html('<p class="connection-error">' +
+      'Websocket is disconnected; attempting to reconnect. ' +
+      'If the problem persists, please notify the admins.</p>',
+    )
   }
   sock.onopen = function() {
+    let error = $('#connection-status > .connection-error')
+    // If connecting when there is an existing error message, hide it and display a
+    // message to say we reconnected.
+    if (error.length) {
+      error.remove()
+      let conn_status = $('#connection-status')
+      let msg = $('<p class="connection-opened">' +
+        'Websocket connection re-established.</p>',
+      )
+      msg.appendTo(conn_status).delay(5000).fadeOut(2000, function() {
+        $(this).remove()
+      })
+    }
     if (lastUpdated != undefined) {
       sock.send(JSON.stringify({'type': 'guesses-plz', 'from': lastUpdated}))
       sock.send(JSON.stringify({'type': 'hints-plz', 'from': lastUpdated}))
