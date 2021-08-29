@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2018-2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -11,7 +11,6 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-from collections import defaultdict
 from datetime import datetime
 
 from asgiref.sync import async_to_sync, sync_to_async
@@ -143,10 +142,10 @@ class PuzzleEventWebsocket(HuntWebsocket):
         self.connected = False
 
     @classmethod
-    def _puzzle_groupname(cls, puzzle, team=None):
+    def _puzzle_groupname(cls, puzzle, team_id=None):
         event = puzzle.episode.event
-        if team:
-            return f'event-{event.id}.puzzle-{puzzle.id}.events.team-{team.id}'
+        if team_id:
+            return f'event-{event.id}.puzzle-{puzzle.id}.events.team-{team_id}'
         else:
             return f'event-{event.id}.puzzle-{puzzle.id}.events'
 
@@ -156,7 +155,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         puzzle_number = keywords['puzzle_number']
         self.episode, self.puzzle = utils.event_episode_puzzle(self.scope['tenant'], episode_number, puzzle_number)
         async_to_sync(self.channel_layer.group_add)(
-            self._puzzle_groupname(self.puzzle, self.team), self.channel_name
+            self._puzzle_groupname(self.puzzle, self.team.id), self.channel_name
         )
         async_to_sync(self.channel_layer.group_add)(
             self._announcement_groupname(self.episode.event, self.puzzle), self.channel_name
@@ -172,7 +171,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         for e in self.hint_events.values():
             e.cancel()
         async_to_sync(self.channel_layer.group_discard)(
-            self._puzzle_groupname(self.puzzle, self.team), self.channel_name
+            self._puzzle_groupname(self.puzzle, self.team.id), self.channel_name
         )
 
     def receive_json(self, content):
@@ -244,18 +243,18 @@ class PuzzleEventWebsocket(HuntWebsocket):
     #
 
     @classmethod
-    def _new_unlock_json(cls, guess, unlock):
+    def _new_unlock_json(cls, teamunlock):
         return {
-            'guess': guess.guess,
-            'unlock': unlock.text,
-            'unlock_uid': unlock.compact_id
+            'guess': teamunlock.unlocked_by.guess,
+            'unlock': teamunlock.unlockanswer.unlock.text,
+            'unlock_uid': teamunlock.unlockanswer.unlock.compact_id
         }
 
     @classmethod
-    def send_new_unlock(cls, guess, unlock):
-        cls._send_message(cls._puzzle_groupname(guess.for_puzzle, guess.by_team), {
+    def send_new_unlock(cls, teamunlock):
+        cls._send_message(cls._puzzle_groupname(teamunlock.team_puzzle_progress.puzzle, teamunlock.team_puzzle_progress.team_id), {
             'type': 'new_unlock',
-            'content': cls._new_unlock_json(guess, unlock)
+            'content': cls._new_unlock_json(teamunlock)
         })
 
     @classmethod
@@ -268,58 +267,67 @@ class PuzzleEventWebsocket(HuntWebsocket):
             'correct': correct,
             'by': guess.by.username,
         }
-        if correct:
-            episode = guess.for_puzzle.episode
-            next = episode.next_puzzle(guess.by_team)
-            if next:
-                next = episode.get_puzzle(next)
-                content['text'] = f'to the next puzzle'
-                content['redirect'] = next.get_absolute_url()
-            else:
-                content['text'] = f'back to {episode.name}'
-                content['redirect'] = episode.get_absolute_url()
-
         return content
 
     @classmethod
     def send_new_guess(cls, guess):
         content = cls._new_guess_json(guess)
 
-        cls._send_message(cls._puzzle_groupname(guess.for_puzzle, guess.by_team), {
+        cls._send_message(cls._puzzle_groupname(guess.for_puzzle, guess.by_team_id), {
             'type': 'new_guesses',
             'content': [content]
         })
 
     @classmethod
-    def send_change_unlock(cls, old_unlock, new_unlock, guess):
-        cls._send_message(cls._puzzle_groupname(old_unlock.puzzle, guess.by_team), {
-            'type': 'change_unlock',
-            'content': {
-                'unlock': new_unlock.text,
-                'unlock_uid': old_unlock.compact_id,
-            }
+    def _solved_json(cls, progress):
+        content = {
+            'time': (progress.solved_by.given - progress.start_time).total_seconds(),
+            'guess': progress.solved_by.guess,
+            'by': progress.solved_by.by.username
+        }
+        episode = progress.solved_by.for_puzzle.episode
+        next = episode.next_puzzle(progress.solved_by.by_team)
+        if next:
+            next = episode.get_puzzle(next)
+            content['text'] = f'to the next puzzle'
+            content['redirect'] = next.get_absolute_url()
+        else:
+            content['text'] = f'back to {episode.name}'
+            content['redirect'] = episode.get_absolute_url()
+
+        return content
+
+    @classmethod
+    def send_solved(cls, progress):
+        content = cls._solved_json(progress)
+
+        cls._send_message(cls._puzzle_groupname(progress.puzzle, progress.team_id), {
+            'type': 'solved',
+            'content': content
         })
 
     @classmethod
-    def send_delete_unlock(cls, unlock, guess):
-        cls._send_message(cls._puzzle_groupname(unlock.puzzle, guess.by_team), {
-            'type': 'delete_unlock',
+    def send_change_unlock(cls, unlock, team_id):
+        cls._send_message(cls._puzzle_groupname(unlock.puzzle, team_id), {
+            'type': 'change_unlock',
             'content': {
+                'unlock': unlock.text,
                 'unlock_uid': unlock.compact_id,
             }
         })
 
     @classmethod
-    def send_delete_unlockguess(cls, unlock, guess):
-        # First get any hints dependent on the unlock and "schedule" them - which will cancel them
+    def send_delete_unlockguess(cls, teamunlock):
         layer = get_channel_layer()
-        groupname = cls._puzzle_groupname(guess.for_puzzle, guess.by_team)
+        unlock = teamunlock.unlockanswer.unlock
+        guess = teamunlock.unlocked_by
+        groupname = cls._puzzle_groupname(guess.for_puzzle, guess.by_team_id)
         for hint in unlock.hint_set.all():
             async_to_sync(layer.group_send)(groupname, {
-                'type': 'schedule_hint_msg',
+                'type': 'cancel_scheduled_hint',
                 'hint_uid': str(hint.id)
             })
-        cls._send_message(cls._puzzle_groupname(unlock.puzzle, guess.by_team), {
+        cls._send_message(cls._puzzle_groupname(unlock.puzzle, guess.by_team_id), {
             'type': 'delete_unlockguess',
             'content': {
                 'guess': guess.guess,
@@ -328,7 +336,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         })
 
     @classmethod
-    def _new_hint_json(self, hint):
+    def _new_hint_json(cls, hint):
         return {
             'type': 'new_hint',
             'content': {
@@ -340,8 +348,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         }
 
     @classmethod
-    def send_new_hint_to_team(cls, team, hint):
-        cls._send_message(cls._puzzle_groupname(hint.puzzle, team), cls._new_hint_json(hint))
+    def send_new_hint_to_team(cls, team_id, hint):
+        cls._send_message(cls._puzzle_groupname(hint.puzzle, team_id), cls._new_hint_json(hint))
 
     async def send_new_hint(self, team, hint, delay, **kwargs):
         # We can't have a sync function (added to the event loop via call_later) because it would have to call back
@@ -358,14 +366,22 @@ class PuzzleEventWebsocket(HuntWebsocket):
         del self.hint_events[hint.id]
 
     @classmethod
-    def send_delete_hint(cls, team, hint):
-        cls._send_message(cls._puzzle_groupname(hint.puzzle, team), {
+    def send_delete_hint(cls, team_id, hint):
+        cls._send_message(cls._puzzle_groupname(hint.puzzle, team_id), {
             'type': 'delete_hint',
             'content': {
                 'hint_uid': hint.compact_id,
                 'depends_on_unlock_uid': hint.start_after.compact_id if hint.start_after else None
             }
         })
+
+    @pre_save_handler
+    def _saved_teampuzzleprogress(cls, old, sender, progress, raw, *args, **kwargs):
+        if raw:  # nocover
+            return
+
+        if progress.solved_by and (not old or not old.solved_by):
+            cls.send_solved(progress)
 
     # handler: Guess.pre_save
     @pre_save_handler
@@ -376,28 +392,6 @@ class PuzzleEventWebsocket(HuntWebsocket):
             return
         if old:
             return
-
-        # required info:
-        # guess, correctness, new unlocks, timestamp, whodunnit
-        all_unlocks = models.Unlock.objects.filter(
-            puzzle=guess.for_puzzle
-        ).select_related(
-            'puzzle'
-        ).prefetch_related(
-            'unlockanswer_set',
-            'hint_set'
-        )
-        for u in all_unlocks:
-            if any([a.validate_guess(guess) for a in u.unlockanswer_set.all()]):
-                cls.send_new_unlock(guess, u)
-            for hint in u.hint_set.all():
-                layer = get_channel_layer()
-                # It is impossible for a hint to already be unlocked if it's dependent on what we just entered,
-                # so we just schedule it here rather than checking if it's unlocked and perhaps sending straight away.
-                async_to_sync(layer.group_send)(cls._puzzle_groupname(guess.for_puzzle, guess.by_team), {
-                    'type': 'schedule_hint_msg',
-                    'hint_uid': str(hint.id)
-                })
 
         cls.send_new_guess(guess)
 
@@ -441,109 +435,67 @@ class PuzzleEventWebsocket(HuntWebsocket):
             self.send_json(content)
 
     def send_old_unlocks(self):
-        guesses = Guess.objects.filter(for_puzzle=self.puzzle, by_team=self.team)
-
-        all_unlocks = models.Unlock.objects.filter(puzzle=self.puzzle).order_by('text')
-        unlocks = defaultdict(list)
-        for u in all_unlocks:
-            # Performance note: 1 query per unlock
-            correct_guesses = u.unlocked_by(self.team)
-            if not correct_guesses:
-                continue
-
-            correct_guesses = set(correct_guesses)
-            for g in correct_guesses:
-                unlocks[g].append(u)
-
-        # TODO: something for sorting unlocks? The View sorts them as in the admin, but this is not alterable,
+        # TODO: something better for sorting unlocks? The View sorts them as in the admin, but this is not alterable,
         # even though it is often meaningful. Currently JS sorts them alphabetically.
-        for g in guesses:
-            for u in unlocks[g]:
-                self.send_json({
-                    'type': 'old_unlock',
-                    'content': self._new_unlock_json(g, u)
-                })
+        for tu in models.TeamUnlock.objects.filter(
+            team_puzzle_progress__puzzle=self.puzzle
+        ).order_by('unlockanswer__unlock__text'):
+            self.send_json({
+                'type': 'old_unlock',
+                'content': self._new_unlock_json(tu)
+            })
 
-    # handler: Unlockanswer.pre_save
     @pre_save_handler
-    def _saved_unlockanswer(cls, old_unlockanswer, sender, instance, raw, *args, **kwargs):
-        if raw:  # nocover
+    def _saved_teamunlock(cls, old, sender, teamunlock, raw, *args, **kwargs):
+        if raw:  # nocover:
             return
 
-        unlockanswer = instance
-        unlock = unlockanswer.unlock
-        puzzle = unlock.puzzle
+        cls.send_new_unlock(teamunlock)
 
-        # Performance note:
-        # This means that whenever an unlock is added or changed, every single guess on
-        # that puzzle is going to be tested against that guess immediately.
-        # If there comes a point where we are using very complex lua runtimes and/or have
-        # huge numbers of teams, with >> 10,000 guesses in total on a puzzle, we could
-        # do this asynchronously.
-        guesses = models.Guess.objects.filter(
-            for_puzzle=puzzle
-        ).select_related(
-            'by_team'
-        )
-        if old_unlockanswer:
-            others = unlock.unlockanswer_set.exclude(id=unlockanswer.id)
-            for g in guesses:
-                if old_unlockanswer.validate_guess(g) and not any(a.validate_guess(g) for a in others):
-                    # The unlockanswer was the only one giving us this and it no longer does
-                    cls.send_delete_unlockguess(unlock, g)
-                    # No need to do anything for hints, as the client will delete them if the unlock disappears
+        for hint in teamunlock.unlockanswer.unlock.hint_set.all():
+            layer = get_channel_layer()
+            async_to_sync(layer.group_send)(cls._puzzle_groupname(
+                teamunlock.team_puzzle_progress.puzzle,
+                teamunlock.team_puzzle_progress.team_id
+            ), {
+                'type': 'schedule_hint_msg',
+                'hint_uid': str(hint.id),
+                'send_expired': True
+            })
 
-        layer = get_channel_layer()
-        for g in guesses:
-            if unlockanswer.validate_guess(g):
-                # Just notify about all guesses that match this answer. Some may already have done so but that's OK.
-                cls.send_new_unlock(g, unlock)
-                # Send out hints unlocked by this. Again, we may send already-sent hints but the client will ignore it.
-                for h in unlock.hint_set.all():
-                    if h.unlocked_by(g.by_team, None):
-                        cls.send_new_hint_to_team(g.by_team, h)
-                    else:
-                        async_to_sync(layer.group_send)(
-                            cls._puzzle_groupname(h.puzzle, g.by_team),
-                            {'type': 'schedule_hint_msg', 'hint_uid': str(h.id), 'send_expired': True}
-                        )
+    @classmethod
+    def _deleted_teamunlock(cls, sender, instance, *args, **kwargs):
+        teamunlock = instance
+        # TODO: this incurs at least one query each time this handler runs, which runs many times in some situations
+        # like if the unlock itself is deleted, and/or teams had several guesses unlocking it multiple times
+
+        # to avoid doing more than necessary, we don't check if the unlock is still unlocked.
+        # the client will just hide the unlock if there's no longer anything unlocking it.
+        # This could result in some unlocks remaining visible incorrectly if there is a network interruption,
+        # where doing these checks would mean we can always send a "delete unlock" event to the client.
+        # Since this is rare and we assume the team has usually seen the unlock and gained any benefit
+        # or confusion (if it's being changed because it was wrong!) from it, this is probably OK.
+        cls.send_delete_unlockguess(teamunlock)
 
     # handler: Unlock.pre_save
     @pre_save_handler
-    def _saved_unlock(cls, old, sender, instance, raw, *args, **kwargs):
+    def _saved_unlock(cls, old, sender, unlock, raw, *args, **kwargs):
         if raw:  # nocover
             return
         if not old:
-            # New unlocks are boring; we will then notify via the unlockanswer hook
             return
 
-        unlock = instance
-        puzzle = unlock.puzzle
-        guesses = models.Guess.objects.filter(
-            for_puzzle=puzzle
-        ).select_related(
-            'by_team'
-        )
+        if unlock.puzzle != old.puzzle:
+            raise ValueError("Cannot move unlocks between puzzles")
+        # Get list of teams which can see this unlock
+        team_ids = models.TeamUnlock.objects.filter(
+            unlockanswer__unlock=unlock
+        ).values_list(
+            'team_puzzle_progress__team__id'
+        ).distinct()
 
-        # This could conceivably be different if someone adds an unlock to the wrong puzzle! Probably never going
-        # to happen. Better safe than sorry.
-        if puzzle == old.puzzle:
-            done_teams = []
-            for g in guesses:
-                if g.by_team in done_teams:
-                    continue
-                if any([u.validate_guess(g) for u in old.unlockanswer_set.all()]):
-                    done_teams.append(g.by_team)
-                    cls.send_change_unlock(old, unlock, g)
-        else:
-            for g in guesses:
-                if any([u.validate_guess(g) for u in old.unlockanswer_set.all()]):
-                    # If the puzzles are different we send *one* message to delete that unlock to the
-                    # old puzzle websocket, then add the unlock to the new puzzle, one guess at a time.
-                    if g.by_team not in done_teams:
-                        cls.send_delete_unlock(unlock, g)
-                    done_teams.append(g.by_team)
-                    cls.send_new_unlock(g, old)
+        for t in team_ids:
+            cls.send_change_unlock(unlock, t[0])
 
     # handler: Hint.pre_save
     @pre_save_handler
@@ -557,66 +509,18 @@ class PuzzleEventWebsocket(HuntWebsocket):
         for progress in TeamPuzzleProgress.objects.filter(puzzle=hint.puzzle):
             layer = get_channel_layer()
             if hint.unlocked_by(progress.team, progress):
-                async_to_sync(layer.group_send)(cls._puzzle_groupname(hint.puzzle, progress.team), {'type': 'cancel_scheduled_hint', 'hint_uid': str(hint.id)})
-                cls.send_new_hint_to_team(progress.team, hint)
+                async_to_sync(layer.group_send)(
+                    cls._puzzle_groupname(hint.puzzle, progress.team_id),
+                    {'type': 'cancel_scheduled_hint', 'hint_uid': str(hint.id)}
+                )
+                cls.send_new_hint_to_team(progress.team_id, hint)
             else:
                 if old and old.unlocked_by(progress.team, progress):
-                    cls.send_delete_hint(progress.team, hint)
+                    cls.send_delete_hint(progress.team_id, hint)
                 async_to_sync(layer.group_send)(
-                    cls._puzzle_groupname(hint.puzzle, progress.team),
+                    cls._puzzle_groupname(hint.puzzle, progress.team_id),
                     {'type': 'schedule_hint_msg', 'hint_uid': str(hint.id), 'send_expired': True}
                 )
-
-    # handler: UnlockAnswer.pre_delete
-    @classmethod
-    def _deleted_unlockanswer(cls, sender, instance, *args, **kwargs):
-        # TODO if the Unlock is being deleted it will cascade to the answers. In that case
-        # we don't actually need to send events for them.
-        unlockanswer = instance
-        try:
-            unlock = unlockanswer.unlock
-        except models.Unlock.DoesNotExist:
-            return
-
-        puzzle = unlock.puzzle
-
-        guesses = models.Guess.objects.filter(
-            for_puzzle=puzzle,
-        ).select_related(
-            'by_team',
-        )
-
-        others = unlock.unlockanswer_set.exclude(id=unlockanswer.id)
-
-        done_teams = []
-
-        for g in guesses:
-            if g.by_team in done_teams:
-                continue
-            if unlockanswer.validate_guess(g) and not any(a.validate_guess(g) for a in others):
-                cls.send_delete_unlockguess(unlock, g)
-                done_teams.append(g.by_team)
-
-    # handler: Unlock.pre_delete
-    @classmethod
-    def _deleted_unlock(cls, sender, instance, *args, **kwargs):
-        unlock = instance
-        puzzle = unlock.puzzle
-
-        guesses = models.Guess.objects.filter(
-            for_puzzle=puzzle
-        ).select_related(
-            'by_team',
-        )
-
-        done_teams = []
-
-        for g in guesses:
-            if g.by_team in done_teams:
-                continue
-            if any([u.validate_guess(g) for u in instance.unlockanswer_set.all()]):
-                done_teams.append(g.by_team)
-                cls.send_delete_unlock(unlock, g)
 
     # handler: Hint.pre_delete
     @classmethod
@@ -626,14 +530,14 @@ class PuzzleEventWebsocket(HuntWebsocket):
         for team in Team.objects.all():
             progress = hint.puzzle.teampuzzleprogress_set.get(team=team)
             if hint.unlocked_by(team, progress):
-                cls.send_delete_hint(team, hint)
+                cls.send_delete_hint(team.id, hint)
 
 
+pre_save.connect(PuzzleEventWebsocket._saved_teampuzzleprogress, sender=models.TeamPuzzleProgress)
+pre_save.connect(PuzzleEventWebsocket._saved_teamunlock, sender=models.TeamUnlock)
 pre_save.connect(PuzzleEventWebsocket._saved_guess, sender=models.Guess)
-pre_save.connect(PuzzleEventWebsocket._saved_unlockanswer, sender=models.UnlockAnswer)
 pre_save.connect(PuzzleEventWebsocket._saved_unlock, sender=models.Unlock)
 pre_save.connect(PuzzleEventWebsocket._saved_hint, sender=models.Hint)
 
-pre_delete.connect(PuzzleEventWebsocket._deleted_unlockanswer, sender=models.UnlockAnswer)
-pre_delete.connect(PuzzleEventWebsocket._deleted_unlock, sender=models.Unlock)
+pre_delete.connect(PuzzleEventWebsocket._deleted_teamunlock, sender=models.TeamUnlock)
 pre_delete.connect(PuzzleEventWebsocket._deleted_hint, sender=models.Hint)

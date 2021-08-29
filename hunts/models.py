@@ -18,7 +18,7 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Sum, Min
 from django.utils import timezone
 from django.urls import reverse
 from django_postgresql_dag.models import node_factory, edge_factory
@@ -574,14 +574,13 @@ class Hint(Clue):
             if unlocked_unlocks:
                 start_time = unlocked_unlocks[self.start_after.id]
             else:
-                guesses = self.start_after.unlocked_by(team, possible_guesses)
-                if guesses:
-                    start_time = guesses[0].given
-                else:
-                    return None
-        elif progress.start_time:
-            start_time = progress.start_time
+                start_time = progress.teamunlock_set.filter(
+                    unlockanswer__unlock_id=self.start_after_id
+                ).aggregate(start=Min('unlocked_by__given'))['start']
         else:
+            start_time = progress.start_time
+
+        if start_time is None:
             return None
 
         return start_time + self.time

@@ -141,6 +141,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
             'guesses',
             'puzzle__hint_set__start_after__unlockanswer_set',
             'teamunlock_set__unlocked_by',
+            'teamunlock_set__unlockanswer',
             'unlockanswers__unlock',
         ).seal().get_or_create(puzzle=request.puzzle, team=request.team)
 
