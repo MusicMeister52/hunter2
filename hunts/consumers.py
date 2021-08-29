@@ -396,7 +396,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         cls.send_new_guess(guess)
 
     def send_old_guesses(self, start):
-        guesses = Guess.objects.filter(for_puzzle=self.puzzle, by_team=self.team).select_related('by', 'by_team').order_by('given')
+        guesses = Guess.objects.filter(for_puzzle=self.puzzle, by_team=self.team).order_by('given')
         if start != 'all':
             start = datetime.fromtimestamp(int(start) // 1000, timezone.utc)
             # TODO: `start` is given by the client and is the timestamp of the most recently received guess.
@@ -409,7 +409,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         else:
             msg_type = 'old_guesses'
 
-        guesses = guesses.select_related('by').seal()
+        guesses = guesses.select_related('by', 'correct_for').seal()
 
         self.send_json({
             'type': msg_type,
