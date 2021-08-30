@@ -926,7 +926,7 @@ class TeamPuzzleProgress(SealableModel):
     def unlocks_to_guesses(self):
         d = defaultdict(list)
         for teamunlock in self.teamunlock_set.all():
-            d[teamunlock.unlockanswer.unlock.id].append(teamunlock.unlocked_by)
+            d[teamunlock.unlockanswer.unlock].append(teamunlock.unlocked_by)
 
         return dict(d)
 

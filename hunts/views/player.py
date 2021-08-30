@@ -15,6 +15,7 @@ from string import Template
 from datetime import timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Prefetch
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
@@ -140,9 +141,14 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         ).prefetch_related(
             'guesses',
             'puzzle__hint_set__start_after__unlockanswer_set',
-            'teamunlock_set__unlocked_by',
-            'teamunlock_set__unlockanswer',
-            'unlockanswers__unlock',
+            Prefetch(
+                'teamunlock_set',
+                queryset=models.TeamUnlock.objects.select_related(
+                    'unlocked_by',
+                    'unlockanswer',
+                    'unlockanswer__unlock',
+                )
+            ),
         ).seal().get_or_create(puzzle=request.puzzle, team=request.team)
 
         now = timezone.now()
@@ -157,8 +163,8 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         unlocks = []
         unlocks_to_guesses = progress.unlocks_to_guesses()
 
-        for u in progress.unlocks:
-            guesses = [g.guess for g in unlocks_to_guesses[u.id]]
+        for u in unlocks_to_guesses:
+            guesses = [g.guess for g in unlocks_to_guesses[u]]
             # Get rid of duplicates but preserve order
             duplicates = set()
             guesses = [g for g in guesses if not (g in duplicates or duplicates.add(g))]
