@@ -21,7 +21,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery
+from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -384,70 +384,65 @@ class ProgressContent(LoginRequiredMixin, View):
             'episode__event__episode_set',
             'episode__puzzle_set',
             'hint_set',
-        )
-
-        # TODO only teams which have opened a puzzle/guessed/some other criterion
-        teams = Team.objects.filter(at_event=request.tenant).prefetch_related('members').seal()
-
-        all_guesses = models.Guess.objects.filter(
-            for_puzzle__episode__event=request.tenant
-        ).select_related(
-            'by_team', 'for_puzzle', 'correct_for'
         ).seal()
 
-        team_guessed_on_puzzle = defaultdict(dict)
-        puzzle_activity = all_guesses.values('by_team', 'for_puzzle').annotate(
-            latest=Max('given'),
-            guesses=Count('id')
-        ).order_by()
-        for pz_team in puzzle_activity:
-            team_guessed_on_puzzle[pz_team['by_team']][pz_team['for_puzzle']] = {
-                'latest': pz_team['latest'],
-                'guesses': pz_team['guesses'],
-            }
+        # Sort teams according to how urgently we expect them to need help
+        # Current implementation: number of unsolved, looked-at puzzles.
+        # for linear episodes, that would be be always be 1, so sort secondarily by number
+        # of solved puzzles to discriminate.
+        teams = Team.objects.filter(
+            at_event=request.tenant
+        ).annotate(
+            num_solved_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False)),
+            num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False))
+        ).order_by(
+            F('num_solved_puzzles') - F('num_started_puzzles'), 'num_solved_puzzles'
+        ).prefetch_related('members').seal()
 
         all_puzzle_progress = models.TeamPuzzleProgress.objects.filter(
             team__at_event=request.tenant
-        ).select_related(
-            'team', 'puzzle'
+        ).annotate(
+            guess_count=Count('guesses'),
+            latest_guess_time=Max('guesses__given'),
         ).prefetch_related(
             Prefetch(
-                'puzzle__guess_set',
-                queryset=models.Guess.objects.order_by(
-                    'given'
-                ).select_related('by', 'by__user')
-            ),
-            Prefetch(
-                'puzzle__hint_set',
-                queryset=models.Hint.objects.select_related(
-                    'start_after', 'start_after__puzzle'
-                ).prefetch_related('start_after__unlockanswer_set')
-            ),
-            'puzzle__unlock_set__unlockanswer_set',
+                'teamunlock_set',
+                queryset=models.TeamUnlock.objects.select_related(
+                    'unlockanswer',
+                    'unlocked_by',
+                )
+            )
         ).seal()
         puzzle_progress = defaultdict(dict)
         for progress in all_puzzle_progress:
-            puzzle_progress[progress.team.id][progress.puzzle.id] = progress
+            puzzle_progress[progress.team_id][progress.puzzle_id] = progress
 
         def team_puzzle_state(team, puzzle):
             hints_scheduled = None
             guesses = None
             latest_guess = None
+            progress = puzzle_progress[team.id].get(puzzle.id)
 
-            if any(g.get_correct_for() for g in all_guesses if g.for_puzzle == puzzle and g.by_team == team):
-                state = 'solved'
-                guesses = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('guesses', 0)
-            elif not puzzle_progress[team.id].get(puzzle.id) or not puzzle_progress[team.id][puzzle.id].start_time:
+            if not progress or not progress.start_time:
                 state = 'not_opened'
+            elif progress.solved_by_id:
+                state = 'solved'
+                guesses = progress.guess_count
             else:
                 state = 'open'
-                guesses = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('guesses', 0)
-                latest_guess = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('latest', None)
+                guesses = progress.guess_count
+                latest_guess = progress.latest_guess_time
+                unlocked_unlocks = {
+                    tu.unlockanswer.unlock_id: tu.unlocked_by.given
+                    for tu in progress.teamunlock_set.all()
+                }
                 hints_scheduled = any([
                     True
                     for h in puzzle.hint_set.all()
-                    if h.unlocks_at(team, puzzle_progress[team.id][puzzle.id])
-                    and not h.unlocked_by(team, puzzle_progress[team.id][puzzle.id], puzzle.guess_set.all())
+                    if (
+                        not h.start_after_id
+                        or h.start_after_id in unlocked_unlocks
+                    ) and not h.unlocked_by(team, progress, unlocked_unlocks=unlocked_unlocks)
                 ])
             return {
                 'puzzle_id': puzzle.id,
@@ -457,21 +452,6 @@ class ProgressContent(LoginRequiredMixin, View):
                 'latest_guess': latest_guess,
                 'hints_scheduled': hints_scheduled,
             }
-
-        def team_help_needed_rating(team):
-            """Rate how much admins should be trying to assist this team relative to others"""
-            # Current implementation: number of unsolved, looked-at puzzles.
-            solved = len([1 for pz in puzzles
-                          if any(g.get_correct_for() for g in all_guesses
-                                 if g.for_puzzle == pz and g.by_team == team)
-                          ])
-            looked_at = len([1 for pz in puzzles
-                             if puzzle_progress[team.id].get(pz.id) and puzzle_progress[team.id][pz.id].start_time])
-            # for linear episodes, that would be be always be 1, so add in the number of solved puzzles
-            # to discriminate.
-            return looked_at - solved, -solved
-
-        teams = sorted(teams, key=team_help_needed_rating, reverse=True)
 
         data = {
             'puzzles': [{
