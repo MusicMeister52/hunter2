@@ -376,11 +376,11 @@ python-versions = "*"
 
 [[package]]
 name = "django-environ"
-version = "0.4.5"
+version = "0.5.0"
 description = "Django-environ allows you to utilize 12factor inspired environment variables to configure your Django application."
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3"
 
 [[package]]
 name = "django-extensions"
@@ -1314,7 +1314,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "bc2a75b0454b9bbf9d8352818a40f56733402046865bedc8079f008909a3e928"
+content-hash = "fba3fd91381ef4a4ae4cc627511fc695ea7d862042be2351cd3a3b8b7e2383cb"
 
 [metadata.files]
 aioredis = [
@@ -1549,8 +1549,8 @@ django-enumfields = [
     {file = "django_enumfields-2.1.1-py3-none-any.whl", hash = "sha256:d32f2151801a5fc13c860276ee99495c2c9345e0a4281d0104276c39ddb22807"},
 ]
 django-environ = [
-    {file = "django-environ-0.4.5.tar.gz", hash = "sha256:6c9d87660142608f63ec7d5ce5564c49b603ea8ff25da595fd6098f6dc82afde"},
-    {file = "django_environ-0.4.5-py2.py3-none-any.whl", hash = "sha256:c57b3c11ec1f319d9474e3e5a79134f40174b17c7cc024bbb2fad84646b120c4"},
+    {file = "django-environ-0.5.0.tar.gz", hash = "sha256:a8726675c1ebefa4706b36398c4d3c5c790d335ffe55c4a10378f6bfd57ad8d0"},
+    {file = "django_environ-0.5.0-py2.py3-none-any.whl", hash = "sha256:027797af03258931f16c5491cab32e6b386d52f041eb582f1e30f7b5abc22e04"},
 ]
 django-extensions = [
     {file = "django-extensions-3.1.3.tar.gz", hash = "sha256:5f0fea7bf131ca303090352577a9e7f8bfbf5489bd9d9c8aea9401db28db34a0"},
