@@ -1341,6 +1341,7 @@ class AdminContentTests(EventTestCase):
         TeamPuzzleProgressFactory(team=team1, puzzle=self.puzzle, start_time=timezone.now())
 
         GuessFactory(by=team2.members.all()[0], for_puzzle=self.puzzle, correct=True)
+        # Add a team which has done nothing and therefore will not show up
         team3 = TeamPuzzleProgressFactory(puzzle=self.puzzle).team
 
         self.client.force_login(self.admin_user.user)
@@ -1351,7 +1352,7 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(len(content['puzzles']), 1)
         self.assertEqual(content['puzzles'][0]['title'], self.puzzle.title)
 
-        self.assertEqual(len(content['team_progress']), 7)
+        self.assertEqual(len(content['team_progress']), 5)
 
         # team1 has opened the puzzle and made an incorrect guess
         team1_data = self._check_team_get_progress(response, team1)
@@ -1372,11 +1373,7 @@ class AdminContentTests(EventTestCase):
         self.assertIsNone(team2_data[0]['latest_guess'])
 
         # team3 has opened the puzzle and made no guesses
-        team3_data = self._check_team_get_progress(response, team3)
-        self.assertEqual(team3_data[0]['puzzle_id'], self.puzzle.id)
-        self.assertEqual(team3_data[0]['state'], 'open')
-        self.assertEqual(team3_data[0]['guesses'], 0)
-        self.assertIsNone(team3_data[0]['latest_guess'])
+        self.assertFalse(any([True for x in response.json()['team_progress'] if x['id'] == team3.id]))
 
     def test_admin_progress_content_hints(self):
         team = self.guesses[0].by_team
