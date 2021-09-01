@@ -394,9 +394,13 @@ class ProgressContent(LoginRequiredMixin, View):
             at_event=request.tenant
         ).annotate(
             num_solved_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False)),
-            num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False))
+            num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False)),
+            guess_exists=Exists(models.Guess.objects.filter(by_team_id=OuterRef('id'))),
+        ).filter(
+            guess_exists=True
         ).order_by(
-            F('num_solved_puzzles') - F('num_started_puzzles'), 'num_solved_puzzles'
+            F('num_solved_puzzles') - F('num_started_puzzles'),
+            'num_solved_puzzles'
         ).prefetch_related('members').seal()
 
         all_puzzle_progress = models.TeamPuzzleProgress.objects.filter(
@@ -404,6 +408,8 @@ class ProgressContent(LoginRequiredMixin, View):
         ).annotate(
             guess_count=Count('guesses'),
             latest_guess_time=Max('guesses__given'),
+        ).filter(
+            guess_count__gt=0
         ).prefetch_related(
             Prefetch(
                 'teamunlock_set',
