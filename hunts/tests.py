@@ -19,7 +19,7 @@ import freezegun
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from parameterized import parameterized
@@ -1334,6 +1334,7 @@ class AdminContentTests(EventTestCase):
 
         return data['progress']
 
+    @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
     def test_admin_progress_content(self):
         team1 = self.guesses[0].by_team
         team2 = self.guesses[1].by_team
@@ -1375,6 +1376,7 @@ class AdminContentTests(EventTestCase):
         # team3 has opened the puzzle and made no guesses
         self.assertFalse(any([True for x in response.json()['team_progress'] if x['id'] == team3.id]))
 
+    @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
     def test_admin_progress_content_hints(self):
         team = self.guesses[0].by_team
         member = self.guesses[0].by
