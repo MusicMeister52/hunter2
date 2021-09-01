@@ -544,7 +544,7 @@ Django = ">=2.1,<4.0"
 
 [[package]]
 name = "django-webpack-loader"
-version = "1.1.0"
+version = "1.3.0"
 description = "Transparently use webpack with django"
 category = "main"
 optional = false
@@ -1314,7 +1314,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "fba3fd91381ef4a4ae4cc627511fc695ea7d862042be2351cd3a3b8b7e2383cb"
+content-hash = "1bdc7f5cf84e56f9c83f99fac7557fba37831dfa0054aa1fc9f3ded695bbd450"
 
 [metadata.files]
 aioredis = [
@@ -1594,8 +1594,8 @@ django-tenants = [
     {file = "django-tenants-3.3.2.tar.gz", hash = "sha256:e3897662bb88007216ef6e3dde4467db394d4f1a4430b10aebc3ec9e58e8e20f"},
 ]
 django-webpack-loader = [
-    {file = "django-webpack-loader-1.1.0.tar.gz", hash = "sha256:c7f89a272a177a17a045ceab26bbb7e35d28ca5597c384de96817784b610c977"},
-    {file = "django_webpack_loader-1.1.0-py2.py3-none-any.whl", hash = "sha256:8a428355de2f88418209d84ad38bf33ad175fc370d3f778ffec8ea26041e589d"},
+    {file = "django-webpack-loader-1.3.0.tar.gz", hash = "sha256:37b7b5bcc2f4c1dc63de503e7d3bd61859abd6c8ffaf885bb75975890606946e"},
+    {file = "django_webpack_loader-1.3.0-py2.py3-none-any.whl", hash = "sha256:80a9dd7266366b28078466e359685370a10a6247492662085acb4809cb831264"},
 ]
 factory-boy = [
     {file = "factory_boy-3.2.0-py2.py3-none-any.whl", hash = "sha256:1d3db4b44b8c8c54cdd8b83ae4bdb9aeb121e464400035f1f03ae0e1eade56a4"},
