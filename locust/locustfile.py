@@ -16,7 +16,12 @@ class Player(HttpUser):
     weight = 100
 
     def open_puzzle_page(self):
+        # This method is not a locust task; it is called be the other puzzle interaction
+        # tasks.
+        # Get the puzzle page. Simulates the user and gets us the CSRF Token.
         response = self.client.get('/hunt/ep/1/pz/1/')
+
+        # Boring stuff to allow us to connect
         host = self.host
         if '://' in host:
             scheme, host = host.split('://')
@@ -25,11 +30,16 @@ class Player(HttpUser):
         path = '/ws/hunt/ep/1/pz/1/'
         wsscheme = 'ws' if scheme == 'http' else 'wss'
         URL = f'{wsscheme}://{host}{path}'
+
+        # end boring stuff
+
+        # Try to connect to the websocket forever
         while True:
             try:
                 self.ws = websocket.WebSocket()
                 start = time.time()
                 self.ws.connect(URL, cookie=cookies)
+                # register the event for locust
                 events.request_success.fire(
                     request_type='WebSocket connect',
                     name=path,
@@ -38,6 +48,8 @@ class Player(HttpUser):
                 )
                 break
             except (websocket.WebSocketConnectionClosedException, websocket.WebSocketBadStatusException) as e:
+                # The first of these exceptions is weird.
+                # register the failure for locust
                 events.request_failure.fire(
                     request_type='WebSocket connect',
                     name=path,
@@ -46,6 +58,8 @@ class Player(HttpUser):
                     exception=e,
                 )
             time.sleep(5)
+
+        # once here we've successfully connected: send what the client would send.
         self.ws.settimeout(5)
         self.ws.send(json.dumps({'type': 'guesses-plz', 'from': 'all'}))
         self.ws.send(json.dumps({'type': 'hints-plz', 'from': 'all'}))
@@ -60,6 +74,7 @@ class Player(HttpUser):
 
     @task(3)
     def incorrect_guesses(self):
+        """Load the puzzle page, connect to the websocket, and guess incorrectly 30 times"""
         csrftoken = self.open_puzzle_page()
         for i in range(30):
             self.client.post(
@@ -72,6 +87,10 @@ class Player(HttpUser):
 
     @task
     def solve_puzzle(self):
+        """Load the puzzle page, connect to the websocket and incorrectly 29 times then guess "correct" once
+
+        (make that the answer to the puzzle to make this work)
+        """
         csrftoken = self.open_puzzle_page()
         for i in range(29):
             self.client.post(

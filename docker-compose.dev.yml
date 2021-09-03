@@ -36,9 +36,6 @@ services:
       - "8089:8089"
     volumes:
       - ./locust:/mnt/locust
-        #extra_hosts:
-        #  - "hunter2.local:app"
-        #  - "dev.hunter2.local:app"
     command: -f /mnt/locust/locustfile.py
   app:
     build:
