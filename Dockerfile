@@ -2,7 +2,7 @@
 FROM python:3.8.11-alpine3.14@sha256:b12462dab319994e6a4be09eee3be7a29b6b7abf6202fb8030f45af4d39d7e24 AS runtime_base
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
-    lua5.2 \
+    lua5.4 \
     postgresql-client \
     postgresql-libs \
     imlib2
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apk apk add \
     git \
     libffi-dev \
     linux-headers \
-    lua5.2-dev \
+    lua5.4-dev \
     musl-dev \
     postgresql-dev \
     rust
@@ -49,19 +49,19 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Build all the required Lua components
 FROM alpine:3.14.2@sha256:e1c082e3d3c45cccac829840a25941e679c25d438cc8412c2fa221cf1a824e6a AS lua_build
 
-COPY hunts/runtimes/lua/luarocks/config.lua /etc/luarocks/config-5.2.lua
+COPY hunts/runtimes/lua/luarocks/config.lua /etc/luarocks/config-5.4.lua
 
 RUN  --mount=type=cache,target=/var/cache/apk apk add \
     curl \
     gcc \
     imlib2-dev \
-    lua5.2-dev \
-    luarocks5.2 \
+    lua5.4-dev \
+    luarocks5.4 \
     musl-dev
 RUN --mount=type=cache,target=/root/.cache/luarocks \
-    luarocks-5.2 install lua-cjson 2.1.0-1
+    luarocks-5.4 install lua-cjson 2.1.0-1
 RUN --mount=type=cache,target=/root/.cache/luarocks \
-    luarocks-5.2 install lua-imlib2 dev-2
+    luarocks-5.4 install lua-imlib2 dev-2
 
 
 # Build the production webpack'ed assets

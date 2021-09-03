@@ -51,7 +51,7 @@ end
 
 -- Main library functions import
 -- Safe functions taken from http://lua-users.org/wiki/SandBoxes
--- Updated to include functions from Lua 5.2
+-- Updated to include functions from Lua 5.4
 sandbox.env = {
   _VERSION     = _G._VERSION,
 
