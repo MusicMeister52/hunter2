@@ -227,7 +227,9 @@ class PuzzleEventWebsocket(HuntWebsocket):
             return
         loop = sync_to_async.threadlocal.main_event_loop
         # run the hint sender function on the asyncio event loop so we don't have to bother writing scheduler stuff
-        task = loop.create_task(self.send_new_hint(self.team, hint, delay))
+        # `create_task` internally uses `call_soon` so can only be run safely from on the event loop. Schedule a short coroutine on the event loop using
+        # `call_soon_threadsafe` that will do the creation.
+        task = loop.call_soon_threadsafe(loop.create_task, self.send_new_hint(self.team, hint, delay))
         self.hint_events[hint.id] = task
 
     def cancel_scheduled_hint(self, content):
