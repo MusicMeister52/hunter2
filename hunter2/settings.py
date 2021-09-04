@@ -336,7 +336,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-ASGI_APPLICATION = 'hunter2.routing.application'
+ASGI_APPLICATION = 'hunter2.asgi.application'
 
 WSGI_APPLICATION = 'hunter2.wsgi.application'
 

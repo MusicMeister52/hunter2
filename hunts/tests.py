@@ -30,7 +30,7 @@ from accounts.factories import UserProfileFactory, UserFactory
 from events.factories import EventFileFactory, AttendanceFactory
 from events.models import Event
 from events.test import EventAwareTestCase, EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
-from hunter2.routing import application as websocket_app
+from hunter2.asgi import application as websocket_app
 from hunter2.views import DefaultEventView
 from teams.models import TeamRole
 from teams.factories import TeamFactory, TeamMemberFactory

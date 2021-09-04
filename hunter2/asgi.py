@@ -15,10 +15,20 @@
 ASGI config for hunter2 project.
 """
 
-import os
-import django
-from channels.routing import get_default_application
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hunter2.settings")
-django.setup()
-application = get_default_application()
+from events.middleware import TenantWebsocketMiddleware
+import hunts.routing
+
+application = ProtocolTypeRouter({
+    'http': get_asgi_application(),
+    'websocket': TenantWebsocketMiddleware(
+        AuthMiddlewareStack(
+            URLRouter(
+                hunts.routing.websocket_urlpatterns
+            )
+        )
+    ),
+})
