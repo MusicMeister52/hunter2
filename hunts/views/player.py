@@ -56,8 +56,6 @@ class EpisodeIndex(LoginRequiredMixin, EpisodeUnlockedMixin, View):
 class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
         puzzles = request.episode.unlocked_puzzles(request.team)
-        for puzzle in puzzles:
-            puzzle.done = puzzle.answered_by(request.team)
 
         positions = request.episode.finished_positions()
         if request.team in positions:

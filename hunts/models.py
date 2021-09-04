@@ -18,7 +18,7 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Sum, Min
+from django.db.models import Count, Exists, Max, Min, Q, Sum
 from django.utils import timezone
 from django.urls import reverse
 from django_postgresql_dag.models import node_factory, edge_factory
@@ -161,36 +161,24 @@ class Episode(node_factory(EpisodePrequel)):
         return all([puzzle.answered_by(team) for puzzle in self.puzzle_set.all()])
 
     def finished_times(self):
-        """Get a list of teams who have finished this episode together with the time at which they finished."""
-        if not self.puzzle_set.all():
-            return []
-
-        if self.parallel:
-            # The position is determined by when the latest of a team's first successful guesses came in, over
-            # all puzzles in the episode. Teams which haven't answered all questions are discarded.
-            last_team_guesses = {team: None for team in teams.models.Team.objects.filter(at_event=self.event)}
-
-            for p in self.puzzle_set.all():
-                team_guesses = p.first_correct_guesses(self.event)
-                for team in list(last_team_guesses.keys()):
-                    if team not in team_guesses:
-                        del last_team_guesses[team]
-                        continue
-                    if not last_team_guesses[team]:
-                        last_team_guesses[team] = team_guesses[team]
-                    elif team_guesses[team].given > last_team_guesses[team].given:
-                        last_team_guesses[team] = team_guesses[team]
-
-            last_team_times = ((t, last_team_guesses[t].given) for t in last_team_guesses)
-            return last_team_times
-
-        else:
-            last_puzzle = self.puzzle_set.all().last()
-            return last_puzzle.finished_team_times(self.event)
+        """Get a list of player teams who have finished this episode with their finish time, in the order in which they finished."""
+        return [(t, t.last_solve) for t in teams.models.Team.objects.annotate(
+            solved_count=Count('teampuzzleprogress', filter=Q(
+                teampuzzleprogress__puzzle__episode=self,
+                teampuzzleprogress__solved_by__isnull=False),
+            ),
+            last_solve=Max('teampuzzleprogress__solved_by__given', filter=Q(
+                teampuzzleprogress__puzzle__episode=self,
+            )),
+        ).filter(
+            role=teams.models.TeamRole.PLAYER,
+            solved_count__gt=0,
+            solved_count=self.puzzle_set.count(),
+        ).order_by('last_solve')]
 
     def finished_positions(self):
-        """Get a list of teams who have finished this episode in the order in which they finished."""
-        return [team for team, time in sorted(self.finished_times(), key=lambda x: x[1])]
+        """Get a list of player teams who have finished this episode in the order in which they finished."""
+        return [team for team, time in self.finished_times()]
 
     def headstart_applied(self, team):
         """Get how much headstart the given team has acquired for the episode
@@ -231,8 +219,12 @@ class Episode(node_factory(EpisodePrequel)):
                     return False
 
     def unlocked_puzzles(self, team):
+        """Return the list of puzzles which should be visible for the given team annotated with an additional boolean `done` indicating whether the team has
+        already completed them."""
         now = timezone.now()
-        started_puzzles = self.puzzle_set.all()
+        started_puzzles = self.puzzle_set.all().annotate(
+            done=Exists(TeamPuzzleProgress.objects.filter(team=team, solved_by__isnull=False)),
+        )
         if self.parallel:
             started_puzzles = started_puzzles.filter(start_date__lt=now)
         if self.parallel or self.event.end_date < now:
@@ -426,16 +418,14 @@ class Puzzle(OrderedModel):
 
         return team_guesses
 
-    def finished_team_times(self, event):
+    def finished_team_times(self):
         """Return an iterable of (team, time) tuples of teams who have completed this puzzle at the given event,
-together with the team at which they completed the puzzle."""
-        team_guesses = self.first_correct_guesses(event)
+together with the time at which they completed the puzzle."""
+        return [(tpp.team, tpp.solved_by.given) for tpp in self.teampuzzleprogress_set.filter(solved_by__isnull=False)]
 
-        return ((team, team_guesses[team].given) for team in team_guesses)
-
-    def finished_teams(self, event):
+    def finished_teams(self):
         """Return a list of teams who have completed this puzzle at the given event in order of completion."""
-        return [team for team, time in sorted(self.finished_team_times(event), key=lambda x: x[1])]
+        return [team for team, time in sorted(self.finished_team_times(), key=lambda x: x[1])]
 
     def files_map(self, request):
         # This assumes that a single request concerns a single puzzle, which seems reasonable for now.
@@ -458,7 +448,7 @@ together with the team at which they completed the puzzle."""
     def position(self, team):
         """Returns the position in which the given team finished this puzzle: 0 = first, None = not yet finished."""
         try:
-            return self.finished_teams(team.at_event).index(team)
+            return self.finished_teams().index(team)
         except ValueError:
             return None
 
@@ -743,7 +733,7 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     by = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
     by_team = models.ForeignKey(teams.models.Team, on_delete=models.SET_NULL, null=True, blank=True)
     guess = models.TextField()
-    given = models.DateTimeField(auto_now_add=True)
+    given = models.DateTimeField(default=timezone.now)
     # The following two fields cache whether the guess is correct. Do not use them directly.
     correct_for = models.ForeignKey(Answer, blank=True, null=True, on_delete=models.SET_NULL)
     correct_current = models.BooleanField(default=False)
@@ -1042,7 +1032,7 @@ class Announcement(models.Model):
     event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING, related_name='announcements')
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE, related_name='announcements', null=True, blank=True)
     title = models.CharField(max_length=255)
-    posted = models.DateTimeField(auto_now_add=True)
+    posted = models.DateTimeField(default=timezone.now)
     message = models.TextField(blank=True)
     type = EnumField(AnnouncementType, max_length=1, default=AnnouncementType.INFO)
 
