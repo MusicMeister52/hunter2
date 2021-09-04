@@ -299,7 +299,7 @@ function receivedDeleteUnlock(content) {
   if (!(unlocks.has(content.unlock_uid))) {
     throw `WebSocket deleted invalid unlock: ${content.unlock_uid}`
   }
-  delete unlocks[content.unlock_uid]
+  unlocks.delete(content.unlock_uid)
   updateUnlocks()
 }
 
