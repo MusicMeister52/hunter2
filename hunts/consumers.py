@@ -13,7 +13,7 @@
 import asyncio
 from datetime import datetime
 
-from asgiref.sync import async_to_sync, sync_to_async
+from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 from channels.layers import get_channel_layer
 from django.core.exceptions import ObjectDoesNotExist
@@ -141,6 +141,10 @@ class PuzzleEventWebsocket(HuntWebsocket):
         super().__init__(*args, **kwargs)
         self.connected = False
 
+    async def __call__(self, *args, **kwargs):
+        self.loop = asyncio.get_running_loop()
+        await super().__call__(*args, **kwargs)
+
     @classmethod
     def _puzzle_groupname(cls, puzzle, team_id=None):
         event_id = puzzle.episode.event_id
@@ -227,10 +231,9 @@ class PuzzleEventWebsocket(HuntWebsocket):
         delay = delay.total_seconds()
         if not send_expired and delay < 0:
             return
-        loop = sync_to_async.threadlocal.main_event_loop
         # run the hint sender function on the asyncio event loop so we don't have to bother writing scheduler stuff
         # we need a future in order to be able to cancel it. This seems to be the easiest way to get one.
-        future = asyncio.run_coroutine_threadsafe(self.send_new_hint(self.team, hint, delay), loop)
+        future = asyncio.run_coroutine_threadsafe(self.send_new_hint(self.team, hint, delay), self.loop)
         self.hint_events[hint.id] = future
 
     def cancel_scheduled_hint(self, content):
