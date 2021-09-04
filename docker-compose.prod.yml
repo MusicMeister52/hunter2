@@ -80,7 +80,7 @@ services:
     volumes:
       - metrics:/prometheus
   redis:
-    image: redis:6.2.4-alpine3.13@sha256:6833ca04ec87a2222928157125dffcca22c68e2db304164cc050ee9cc6b05b4e
+    image: redis:6.2.5-alpine3.14@sha256:fa785f9bd167b94a6b30210ae32422469f4b0f805f4df12733c2f177f500d1ba
     volumes:
       - redis:/data
   redis_exporter:
@@ -88,7 +88,7 @@ services:
       - redis
     environment:
       - REDIS_ADDR=redis://redis:6379
-    image: oliver006/redis_exporter:v1.26.0-alpine@sha256:92d99d8217cc44bc44fd13d9fd97d983164d6081ab720c5190651fd65b9ab8f8
+    image: oliver006/redis_exporter:v1.27.0-alpine@sha256:a276a6f865cef3f6ef21777c52a0bc3285c5eef2e707d0292e0cb3a627706dc0
   web:
     depends_on:
       - app
