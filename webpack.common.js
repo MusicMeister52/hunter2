@@ -71,6 +71,12 @@ module.exports = {
     ],
   },
 
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+    },
+  },
+
   output: {
     path: path.resolve('../assets/bundles/'),
     filename: '[name]/[contenthash].js',
