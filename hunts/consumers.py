@@ -143,11 +143,11 @@ class PuzzleEventWebsocket(HuntWebsocket):
 
     @classmethod
     def _puzzle_groupname(cls, puzzle, team_id=None):
-        event = puzzle.episode.event
+        event_id = puzzle.episode.event_id
         if team_id:
-            return f'event-{event.id}.puzzle-{puzzle.id}.events.team-{team_id}'
+            return f'event-{event_id}.puzzle-{puzzle.id}.events.team-{team_id}'
         else:
-            return f'event-{event.id}.puzzle-{puzzle.id}.events'
+            return f'event-{event_id}.puzzle-{puzzle.id}.events'
 
     def connect(self):
         keywords = self.scope['url_route']['kwargs']
@@ -205,7 +205,9 @@ class PuzzleEventWebsocket(HuntWebsocket):
 
     def schedule_hint_msg(self, message):
         try:
-            hint = models.Hint.objects.get(id=message['hint_uid'])
+            # select_related is needed not for performance but so no queries are necessary in the
+            # event loop, which is not allowed
+            hint = models.Hint.objects.select_related('start_after').get(id=message['hint_uid'])
         except (TypeError, KeyError):
             raise ValueError('Cannot schedule a hint without either a hint instance or a dictionary with `hint_uid` key.')
         send_expired = message.get('send_expired', False)

@@ -150,7 +150,13 @@ def saved_unlockanswer(sender, instance, raw, *args, **kwargs):
     if not do_not_delete:
         return
 
-    progresses = {tpp.team_id: tpp for tpp in models.TeamPuzzleProgress.objects.filter(puzzle=puzzle).select_related('team', 'puzzle').seal()}
+    # puzzle.episode is needed within the websocket signal handler
+    progresses = {
+        tpp.team_id: tpp
+        for tpp in models.TeamPuzzleProgress.objects.filter(puzzle=puzzle).select_related(
+            'team', 'puzzle', 'puzzle__episode'
+        ).seal()
+    }
     affected_guess_ids = {v[0] for v in affected.values_list('unlocked_by')}
     for guess in do_not_delete:
         if guess.id not in affected_guess_ids:

@@ -42,7 +42,7 @@ class EpisodePrequel(edge_factory('hunts.Episode', concrete=False)):
     pass
 
 
-class Episode(node_factory(EpisodePrequel)):
+class Episode(node_factory(EpisodePrequel), SealableModel):
     name = models.CharField(max_length=255)
     flavour = models.TextField(blank=True)
     start_date = models.DateTimeField()
@@ -247,7 +247,7 @@ def generate_url_id():
     return id
 
 
-class Puzzle(OrderedModel):
+class Puzzle(OrderedModel, SealableModel):
     order_with_respect_to = 'episode'
 
     class Meta:
@@ -560,9 +560,9 @@ class Hint(Clue):
 
         Parameters as for `unlocked_by`.
         """
-        if self.start_after:
+        if self.start_after_id:
             if unlocked_unlocks:
-                start_time = unlocked_unlocks[self.start_after.id]
+                start_time = unlocked_unlocks.get(self.start_after_id)
             else:
                 start_time = progress.teamunlock_set.filter(
                     unlockanswer__unlock_id=self.start_after_id
