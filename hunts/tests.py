@@ -2186,6 +2186,31 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
         self.run_async(comm.disconnect)()
 
+    def test_websocket_receives_unlocks_on_reconnect(self):
+        user1 = TeamMemberFactory()
+        user2 = TeamMemberFactory()
+        ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_1', guess='unlock_guess_1')
+        ua2 = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_2', guess='unlock_guess_2')
+
+        comm = self.get_communicator(websocket_app, self.url, {'user': user1.user})
+        connected, subprotocol = self.run_async(comm.connect)()
+        self.assertTrue(connected)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        GuessFactory(for_puzzle=self.pz, by=user1, guess=ua1.guess)
+        self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        self.receive_json(comm, 'Websocket didn\'t do enough in response to an unlocking guess')
+        GuessFactory(for_puzzle=self.pz, by=user2, guess=ua2.guess)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        self.run_async(comm.send_json_to)({'type': 'unlocks-plz'})
+        output = self.receive_json(comm, 'Websocket did nothing in response to requesting unlocks again')
+        self.assertEqual(output['type'], 'old_unlock')
+        self.assertEqual(output['content']['guess'], 'unlock_guess_1')
+        self.assertEqual(output['content']['unlock'], 'unlock_1')
+        self.assertEqual(output['content']['unlock_uid'], ua1.unlock.compact_id)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
     def test_websocket_receives_guess_updates(self):
         user = TeamMemberFactory()
         eve = TeamMemberFactory()

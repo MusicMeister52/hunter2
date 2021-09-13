@@ -442,6 +442,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         # TODO: something better for sorting unlocks? The View sorts them as in the admin, but this is not alterable,
         # even though it is often meaningful. Currently JS sorts them alphabetically.
         for tu in models.TeamUnlock.objects.filter(
+            team_puzzle_progress__team=self.team,
             team_puzzle_progress__puzzle=self.puzzle
         ).order_by('unlockanswer__unlock__text'):
             self.send_json({
