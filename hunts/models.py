@@ -18,7 +18,7 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Count, Exists, Max, Min, Q, Sum
+from django.db.models import Count, Exists, Max, Min, OuterRef, Q, Sum
 from django.utils import timezone
 from django.urls import reverse
 from django_postgresql_dag.models import node_factory, edge_factory
@@ -223,7 +223,7 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         already completed them."""
         now = timezone.now()
         started_puzzles = self.puzzle_set.all().annotate(
-            done=Exists(TeamPuzzleProgress.objects.filter(team=team, solved_by__isnull=False)),
+            done=Exists(TeamPuzzleProgress.objects.filter(puzzle=OuterRef('pk'), team=team, solved_by__isnull=False)),
         )
         if self.parallel:
             started_puzzles = started_puzzles.filter(start_date__lt=now)

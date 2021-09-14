@@ -602,7 +602,7 @@ class PuzzleAccessTests(EventTestCase):
             _check_load_callback_answer(self.puzzles[2], 200)
 
 
-class EpisodeBehaviourTest(EventTestCase):
+class EpisodeBehaviourTests(EventTestCase):
     def test_linear_episodes_are_linear(self):
         linear_episode = EpisodeFactory(parallel=False)
         PuzzleFactory.create_batch(10, episode=linear_episode)
@@ -640,6 +640,45 @@ class EpisodeBehaviourTest(EventTestCase):
         # Ensure all puzzles in a parallel episode are unlocked.
         for puzzle in parallel_episode.puzzle_set.all():
             self.assertTrue(puzzle.unlocked_by(team), msg='Puzzle unlocked in parallel episode')
+
+    def test_unlocked_puzzle_done_flag(self):
+        episode = EpisodeFactory(parallel=False)
+        puzzles = PuzzleFactory.create_batch(5, episode=episode)
+        user1 = TeamMemberFactory()
+        team1 = user1.team_at(episode.event)
+        user2 = TeamMemberFactory()
+        team2 = user2.team_at(episode.event)
+        user3 = TeamMemberFactory()
+        team3 = user3.team_at(episode.event)
+
+        # Team one has solved the first two puzzles
+        for puzzle in puzzles[:2]:
+            GuessFactory(by=user1, by_team=team1, for_puzzle=puzzle, correct=True)
+        # ...and made some guesses on third
+        GuessFactory.create_batch(5, by=user1, by_team=team1, for_puzzle=episode.puzzle_set.all()[2], correct=False)
+        # Team two has solved the first three puzzles
+        for puzzle in puzzles[:3]:
+            GuessFactory(by=user2, by_team=team2, for_puzzle=puzzle, correct=True)
+        # Team three has solved all the puzzles
+        for puzzle in puzzles:
+            GuessFactory(by=user3, by_team=team3, for_puzzle=puzzle, correct=True)
+
+        unlocked1 = episode.unlocked_puzzles(team1)
+        self.assertEqual(3, len(unlocked1))
+        for puzzle in unlocked1[:2]:
+            self.assertTrue(puzzle.done)
+        self.assertFalse(unlocked1[2].done)
+
+        unlocked2 = episode.unlocked_puzzles(team2)
+        self.assertEqual(4, len(unlocked2))
+        for puzzle in unlocked2[:3]:
+            self.assertTrue(puzzle.done)
+        self.assertFalse(unlocked2[3].done)
+
+        unlocked3 = episode.unlocked_puzzles(team3)
+        self.assertEqual(5, len(unlocked3))
+        for puzzle in unlocked3:
+            self.assertTrue(puzzle.done)
 
     def test_can_see_all_puzzles_after_event_end(self):
         linear_episode = EpisodeFactory(parallel=False)
