@@ -227,6 +227,8 @@ class Stats(LoginRequiredMixin, View):
         )
 
 
+# 5 seconds is the default refresh interval on the page
+@method_decorator(cache.cache_page(5), name='dispatch')
 class StatsContent(LoginRequiredMixin, View):
     def get(self, request, episode_id=None):
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -237,7 +239,6 @@ class StatsContent(LoginRequiredMixin, View):
         now = timezone.now()
         end_time = min(now, request.tenant.end_date) + timedelta(minutes=10)
 
-        # TODO select and prefetch all the things
         episodes = models.Episode.objects.filter(event=request.tenant).order_by('start_date')
         if episode_id is not None:
             episodes = episodes.filter(pk=episode_id)
@@ -252,43 +253,21 @@ class StatsContent(LoginRequiredMixin, View):
             at_event=request.tenant,
             role=TeamRole.PLAYER,
             num_members__gte=1,
-        ).prefetch_related('members', 'members__user')
+        ).select_related('at_event').prefetch_related('members', 'members__user').seal()
 
-        # Get the first correct guess for each team on each puzzle.
-        # We use Guess.correct_for (i.e. the cache) because otherwise we perform a query for every
-        # (team, puzzle) pair i.e. a butt-ton. This comes at the cost of possibly seeing
-        # a team doing worse than it really is.
-        all_guesses = models.Guess.objects.filter(
-            correct_for__isnull=False,
-        ).select_related('for_puzzle', 'by_team')
-        correct_guesses = defaultdict(dict)
-        for guess in all_guesses:
-            team_guesses = correct_guesses[guess.for_puzzle]
-            if guess.by_team not in team_guesses or guess.given < team_guesses[guess.by_team].given:
-                team_guesses[guess.by_team] = guess
-
-        # Get when each team started each puzzle, and in how much time they solved each puzzle if they did.
-        puzzle_progresses = models.TeamPuzzleProgress.objects.filter(puzzle__in=puzzles, team__in=all_teams).select_related('puzzle', 'team')
-        start_times = defaultdict(lambda: defaultdict(dict))
-        solved_times = defaultdict(list)
+        now = timezone.now()
+        puzzle_progresses = models.TeamPuzzleProgress.objects.filter(
+            puzzle__in=puzzles, team__in=all_teams
+        ).annotate(
+            time_on=now - F('start_time'),
+            solved_time=F('solved_by__given') - F('start_time')
+        ).select_related('puzzle', 'team', 'solved_by').seal()
+        tpp_dict = defaultdict(dict)
+        num_solved = defaultdict(int)
         for progress in puzzle_progresses:
-            if progress.team in correct_guesses[progress.puzzle] and progress.start_time:
-                start_times[progress.team][progress.puzzle] = None
-                solved_times[progress.puzzle].append(correct_guesses[progress.puzzle][progress.team].given - progress.start_time)
-            else:
-                start_times[progress.team][progress.puzzle] = progress.start_time
-
-        # How long a team has been on a puzzle.
-        stuckness = {
-            team: [
-                now - start for start in start_times[team].values() if start
-            ] for team in all_teams
-        }
-        # How many teams have been active on each puzzle
-        num_active_teams = {
-            puzzle: len([1 for t in all_teams if start_times[t][puzzle]])
-            for puzzle in puzzles
-        }
+            tpp_dict[progress.puzzle][progress.team] = progress
+            if progress.solved_by:
+                num_solved[progress.puzzle] += 1
 
         # Now assemble all the stats ready for giving back to the user
         puzzle_progress = [
@@ -296,39 +275,27 @@ class StatsContent(LoginRequiredMixin, View):
                 'team': t.get_verbose_name(),
                 'progress': [{
                     'puzzle': p.title,
-                    'time': correct_guesses[p][t].given
-                } for p in puzzles if t in correct_guesses[p]]
+                    'time': tpp_dict[p][t].solved_by.given
+                } for p in puzzles if t in tpp_dict[p] and tpp_dict[p][t].solved_by]
             } for t in all_teams]
         puzzle_completion = [
             {
                 'puzzle': p.title,
-                'completion': len(correct_guesses[p])
+                'completion': num_solved[p]
             } for p in puzzles]
         team_puzzle_stuckness = [
             {
                 'team': t.get_verbose_name(),
                 'puzzleStuckness': [{
                     'puzzle': p.title,
-                    'stuckness': (now - start_times[t][p]).total_seconds()
-                } for p in puzzles if start_times[t][p]]
+                    'stuckness': (tpp_dict[p][t].time_on).total_seconds()
+                } for p in puzzles if t in tpp_dict[p] and not tpp_dict[p][t].solved_by and tpp_dict[p][t].time_on is not None]
             } for t in all_teams]
-        team_total_stuckness = [
-            {
-                'team': t.get_verbose_name(),
-                'stuckness': sum(stuckness[t], timedelta()).total_seconds(),
-            } for t in all_teams]
-        puzzle_average_stuckness = [
-            {
-                'puzzle': p.title,
-                'stuckness': sum([
-                    now - start_times[t][p] for t in all_teams if start_times[t][p]
-                ], timedelta()).total_seconds() / num_active_teams[p]
-            } for p in puzzles if num_active_teams[p] > 0]
         puzzle_difficulty = [
             {
                 'puzzle': p.title,
-                'average_time': sum(solved_times[p], timedelta()).total_seconds() / len(solved_times[p])
-            } for p in puzzles if solved_times[p]]
+                'average_time': sum([tpp.solved_time for tpp in tpp_dict[p].values() if tpp.solved_time], timedelta()).total_seconds() / num_solved[p]
+            } for p in puzzles if num_solved[p]]
 
         data = {
             'teams': [t.get_verbose_name() for t in all_teams],
@@ -338,9 +305,7 @@ class StatsContent(LoginRequiredMixin, View):
             'puzzles': [p.title for p in puzzles],
             'puzzleCompletion': puzzle_completion,
             'puzzleProgress': puzzle_progress,
-            'teamTotalStuckness': team_total_stuckness,
             'teamPuzzleStuckness': team_puzzle_stuckness,
-            'puzzleAverageStuckness': puzzle_average_stuckness,
             'puzzleDifficulty': puzzle_difficulty
         }
         return JsonResponse(data)
