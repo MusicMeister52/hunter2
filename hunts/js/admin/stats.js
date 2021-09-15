@@ -268,43 +268,6 @@ function drawTeamPuzzleStuckness(data) {
   drawLegend(data, colours, symbols)
 }
 
-function drawTeamStuckness(data) {
-  var stuckness = data.teamTotalStuckness.sort(function (a, b) { return b.stuckness - a.stuckness })
-  var y = d3.scaleBand()
-    .domain(stuckness.map(function(d) { return d.team }))
-    .range([0, height])
-    .padding(0.1)
-  var x = d3.scaleTime()
-    .domain([0, d3.max(stuckness.map(function(d) { return d.stuckness }))])
-    .range([0, width])
-
-  var bar = chart.selectAll('g.bar')
-    .data(data.teamTotalStuckness)
-
-  var enterBar = bar.enter()
-    .append('g')
-    .attr('class', 'bar')
-  enterBar.append('rect')
-
-  var updateBar = enterBar.merge(bar)
-  updateBar.attr('transform', function(d) { return 'translate(0,' + y(d.team) + ')' })
-    .select('rect')
-    .attr('width', function(d) { return x(d.stuckness) })
-    .attr('height', y.bandwidth())
-
-  var xAxis = d3.axisTop(x)
-    .tickSize(-height)
-    .tickPadding(10)
-    .tickFormat(timeFormatter)
-
-  xAxisElt.call(xAxis)
-    .selectAll('text')
-    .style('text-anchor', 'middle')
-
-  yAxisElt.call(d3.axisLeft(y))
-    .selectAll('text')
-}
-
 function puzzleTimeDrawer(mainPropName, subPropName) {
   return function (data) {
     // Create scales for a bar chart
@@ -556,9 +519,7 @@ var drawFunctions = new Map([
   ['percent-complete', drawCompletion],
   ['time-completed', drawTimeCompleted(false)],
   ['progress', drawTimeCompleted(true)],
-  ['team-total-stuckness', drawTeamStuckness],
   ['team-puzzle-stuckness', drawTeamPuzzleStuckness],
-  ['puzzle-stuckness', puzzleTimeDrawer('puzzleAverageStuckness', 'stuckness')],
   ['puzzle-difficulty', puzzleTimeDrawer('puzzleDifficulty', 'average_time')],
 ])
 
