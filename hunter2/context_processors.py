@@ -15,13 +15,13 @@ from string import Template
 from django.db.models import BooleanField, ExpressionWrapper, Q
 from django.urls import reverse
 
-from .models import Configuration, Icon
+from .models import Icon
 from .utils import wwwize
 from . import settings
 
 
 def site_theme(request):
-    config = Configuration.get_solo()
+    config = request.site_configuration
     files = config.files_map(request)
     return {
         'site_script': Template(config.script).safe_substitute(**files),
@@ -60,7 +60,7 @@ def sentry_dsn(request):
 
 
 def privacy_policy(request):
-    has_privacy_policy = Configuration.get_solo().privacy_policy != ''
+    has_privacy_policy = request.site_configuration.privacy_policy != ''
     return {
         'footer_column_class': 'col-md-3' if has_privacy_policy else 'col-md-4',
         'has_privacy_policy': has_privacy_policy,

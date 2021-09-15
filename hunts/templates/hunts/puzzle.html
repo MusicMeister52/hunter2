@@ -61,23 +61,20 @@
 
 <section id="puzzle-answer">
 {% if answered %}
-<h2>Your correct answer{{ answered|pluralize }}</h2>
-<div id="answer">
-{% for guess in answered %}
-<p>"{{ guess.guess }}" &mdash; entered by {{ guess.by.username }}</p>
-{% endfor %}
-</div>
+<h2>Your correct answer</h2>
+<p>"{{ answered.guess }}" &mdash; entered by {{ answered.by.username }}</p>
 {% elif ended %}
 <h2>Event is over</h2>
 {% endif %}
 {% if admin or not answered and not ended %}
-<form class="form-inline" action="an" method="POST">
+<form id="answer-form" class="form-inline" action="an" method="POST">
 	{% csrf_token %}
 	<span id="answer-border">
 		<input name="answer" id="answer-entry" class="form-control" placeholder="Enter guess" />
 	</span>
 	<button type="submit" id="answer-button" class="btn btn-primary" disabled="disabled">Guess!</button>
 </form>
+<div id="connection-status"></div>
 {% endif %}
 {% if ended or admin %}
 <button id="soln-button" class="btn btn-primary" data-toggle="collapse" data-target="#soln-content" data-url="{% url 'solution_content' episode_number=episode_number puzzle_number=puzzle_number %}">Show Solution</button>

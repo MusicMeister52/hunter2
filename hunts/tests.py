@@ -19,7 +19,7 @@ import freezegun
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from parameterized import parameterized
@@ -47,12 +47,13 @@ from .factories import (
     SolutionFileFactory,
     TeamDataFactory,
     TeamPuzzleDataFactory,
+    TeamPuzzleProgressFactory,
     UnlockAnswerFactory,
     UnlockFactory,
     UserDataFactory,
     UserPuzzleDataFactory,
 )
-from .models import PuzzleData, TeamPuzzleData
+from .models import PuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
 from .utils import encode_uuid
 from .runtimes import Runtime
 
@@ -108,6 +109,10 @@ class FactoryTests(EventTestCase):
         answer = AnswerFactory(runtime=runtime)
         guess = GuessFactory(for_puzzle=answer.for_puzzle, correct=False)
         self.assertFalse(answer.for_puzzle.answered_by(guess.by_team), "Puzzle not answered by incorrect guess")
+
+    @staticmethod
+    def test_team_puzzle_progress_factory_default_construction():
+        TeamPuzzleProgressFactory.create()
 
     @staticmethod
     def test_team_data_factory_default_construction():
@@ -258,6 +263,14 @@ class AnswerSubmissionTests(EventTestCase):
         },)
         self.client.force_login(self.user.user)
 
+    def test_answer_correct(self):
+        response = self.client.post(self.url, {
+            'last_updated': '0',
+            'answer': GuessFactory.build(for_puzzle=self.puzzle, correct=True).guess
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['correct'], 'true')
+
     def test_no_answer_given(self):
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 400)
@@ -319,13 +332,13 @@ class PuzzleStartTimeTests(EventTestCase):
         response = self.client.get(self.puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
 
-        first_time = TeamPuzzleData.objects.get().start_time
+        first_time = TeamPuzzleProgress.objects.get().start_time
         self.assertIsNot(first_time, None, msg='Start time is set on first access to a puzzle')
 
         response = self.client.get(self.puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
 
-        second_time = TeamPuzzleData.objects.get().start_time
+        second_time = TeamPuzzleProgress.objects.get().start_time
         self.assertEqual(first_time, second_time, msg='Start time does not alter on subsequent access')
 
 
@@ -589,7 +602,7 @@ class PuzzleAccessTests(EventTestCase):
             _check_load_callback_answer(self.puzzles[2], 200)
 
 
-class EpisodeBehaviourTest(EventTestCase):
+class EpisodeBehaviourTests(EventTestCase):
     def test_linear_episodes_are_linear(self):
         linear_episode = EpisodeFactory(parallel=False)
         PuzzleFactory.create_batch(10, episode=linear_episode)
@@ -599,17 +612,17 @@ class EpisodeBehaviourTest(EventTestCase):
         # TODO: Scramble puzzle order before starting (so they are not in the order they were created).
 
         # Check we can start and that it is a linear episode.
-        self.assertTrue(linear_episode.unlocked_by(team), msg='Episode is unlocked by team')
+        self.assertTrue(linear_episode.available(team), msg='Episode is unlocked by team')
         self.assertFalse(linear_episode.parallel, msg='Episode is not set as parallel')
 
         for i in range(1, linear_episode.puzzle_set.count() + 1):
             # Test we have unlocked the question, but not answered it yet.
-            self.assertTrue(linear_episode.get_puzzle(i).unlocked_by(team), msg=f'Puzzle[{i}] is unlocked')
-            self.assertFalse(linear_episode.get_puzzle(i).answered_by(team), msg=f'Puzzle[{i}] is not answered')
+            self.assertTrue(linear_episode.get_puzzle(i).available(team), msg=f'Puzzle[{i}] is locked')
+            self.assertFalse(linear_episode.get_puzzle(i).answered_by(team), msg=f'Puzzle[{i}] is answered')
 
             # Test that we have not unlocked the next puzzle before answering.
             if i < linear_episode.puzzle_set.count():
-                self.assertFalse(linear_episode.get_puzzle(i + 1).unlocked_by(team), msg=f'Puzzle[{i + 1}] is not unlocked until previous puzzle answered')
+                self.assertFalse(linear_episode.get_puzzle(i + 1).available(team), msg=f'Puzzle[{i + 1}] is not unlocked until previous puzzle answered')
 
             # Answer the question and assert that it's now answered.
             GuessFactory.create(for_puzzle=linear_episode.get_puzzle(i), by=user, correct=True)
@@ -621,12 +634,51 @@ class EpisodeBehaviourTest(EventTestCase):
         team = TeamFactory(at_event=parallel_episode.event)
 
         # Check we can start and that it is a parallel episode.
-        self.assertTrue(parallel_episode.unlocked_by(team))
+        self.assertTrue(parallel_episode.available(team))
         self.assertTrue(parallel_episode.parallel)
 
         # Ensure all puzzles in a parallel episode are unlocked.
         for puzzle in parallel_episode.puzzle_set.all():
-            self.assertTrue(puzzle.unlocked_by(team), msg='Puzzle unlocked in parallel episode')
+            self.assertTrue(puzzle.available(team), msg='Puzzle unavailable in parallel episode')
+
+    def test_unlocked_puzzle_solved_flag(self):
+        episode = EpisodeFactory(parallel=False)
+        puzzles = PuzzleFactory.create_batch(5, episode=episode)
+        user1 = TeamMemberFactory()
+        team1 = user1.team_at(episode.event)
+        user2 = TeamMemberFactory()
+        team2 = user2.team_at(episode.event)
+        user3 = TeamMemberFactory()
+        team3 = user3.team_at(episode.event)
+
+        # Team one has solved the first two puzzles
+        for puzzle in puzzles[:2]:
+            GuessFactory(by=user1, by_team=team1, for_puzzle=puzzle, correct=True)
+        # ...and made some guesses on third
+        GuessFactory.create_batch(5, by=user1, by_team=team1, for_puzzle=episode.puzzle_set.all()[2], correct=False)
+        # Team two has solved the first three puzzles
+        for puzzle in puzzles[:3]:
+            GuessFactory(by=user2, by_team=team2, for_puzzle=puzzle, correct=True)
+        # Team three has solved all the puzzles
+        for puzzle in puzzles:
+            GuessFactory(by=user3, by_team=team3, for_puzzle=puzzle, correct=True)
+
+        unlocked1 = episode.available_puzzles(team1)
+        self.assertEqual(3, len(unlocked1))
+        for puzzle in unlocked1[:2]:
+            self.assertTrue(puzzle.solved)
+        self.assertFalse(unlocked1[2].solved)
+
+        unlocked2 = episode.available_puzzles(team2)
+        self.assertEqual(4, len(unlocked2))
+        for puzzle in unlocked2[:3]:
+            self.assertTrue(puzzle.solved)
+        self.assertFalse(unlocked2[3].solved)
+
+        unlocked3 = episode.available_puzzles(team3)
+        self.assertEqual(5, len(unlocked3))
+        for puzzle in unlocked3:
+            self.assertTrue(puzzle.solved)
 
     def test_can_see_all_puzzles_after_event_end(self):
         linear_episode = EpisodeFactory(parallel=False)
@@ -638,10 +690,10 @@ class EpisodeBehaviourTest(EventTestCase):
         with freezegun.freeze_time() as frozen_datetime:
             linear_episode.event.end_date = timezone.now()
             frozen_datetime.tick(-60)  # Move a minute before the end of the event
-            team_puzzles = linear_episode.unlocked_puzzles(team)
+            team_puzzles = linear_episode.available_puzzles(team)
             self.assertEqual(len(team_puzzles), 1, msg='Before the event ends, only the first puzzle is unlocked')
             frozen_datetime.tick(120)  # Move a minute after the end of the event
-            team_puzzles = linear_episode.unlocked_puzzles(team)
+            team_puzzles = linear_episode.available_puzzles(team)
             self.assertEqual(len(team_puzzles), num_puzzles, msg='After the event ends, all of the puzzles are unlocked')
 
     def test_puzzle_start_dates(self):
@@ -704,9 +756,19 @@ class EpisodeBehaviourTest(EventTestCase):
         user = UserProfileFactory()
         team = TeamFactory(at_event=episode1.event, members=user)
 
+        def headstart_from(episode, team):
+            return TeamPuzzleProgress.objects.filter(
+                team=team, puzzle__episode=episode
+            ).headstart_granted().get((team.id, episode.id), datetime.timedelta(0))
+
         # Check that the headstart granted is the sum of the puzzle headstarts
         headstart = datetime.timedelta()
         self.assertEqual(episode1.headstart_granted(team), datetime.timedelta(minutes=0), "No headstart when puzzles unanswered")
+        self.assertEqual(
+            headstart_from(episode1, team),
+            datetime.timedelta(0),
+            "No headstart when puzzles unanswered"
+        )
 
         for i in range(1, episode1.puzzle_set.count() + 1):
             # Start answering puzzles
@@ -716,6 +778,11 @@ class EpisodeBehaviourTest(EventTestCase):
             # Check headstart summing logic.
             headstart += episode1.get_puzzle(i).headstart_granted
             self.assertEqual(episode1.headstart_granted(team), headstart, "Episode headstart is sum of answered puzzle headstarts")
+            self.assertEqual(
+                headstart_from(episode1, team),
+                headstart,
+                "Episode headstart is sum of answered puzzle headstarts"
+            )
 
         # All of these headstarts should be applied to the second episode.
         self.assertEqual(episode2.headstart_applied(team), headstart)
@@ -751,7 +818,7 @@ class EpisodeBehaviourTest(EventTestCase):
         # TODO: Scramble puzzle order before starting (so they are not in the order they were created).
 
         # Check we can start and that it is a linear episode.
-        self.assertTrue(linear_episode.unlocked_by(team), msg='Episode is unlocked by team')
+        self.assertTrue(linear_episode.available(team), msg='Episode is unlocked by team')
         self.assertFalse(linear_episode.parallel, msg='Episode is not set as parallel')
 
         for i in range(1, linear_episode.puzzle_set.count() + 1):
@@ -771,7 +838,7 @@ class EpisodeBehaviourTest(EventTestCase):
         # TODO: Scramble puzzle order before starting (so they are not in the order they were created).
 
         # Check we can start and that it is a linear episode.
-        self.assertTrue(parallel_episode.unlocked_by(team), msg='Episode is unlocked by team')
+        self.assertTrue(parallel_episode.available(team), msg='Episode is unlocked by team')
         self.assertTrue(parallel_episode.parallel, msg='Episode is not set as parallel')
 
         # Answer all questions in a random order.
@@ -874,77 +941,76 @@ class ClueDisplayTests(EventTestCase):
         self.user = UserProfileFactory()
         self.puzzle = PuzzleFactory(episode=self.episode)
         self.team = TeamFactory(at_event=self.episode.event, members={self.user})
-        self.data = PuzzleData(self.puzzle, self.team, self.user)  # Don't actually need to use a factory here.
+        self.progress = TeamPuzzleProgressFactory(puzzle=self.puzzle, team=self.team)
 
     def test_hint_display(self):
         hint = HintFactory(puzzle=self.puzzle)
 
         with freezegun.freeze_time() as frozen_datetime:
-            self.data.tp_data.start_time = timezone.now()
-            self.assertFalse(hint.unlocked_by(self.team, self.data.tp_data), "Hint not unlocked by team at start")
+            self.progress.start_time = timezone.now()
+            self.assertFalse(hint.unlocked_by(self.team, self.progress), "Hint not unlocked by team at start")
 
             frozen_datetime.tick(hint.time / 2)
-            self.assertFalse(hint.unlocked_by(self.team, self.data.tp_data), "Hint not unlocked by less than hint time duration.")
+            self.assertFalse(hint.unlocked_by(self.team, self.progress), "Hint not unlocked by less than hint time duration.")
 
             frozen_datetime.tick(hint.time)
-            self.assertTrue(hint.unlocked_by(self.team, self.data.tp_data), "Hint unlocked by team after required time elapsed.")
+            self.assertTrue(hint.unlocked_by(self.team, self.progress), "Hint unlocked by team after required time elapsed.")
 
     def test_hint_unlocks_at(self):
         hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(seconds=42))
 
         with freezegun.freeze_time() as frozen_datetime:
             now = timezone.now()
-            self.assertEqual(hint.unlocks_at(self.team, self.data.tp_data), None)
-            self.data.tp_data.start_time = now
+            self.progress.start_time = now
             target = now + datetime.timedelta(seconds=42)
 
-            self.assertEqual(hint.unlocks_at(self.team, self.data.tp_data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
             frozen_datetime.tick(datetime.timedelta(seconds=12))
-            self.assertEqual(hint.unlocks_at(self.team, self.data.tp_data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
 
         unlock = UnlockFactory(puzzle=self.puzzle)
         hint.start_after = unlock
 
         with freezegun.freeze_time() as frozen_datetime:
             now = timezone.now()
-            self.assertEqual(hint.unlocks_at(self.team, self.data), None)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), None)
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess=unlock.unlockanswer_set.get().guess)
             target = now + datetime.timedelta(seconds=42)
 
-            self.assertEqual(hint.unlocks_at(self.team, self.data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
             frozen_datetime.tick(datetime.timedelta(seconds=12))
-            self.assertEqual(hint.unlocks_at(self.team, self.data), target)
+            self.assertEqual(hint.unlocks_at(self.team, self.progress), target)
 
     def test_dependent_hints(self):
         unlock = UnlockFactory(puzzle=self.puzzle)
         hint = HintFactory(puzzle=self.puzzle, start_after=unlock)
 
         with freezegun.freeze_time() as frozen_datetime:
-            self.data.tp_data.start_time = timezone.now()
-            self.assertFalse(hint.unlocked_by(self.team, self.data), "Hint unlocked by team at start")
+            self.progress.start_time = timezone.now()
+            self.assertFalse(hint.unlocked_by(self.team, self.progress), "Hint unlocked by team at start")
 
             frozen_datetime.tick(hint.time * 2)
-            self.assertFalse(hint.unlocked_by(self.team, self.data),
+            self.assertFalse(hint.unlocked_by(self.team, self.progress),
                              "Hint unlocked by team when dependent unlock not unlocked.")
 
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess=unlock.unlockanswer_set.get().guess)
-            self.assertFalse(hint.unlocked_by(self.team, self.data),
+            self.assertFalse(hint.unlocked_by(self.team, self.progress),
                              "Hint unlocked by team as soon as dependent unlock unlocked")
 
             frozen_datetime.tick(hint.time / 2)
-            self.assertFalse(hint.unlocked_by(self.team, self.data),
+            self.assertFalse(hint.unlocked_by(self.team, self.progress),
                              "Hint unlocked by team before time after dependent unlock was unlocked elapsed")
 
             frozen_datetime.tick(hint.time)
-            self.assertTrue(hint.unlocked_by(self.team, self.data),
+            self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint not unlocked by team after time after dependent unlock was unlocked elapsed")
 
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess=unlock.unlockanswer_set.get().guess)
-            self.assertTrue(hint.unlocked_by(self.team, self.data),
+            self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint re-locked by subsequent unlock-validating guess!")
 
             GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='NOT_CORRECT')
-            self.assertTrue(hint.unlocked_by(self.team, self.data),
+            self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint re-locked by subsequent non-unlock-validating guess!")
 
     def test_unlock_display(self):
@@ -1186,11 +1252,6 @@ class AdminContentTests(EventTestCase):
     def test_admin_team_detail_content(self):
         team = self.guesses[0].by_team
         puzzle2 = PuzzleFactory()
-        tp_data1 = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-        # FIXME: the above does not give tp_data1 a start_time :S
-        tp_data1.start_time = timezone.now()
-        tp_data1.save()
-        TeamPuzzleDataFactory(team=team, puzzle=puzzle2)
         GuessFactory(by=team.members.all()[0], for_puzzle=puzzle2, correct=True)
 
         self.client.force_login(self.admin_user.user)
@@ -1214,15 +1275,13 @@ class AdminContentTests(EventTestCase):
         user = TeamMemberFactory(team__at_event=self.tenant)
         team = user.team_at(self.tenant)
         now = timezone.now()
+        # We have to make the TeamPuzzleProgress before the guesses since Guess does a `get_or_create` in a `post_save` signal
+        TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now() - datetime.timedelta(minutes=20))
         guesses = GuessFactory.create_batch(10, for_puzzle=self.puzzle, by=user)
         # The guesses get forced to the current time when created, we have to override afterwards
         for i, guess in enumerate(guesses):
             guess.given = now - datetime.timedelta(minutes=i)
             guess.save()
-        tp_data = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-        # FIXME: the above does not give tp_data a start_time :S
-        tp_data.start_time = timezone.now() - datetime.timedelta(minutes=20)
-        tp_data.save()
 
         self.client.force_login(self.admin_user.user)
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
@@ -1246,9 +1305,8 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
 
         with freezegun.freeze_time() as frozen_datetime:
-            tp_data = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-            tp_data.start_time = timezone.now()
-            tp_data.save()
+            TeamPuzzleProgress.objects.get(team=team, puzzle=self.puzzle)
+
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
             response = self.client.get(url)
@@ -1316,18 +1374,16 @@ class AdminContentTests(EventTestCase):
 
         return data['progress']
 
+    @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
     def test_admin_progress_content(self):
         team1 = self.guesses[0].by_team
         team2 = self.guesses[1].by_team
 
-        tp_data1 = TeamPuzzleDataFactory(team=team1, puzzle=self.puzzle)
-        # FIXME: the above does not give tp_data1 a start_time :S
-        now = timezone.now()
-        tp_data1.start_time = now
-        tp_data1.save()
+        TeamPuzzleProgressFactory(team=team1, puzzle=self.puzzle, start_time=timezone.now())
 
         GuessFactory(by=team2.members.all()[0], for_puzzle=self.puzzle, correct=True)
-        team3 = TeamPuzzleDataFactory(puzzle=self.puzzle).team
+        # Add a team which has done nothing and therefore will not show up
+        team3 = TeamPuzzleProgressFactory(puzzle=self.puzzle).team
 
         self.client.force_login(self.admin_user.user)
         url = reverse('admin_progress_content')
@@ -1337,7 +1393,7 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(len(content['puzzles']), 1)
         self.assertEqual(content['puzzles'][0]['title'], self.puzzle.title)
 
-        self.assertEqual(len(content['team_progress']), 7)
+        self.assertEqual(len(content['team_progress']), 5)
 
         # team1 has opened the puzzle and made an incorrect guess
         team1_data = self._check_team_get_progress(response, team1)
@@ -1358,12 +1414,9 @@ class AdminContentTests(EventTestCase):
         self.assertIsNone(team2_data[0]['latest_guess'])
 
         # team3 has opened the puzzle and made no guesses
-        team3_data = self._check_team_get_progress(response, team3)
-        self.assertEqual(team3_data[0]['puzzle_id'], self.puzzle.id)
-        self.assertEqual(team3_data[0]['state'], 'open')
-        self.assertEqual(team3_data[0]['guesses'], 0)
-        self.assertIsNone(team3_data[0]['latest_guess'])
+        self.assertFalse(any([True for x in response.json()['team_progress'] if x['id'] == team3.id]))
 
+    @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
     def test_admin_progress_content_hints(self):
         team = self.guesses[0].by_team
         member = self.guesses[0].by
@@ -1372,9 +1425,7 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_progress_content')
 
         with freezegun.freeze_time() as frozen_datetime:
-            tp_data = TeamPuzzleDataFactory(team=team, puzzle=self.puzzle)
-            tp_data.start_time = timezone.now()
-            tp_data.save()
+            TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now())
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
             response = self.client.get(url)
@@ -1439,45 +1490,26 @@ class ProgressionTests(EventTestCase):
         self.team1 = TeamFactory(at_event=self.event, members={self.user1})
         self.team2 = TeamFactory(at_event=self.event, members={self.user2})
 
-    def test_answered_by_ordering(self):
-        puzzle1 = PuzzleFactory(episode=self.episode)
-
-        # Submit two correct answers, 1 an hour after the other
-        with freezegun.freeze_time() as frozen_datetime:
-            guess1 = GuessFactory(for_puzzle=puzzle1, by=self.user1, correct=True)
-            frozen_datetime.tick(datetime.timedelta(hours=1))
-            guess2 = GuessFactory(for_puzzle=puzzle1, by=self.user1, correct=True)
-
-            # Fudge another before the first to test ordering.
-            frozen_datetime.tick(datetime.timedelta(hours=-2))
-            guess3 = GuessFactory(for_puzzle=puzzle1, by=self.user1, correct=True)
-
-            # Ensure the first given answer is reported first
-            self.assertEqual(len(puzzle1.answered_by(self.team1)), 3)
-            self.assertEqual(puzzle1.answered_by(self.team1)[0], guess3)
-            self.assertEqual(puzzle1.answered_by(self.team1)[1], guess1)
-            self.assertEqual(puzzle1.answered_by(self.team1)[2], guess2)
-
     def test_episode_finishing(self):
         # Ensure at least one puzzle in episode.
         puzzles = PuzzleFactory.create_batch(3, episode=self.episode)
+        sequel = EpisodeFactory(prequels=[self.episode])
 
         # Check episode has not been completed
-        self.assertFalse(self.episode.finished_by(self.team1))
+        self.assertTrue(self.episode.available(self.team1))
+        self.assertFalse(sequel.available(self.team1))
 
         # Team 1 answer all questions correctly
         for puzzle in puzzles:
             GuessFactory.create(for_puzzle=puzzle, by=self.user1, correct=True)
 
-        # Ensure this team has finished the episode
-        self.assertTrue(self.episode.finished_by(self.team1))
+        # Ensure this team has finished the episode (i.e. can guess on the next one)
+        self.assertTrue(sequel.available(self.team1))
 
     def test_finish_positions(self):
         puzzle1, puzzle2, puzzle3 = PuzzleFactory.create_batch(3, episode=self.episode)
 
         # Check there are no winners to begin with
-        self.assertFalse(self.episode.finished_by(self.team1))
-        self.assertFalse(self.episode.finished_by(self.team2))
         self.assertEqual(len(self.episode.finished_positions()), 0)
 
         # Answer all the questions correctly for both teams with team 1 ahead to begin with then falling behind
@@ -1485,8 +1517,8 @@ class ProgressionTests(EventTestCase):
         GuessFactory.create(for_puzzle=puzzle2, by=self.user1, correct=True)
 
         # Check only the first team has finished the first questions
-        self.assertEqual(len(puzzle1.finished_teams(self.event)), 1)
-        self.assertEqual(puzzle1.finished_teams(self.event)[0], self.team1)
+        self.assertEqual(len(puzzle1.finished_teams()), 1)
+        self.assertEqual(puzzle1.finished_teams()[0], self.team1)
         self.assertEqual(puzzle1.position(self.team1), 0)
         self.assertEqual(puzzle1.position(self.team2), None)
 
@@ -1524,6 +1556,201 @@ class ProgressionTests(EventTestCase):
 
         # Ensure that the first correct guess is correctly returned
         self.assertEqual(puzzle1.first_correct_guesses(self.event)[self.team1], first_correct_guess)
+
+
+class ProgressSignalTests(EventTestCase):
+    def setUp(self):
+        self.answer = AnswerFactory(runtime=Runtime.REGEX, answer=r'correct\d')
+        self.puzzle = self.answer.for_puzzle
+        self.unlockanswer = UnlockAnswerFactory(unlock__puzzle=self.puzzle, runtime=Runtime.REGEX, guess=r'unlock\d')
+        self.unlock = self.unlockanswer.unlock
+        self.user = TeamMemberFactory()
+        self.team = self.user.team_at(self.tenant)
+        self.progress = TeamPuzzleProgress(team=self.team, puzzle=self.puzzle, start_time=timezone.now())
+        self.progress.save()
+
+    def test_save_guess_updates_progress_correctly(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='incorrect')
+        self.assertIsNone(TeamPuzzleProgress.objects.get(team=self.team, puzzle=self.puzzle).solved_by,
+                          'Incorrect guess resulted in puzzle marked as solved')
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlockanswer=self.unlockanswer).exists(),
+                         'Non-unlocking guess resulted in unlock being marked as unlocked')
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.assertTrue(TeamPuzzleProgress.objects.get(team=self.team, puzzle=self.puzzle).solved_by,
+                        'Correct guess resulted in puzzle marked as not solved')
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock0')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+
+    def test_add_answer_updates_progress(self):
+        guessa = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct.')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guessa)
+
+    def test_add_answer_doesnt_update_solved_puzzle(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct.')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_modify_answer_doesnt_update_solved_puzzle_when_still_solved(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        self.answer.answer = 'correct.'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_modify_answer_updates_solved_puzzle_when_still_solved(self):
+        self.answer.answer = 'correct.'
+        self.answer.save()
+        guess1 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess1)
+        self.answer.answer = r'correct\d'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_modify_answer_unsolves_puzzle(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess)
+        self.answer.answer = 'correct'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+
+    def test_modify_answer_solves_puzzle(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correcta')
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+        self.answer.answer = 'correct.'
+        self.answer.save()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess)
+
+    def test_delete_answer_unsolves_puzzle(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess)
+        self.answer.delete()
+        self.progress.refresh_from_db()
+        self.assertIsNone(self.progress.solved_by)
+
+    def test_delete_answer_doesnt_change_solved_by(self):
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct_0')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct1')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct.?\d')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+        self.answer.delete()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def test_delete_answer_changes_solved_by(self):
+        guess1 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct1')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess1)
+        AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.STATIC, answer='correct1')
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess1)
+        self.answer.delete()
+        self.progress.refresh_from_db()
+        self.assertEqual(self.progress.solved_by, guess2)
+
+    def do_reevaluate(self):
+        self.progress.reevaluate(Answer.objects.all(), Guess.objects.all().order_by('given'))
+        self.progress.save()
+
+    def test_progress_reevaluation(self):
+        # TODO name of testcase
+        # TODO split?
+        GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='incorrect')
+        self.do_reevaluate()
+        # incorrect guess -> not solved
+        self.assertIsNone(self.progress.solved_by)
+        guess0 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct0')
+        self.do_reevaluate()
+        # guess correct by orig answer -> solved by that guess
+        self.assertEqual(self.progress.solved_by, guess0)
+        self.answer.answer = r'correct_\d'
+        self.answer.save()
+        self.do_reevaluate()
+        # change that answer -> not solved
+        self.assertIsNone(self.progress.solved_by)
+        guess1 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct_1')
+        self.do_reevaluate()
+        # add guess which works with modified answer -> solved by new guess
+        self.assertEqual(self.progress.solved_by, guess1)
+        newanswer = AnswerFactory(for_puzzle=self.puzzle, runtime=Runtime.REGEX, answer=r'correct\d')
+        self.do_reevaluate()
+        # two answers, one validating the original guess -> solved by first guess
+        self.assertEqual(self.progress.solved_by, guess0)
+        guess2 = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='correct2')
+        self.do_reevaluate()
+        # add a third correct guess -> still solved by first guess
+        self.assertEqual(self.progress.solved_by, guess0)
+        guess0.delete()
+        self.do_reevaluate()
+        # delete oldest correct guess -> solved by next oldest correct guess
+        self.assertEqual(self.progress.solved_by, guess1)
+        guess1.delete()
+        self.do_reevaluate()
+        # delete next oldest -> same
+        self.assertEqual(self.progress.solved_by, guess2)
+        newanswer.delete()
+        self.do_reevaluate()
+        # delete answer which validated last guess -> not solved
+        self.assertIsNone(self.progress.solved_by)
+        # scenarios covered:
+        # one / two answers; zero-three correct guesses.
+
+    def test_add_unlockanswer_adds_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock_0')
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+        ua = UnlockAnswerFactory(unlock=self.unlock, runtime=Runtime.REGEX, guess=r'unlock_\d')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=ua).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+
+    def test_modify_unlockanswer_creates_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock_0')
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+        self.unlockanswer.guess = r'unlock_\d'
+        self.unlockanswer.save()
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+
+    def test_modify_unlockanswer_deletes_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock0')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+        self.unlockanswer.guess = r'unlock_\d'
+        self.unlockanswer.save()
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
+
+    def test_delete_unlockanswer_deletes_teamunlock(self):
+        guess = GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='unlock0')
+        self.assertTrue(TeamUnlock.objects.filter(team_puzzle_progress=self.progress, unlocked_by=guess, unlockanswer=self.unlockanswer).exists(),
+                        'Unlocking guess did not result in unlock being marked as unlocked')
+        self.unlockanswer.delete()
+        self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
+                         'Non-unlocking guess resulted in a TeamUnlock being created')
 
 
 class EventWinningTests(EventTestCase):
@@ -1639,23 +1866,15 @@ class CorrectnessCacheTests(EventTestCase):
         self.answer1.save()
         guess1.refresh_from_db()
         guess2.refresh_from_db()
-        self.assertFalse(guess1.correct_current)
-        self.assertTrue(guess2.correct_current)
         correct = guess1.get_correct_for()
         self.assertTrue(guess1.correct_current)
         self.assertFalse(correct)
         self.assertFalse(self.puzzle1.answered_by(self.team1))
 
-        # Update the first guess and check
-        guess1.guess = GuessFactory.build(for_puzzle=self.puzzle1, correct=True).guess
-        guess1.save()
-        self.assertTrue(self.puzzle1.answered_by(self.team1))
-
         # Delete the first answer and check
         self.answer1.delete()
         guess1.refresh_from_db()
         guess2.refresh_from_db()
-        self.assertFalse(guess1.correct_current)
         self.assertTrue(guess2.correct_current)
         self.assertFalse(guess1.get_correct_for())
         self.assertFalse(self.puzzle1.answered_by(self.team1))
@@ -1666,7 +1885,6 @@ class CorrectnessCacheTests(EventTestCase):
         guess1.refresh_from_db()
         guess2.refresh_from_db()
         self.assertTrue(guess1.correct_current)
-        self.assertFalse(guess2.correct_current)
         self.assertFalse(self.puzzle1.answered_by(self.team1))
         self.assertTrue(guess2.get_correct_for())
         self.assertTrue(self.puzzle2.answered_by(self.team2))
@@ -1838,11 +2056,9 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
     def test_initial_connection(self):
         ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz)
         UnlockAnswerFactory(unlock__puzzle=self.pz, guess=ua1.guess + '_different')
-        HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
+        h1 = HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
         profile = TeamMemberFactory()
-        data = PuzzleData(self.pz, profile.team_at(self.tenant), profile)
-        data.tp_data.start_time = timezone.now()
-        data.save()
+        TeamPuzzleProgressFactory(puzzle=self.pz, team=profile.team_at(self.tenant), start_time=timezone.now())
         g1 = GuessFactory(for_puzzle=self.pz, by=profile)
         g1.given = timezone.now() - datetime.timedelta(days=1)
         g1.save()
@@ -1856,14 +2072,12 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.send_json_to)({'type': 'guesses-plz', 'from': 'all'})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for old guesses')
 
-        self.assertEqual(output['type'], 'old_guess')
-        self.assertEqual(output['content']['guess'], g1.guess)
-        self.assertEqual(output['content']['by'], profile.user.username)
-
-        output = self.receive_json(comm, 'Websocket did not send all old guesses')
-        self.assertEqual(output['type'], 'old_guess')
-        self.assertEqual(output['content']['guess'], g2.guess)
-        self.assertEqual(output['content']['by'], profile.user.username)
+        self.assertEqual(output['type'], 'old_guesses')
+        self.assertEqual(len(output['content']), 2, 'Websocket did not send the correct number of old guesses')
+        self.assertEqual(output['content'][0]['guess'], g1.guess)
+        self.assertEqual(output['content'][0]['by'], profile.user.username)
+        self.assertEqual(output['content'][1]['guess'], g2.guess)
+        self.assertEqual(output['content'][1]['by'], profile.user.username)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # Use utcnow() because the JS uses Date.now() which uses UTC - hence the consumer code also uses UTC.
@@ -1873,9 +2087,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did nothing in response to request for old guesses')
         self.assertTrue(self.run_async(comm.receive_nothing)(), 'Websocket sent guess from before requested cutoff')
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g2.guess)
-        self.assertEqual(output['content']['by'], profile.user.username)
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1, 'Websocket did not send the correct number of old guesses')
+        self.assertEqual(output['content'][0]['guess'], g2.guess)
+        self.assertEqual(output['content'][0]['by'], profile.user.username)
 
         self.run_async(comm.send_json_to)({'type': 'unlocks-plz'})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for unlocks')
@@ -1885,8 +2100,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['unlock'], ua1.unlock.text)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
-        self.run_async(comm.send_json_to)({'type': 'hints-plz'})
+        self.run_async(comm.send_json_to)({'type': 'hints-plz', 'from': dt.timestamp() * 1000})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for hints')
+
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint'], h1.text)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         self.run_async(comm.disconnect)()
@@ -1913,18 +2131,20 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm1, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm1.receive_nothing)())
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], False)
-        self.assertEqual(output['content']['by'], u1.user.username)
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['correct'], False)
+        self.assertEqual(output['content'][0]['by'], u1.user.username)
 
         output = self.receive_json(comm2, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm2.receive_nothing)())
 
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], False)
-        self.assertEqual(output['content']['by'], u1.user.username)
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['correct'], False)
+        self.assertEqual(output['content'][0]['by'], u1.user.username)
 
         self.run_async(comm1.disconnect)()
         self.run_async(comm2.disconnect)()
@@ -1960,15 +2180,23 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertTrue(self.pz.answered_by(user.team_at(self.tenant)))
 
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        # We should be notified that we solved the puzzle. Since the episode had just one puzzle,
+        # we are now done with that episode and should be redirected back to the episode.
+        self.assertEqual(output['type'], 'solved')
+        self.assertEqual(output['content']['guess'], g.guess)
+        self.assertEqual(output['content']['by'], user.user.username)
+        self.assertLessEqual(output['content']['time'], 1)
+        self.assertEqual(output['content']['redirect'], self.ep.get_absolute_url(), 'Websocket did not redirect to the episode after completing that episode')
+        output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # We should be notified of the correct guess. Since the episode had just one puzzle,
         # we are now done with that episode and should be redirected back to the episode.
-        self.assertEqual(output['type'], 'new_guess')
-        self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], True)
-        self.assertEqual(output['content']['by'], user.user.username)
-        self.assertEqual(output['content']['redirect'], self.ep.get_absolute_url(), 'Websocket did not redirect to the episode after completing that episode')
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['correct'], True)
+        self.assertEqual(output['content'][0]['by'], user.user.username)
 
         # Now add another puzzle. We should be redirected to that puzzle, since it is the
         # unique unfinished puzzle on the episode.
@@ -1977,17 +2205,50 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         g.save()
 
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
-        self.assertTrue(self.run_async(comm.receive_nothing)())
-
-        self.assertEqual(output['type'], 'new_guess')
+        self.assertEqual(output['type'], 'solved')
         self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['correct'], True)
         self.assertEqual(output['content']['by'], user.user.username)
+        self.assertLessEqual(output['content']['time'], 1)
         self.assertEqual(output['content']['redirect'], pz2.get_absolute_url(),
                          'Websocket did not redirect to the next available puzzle when completing'
                          'one of two puzzles on an episode')
 
+        output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(len(output['content']), 1)
+        received = output['content'][0]
+        self.assertEqual(received['guess'], g.guess)
+        self.assertEqual(received['correct'], True)
+        self.assertEqual(received['by'], user.user.username)
+
         self.run_async(comm.disconnect)()
+
+    def test_websocket_receives_unlocks_on_reconnect(self):
+        user1 = TeamMemberFactory()
+        user2 = TeamMemberFactory()
+        ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_1', guess='unlock_guess_1')
+        ua2 = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_2', guess='unlock_guess_2')
+
+        comm = self.get_communicator(websocket_app, self.url, {'user': user1.user})
+        connected, subprotocol = self.run_async(comm.connect)()
+        self.assertTrue(connected)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        GuessFactory(for_puzzle=self.pz, by=user1, guess=ua1.guess)
+        self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        self.receive_json(comm, 'Websocket didn\'t do enough in response to an unlocking guess')
+        GuessFactory(for_puzzle=self.pz, by=user2, guess=ua2.guess)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        self.run_async(comm.send_json_to)({'type': 'unlocks-plz'})
+        output = self.receive_json(comm, 'Websocket did nothing in response to requesting unlocks again')
+        self.assertEqual(output['type'], 'old_unlock')
+        self.assertEqual(output['content']['guess'], 'unlock_guess_1')
+        self.assertEqual(output['content']['unlock'], 'unlock_1')
+        self.assertEqual(output['content']['unlock_uid'], ua1.unlock.compact_id)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
 
     def test_websocket_receives_guess_updates(self):
         user = TeamMemberFactory()
@@ -2009,14 +2270,14 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         try:
-            if output1['type'] == 'new_unlock' and output2['type'] == 'new_guess':
+            if output1['type'] == 'new_unlock' and output2['type'] == 'new_guesses':
                 new_unlock = output1
-            elif output2['type'] == 'new_unlock' and output1['type'] == 'new_guess':
+            elif output2['type'] == 'new_unlock' and output1['type'] == 'new_guesses':
                 new_unlock = output2
             else:
-                self.fail('Websocket did not receive exactly one each of new_guess and new_unlock')
+                self.fail('Websocket did not receive exactly one each of new_guesses and new_unlock')
         except KeyError:
-            self.fail('Websocket did not receive exactly one each of new_guess and new_unlock')
+            self.fail('Websocket did not receive exactly one each of new_guesses and new_unlock')
 
         self.assertEqual(new_unlock['content']['unlock'], ua.unlock.text)
         self.assertEqual(new_unlock['content']['unlock_uid'], ua.unlock.compact_id)
@@ -2080,25 +2341,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         # Delete the entire unlock, check we are told
         old_id = ua.unlock.id
         ua.unlock.delete()
-        output1 = self.receive_json(comm, 'Websocket did nothing in response to a deleted, unlocked unlock')
-        output2 = self.receive_json(comm, 'Websocket did nothing in response to a deleted, unlocked unlock')
+        output = self.receive_json(comm, 'Websocket did nothing in response to a deleted, unlocked unlock')
 
-        # Right now deleting an unlock cascades to the unlockanswers so we get events for both of them.
-        # We only actually care about the deleted unlock in this case, but we still check for precise behaviour
-        # here since this test ought to be changed if the event no longer cascades.
-        try:
-            if output1['type'] == 'delete_unlock' and output2['type'] == 'delete_unlockguess':
-                delete_unlock = output1
-                delete_unlockguess = output2
-            elif output2['type'] == 'delete_unlock' and output1['type'] == 'delete_unlockguess':
-                delete_unlock = output2
-                delete_unlockguess = output1
-            else:
-                self.fail('Websocket did not receive exactly one each of delete_unlock and delete_unlockguess')
-        except KeyError:
-            self.fail('Websocket did not receive exactly one each of delete_unlock and delete_unlockguess')
-
-        self.assertEqual(delete_unlock['content']['unlock_uid'], encode_uuid(old_id))
+        self.assertEqual(output['type'], 'delete_unlockguess')
+        self.assertEqual(output['content']['guess'], 'different_unlock_guess')
+        self.assertEqual(output['content']['unlock_uid'], encode_uuid(old_id))
 
         # Everything is done, check member of another team didn't overhear anything
         self.assertTrue(self.run_async(comm_eve.receive_nothing)(), 'Websocket sent user updates they should not have received')
@@ -2115,7 +2362,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
         data = PuzzleData(self.pz, team, user)
-        data.tp_data.start_time = timezone.now()
+        progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
         data.save()
         hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay))
 
@@ -2124,7 +2371,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertTrue(connected)
 
         # account for delays getting started
-        remaining = hint.delay_for_team(team, data.tp_data).total_seconds()
+        remaining = hint.delay_for_team(team, progress).total_seconds()
         if remaining < 0:
             raise Exception('Websocket hint scheduling test took too long to start up')
 
@@ -2133,7 +2380,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
         # advance time by all the remaining time
         time.sleep(remaining / 2)
-        self.assertTrue(hint.unlocked_by(team, data.tp_data))
+        self.assertTrue(hint.unlocked_by(team, progress))
 
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
@@ -2147,9 +2394,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
-        data = PuzzleData(self.pz, team, user)
-        data.tp_data.start_time = timezone.now()
-        data.save()
+        progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
         unlock = UnlockFactory(puzzle=self.pz)
         unlockanswer = unlock.unlockanswer_set.get()
         hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay), start_after=unlock)
@@ -2164,13 +2409,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         guess = GuessFactory(for_puzzle=self.pz, by=user, guess=unlockanswer.guess)
         self.receive_json(comm, 'Websocket did not send unlock')
         self.receive_json(comm, 'Websocket did not send guess')
-        remaining = hint.delay_for_team(team, data.tp_data).total_seconds()
-        self.assertFalse(hint.unlocked_by(team, data.tp_data))
+        remaining = hint.delay_for_team(team, progress).total_seconds()
+        self.assertFalse(hint.unlocked_by(team, progress))
         self.assertTrue(self.run_async(comm.receive_nothing)(remaining / 2))
 
         # advance time by all the remaining time
         time.sleep(remaining / 2)
-        self.assertTrue(hint.unlocked_by(team, data.tp_data))
+        self.assertTrue(hint.unlocked_by(team, progress))
 
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
@@ -2178,12 +2423,15 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['hint'], hint.text)
         self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
 
-        # alter the unlockanswer again, check hint re-appears
-        guess.guess = '__DIFFERENT_2__'
-        guess.save()
-        unlockanswer.guess = guess.guess
+        # alter the unlockanswer to an already-made gss, check hint re-appears
+        GuessFactory(for_puzzle=self.pz, by=user, guess='__DIFFERENT__')
+        self.receive_json(comm, 'Websocket did not receive new guess')
+        unlockanswer.guess = '__DIFFERENT__'
         unlockanswer.save()
-        self.receive_json(comm, 'Websocket did not resend unlock')
+        output = self.receive_json(comm, 'Websocket did not delete unlock')
+        self.assertEqual(output['type'], 'delete_unlockguess')
+        output = self.receive_json(comm, 'Websocket did not resend unlock')
+        self.assertEqual(output['type'], 'new_unlock')
         output = self.receive_json(comm, 'Websocket did not resend hint')
         self.assertEqual(output['type'], 'new_hint')
         self.assertEqual(output['content']['hint_uid'], hint.compact_id)
@@ -2191,7 +2439,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         # delete the unlockanswer, check for notification
         unlockanswer.delete()
 
-        self.receive_json(comm, 'Websocket did not delete unlockanswer')
+        output = self.receive_json(comm, 'Websocket did not delete unlockanswer')
+        self.assertEqual(output['type'], 'delete_unlockguess')
 
         # guesses are write-only - no notification
         guess.delete()
@@ -2205,10 +2454,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         unlockanswer.guess = guess.guess
         unlockanswer.save()
         self.receive_json(comm, 'Websocket did not send unlock')
-        self.assertFalse(hint.unlocked_by(team, data.tp_data))
+        self.assertFalse(hint.unlocked_by(team, progress))
         self.assertTrue(self.run_async(comm.receive_nothing)(delay / 2))
         time.sleep(delay / 2)
-        self.assertTrue(hint.unlocked_by(team, data.tp_data))
+        self.assertTrue(hint.unlocked_by(team, progress))
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
         self.assertEqual(output['type'], 'new_hint')
@@ -2220,13 +2469,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         with freezegun.freeze_time() as frozen_datetime:
             user = TeamMemberFactory()
             team = user.team_at(self.tenant)
-            data = PuzzleData(self.pz, team, user)
-            data.tp_data.start_time = timezone.now()
-            data.save()
+            progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
 
             hint = HintFactory(text='hint_text', puzzle=self.pz, time=datetime.timedelta(seconds=1))
             frozen_datetime.tick(delta=datetime.timedelta(seconds=2))
-            self.assertTrue(hint.unlocked_by(team, data.tp_data))
+            self.assertTrue(hint.unlocked_by(team, progress))
 
             comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
             connected, subprotocol = self.run_async(comm.connect)()
@@ -2404,7 +2651,7 @@ class PlayerStatsViewTests(EventTestCase):
             # Ensure the event has a winning episode containing a puzzle, with a correct guess by a user
             puzzle = PuzzleFactory(episode__event=self.tenant, episode__winning=True)
             for i, user in enumerate(users):
-                TeamPuzzleDataFactory(puzzle=puzzle, team=user.team_at(self.tenant))
+                TeamPuzzleProgressFactory(puzzle=puzzle, team=user.team_at(self.tenant))
                 GuessFactory(for_puzzle=puzzle, correct=True, by=user, given=now - datetime.timedelta(minutes=len(users) - i))
             self.tenant.end_date = now + datetime.timedelta(minutes=1)
             self.tenant.save()

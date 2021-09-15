@@ -218,6 +218,7 @@ MIDDLEWARE = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
+    'hunter2.middleware.ConfigurationMiddleware',
     'accounts.middleware.AccountMiddleware',
     'events.middleware.EventMiddleware',
     'teams.middleware.TeamMiddleware',

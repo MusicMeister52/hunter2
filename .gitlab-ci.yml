@@ -184,11 +184,12 @@ release:app:
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i app.tar
-    - docker tag "${APP_IMAGE_TAG}" "${APP_LATEST_TAG}"
     - docker push "${APP_IMAGE_TAG}"
+    - '[[ "${CI_COMMIT_BRANCH}" == "${CI_DEFAULT_BRANCH}" ]] || exit 0'
+    - docker tag "${APP_IMAGE_TAG}" "${APP_LATEST_TAG}"
     - docker push "${APP_LATEST_TAG}"
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"
 
 release:db:
   extends: .base_job
@@ -198,11 +199,12 @@ release:db:
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i db.tar
-    - docker tag "${DB_IMAGE_TAG}" "${DB_LATEST_TAG}"
     - docker push "${DB_IMAGE_TAG}"
+    - '[[ "${CI_COMMIT_BRANCH}" == "${CI_DEFAULT_BRANCH}" ]] || exit 0'
+    - docker tag "${DB_IMAGE_TAG}" "${DB_LATEST_TAG}"
     - docker push "${DB_LATEST_TAG}"
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"
 
 release:metrics:
   extends: .base_job
@@ -212,11 +214,12 @@ release:metrics:
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i metrics.tar
-    - docker tag "${METRICS_IMAGE_TAG}" "${METRICS_LATEST_TAG}"
     - docker push "${METRICS_IMAGE_TAG}"
+    - '[[ "${CI_COMMIT_BRANCH}" == "${CI_DEFAULT_BRANCH}" ]] || exit 0'
+    - docker tag "${METRICS_IMAGE_TAG}" "${METRICS_LATEST_TAG}"
     - docker push "${METRICS_LATEST_TAG}"
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"
 
 release:python:
   extends: .base_job
@@ -226,11 +229,12 @@ release:python:
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i python.tar
-    - docker tag "${PYTHON_IMAGE_TAG}" "${PYTHON_LATEST_TAG}"
     - docker push "${PYTHON_IMAGE_TAG}"
+    - '[[ "${CI_COMMIT_BRANCH}" == "${CI_DEFAULT_BRANCH}" ]] || exit 0'
+    - docker tag "${PYTHON_IMAGE_TAG}" "${PYTHON_LATEST_TAG}"
     - docker push "${PYTHON_LATEST_TAG}"
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"
 
 release:web:
   extends: .base_job
@@ -241,8 +245,9 @@ release:web:
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i web.tar
-    - docker tag "${WEB_IMAGE_TAG}" "${WEB_LATEST_TAG}"
     - docker push "${WEB_IMAGE_TAG}"
+    - '[[ "${CI_COMMIT_BRANCH}" == "${CI_DEFAULT_BRANCH}" ]] || exit 0'
+    - docker tag "${WEB_IMAGE_TAG}" "${WEB_LATEST_TAG}"
     - docker push "${WEB_LATEST_TAG}"
-  only:
-    - master
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"

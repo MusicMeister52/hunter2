@@ -10,9 +10,9 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
-from distutils.util import strtobool
 from os import path
 from urllib.parse import quote_plus
+import itertools
 import tarfile
 
 from collections import defaultdict
@@ -21,13 +21,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Count, Max, OuterRef, Prefetch, Subquery
+from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators import cache
 from django.views.generic.edit import FormView
 
 from events.models import Attendance
@@ -100,7 +102,10 @@ class Guesses(LoginRequiredMixin, View):
             {'wide': True},
         )
 
-
+# The cache timeout of 5 seconds is set equal to the refresh interval used on the page. A single user
+# will see virtually no difference, but multiple people observing the page will not cause additional
+# load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
+@method_decorator(cache.cache_page(5), name='dispatch')
 class GuessesList(LoginRequiredMixin, View):
     def get(self, request):
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -130,23 +135,32 @@ class GuessesList(LoginRequiredMixin, View):
         ).order_by(
             '-given'
         ).select_related(
-            'for_puzzle', 'by_team', 'by__user', 'correct_for'
+            'for_puzzle', 'for_puzzle__episode', 'by_team', 'by__user', 'correct_for', 'progress',
         ).only(
             'given', 'guess', 'correct_current',
             'for_puzzle__id', 'for_puzzle__title',
+            'for_puzzle__episode__id', 'for_puzzle__episode__name',
+            'for_puzzle__episode__event__id',
             'by_team__id', 'by_team__name',
             'by__user__id', 'by__user__username',
-            'correct_for__id'
+            'correct_for__id', 'progress__start_time',
         ).annotate(
             byseat=Subquery(
                 Attendance.objects.filter(user_info__user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
-            )
+            ),
+            unlocked=Exists(models.TeamUnlock.objects.filter(unlocked_by=OuterRef('id')).only('id')),
         ).prefetch_related(
             Prefetch(
                 'for_puzzle__episode',
                 queryset=models.Episode.objects.only('id', 'name').all()
-            )
-        )
+            ),
+            Prefetch(
+                'for_puzzle__episode__event__episode_set',
+            ),
+            Prefetch(
+                'for_puzzle__episode__puzzle_set',
+            ),
+        ).seal()
 
         if team:
             all_guesses = all_guesses.filter(by_team_id=team)
@@ -189,15 +203,9 @@ class GuessesList(LoginRequiredMixin, View):
                     'name': g.by.username,
                     'seat': g.byseat,
                 },
-                'unlocked': False,
+                'unlocked': g.unlocked,
             } for g in guesses
         ]
-
-        highlight_unlocks = request.GET.get('highlight_unlocks')
-        if highlight_unlocks is not None and strtobool(highlight_unlocks):
-            for g, gl in zip(guesses, guesses_list):
-                unlockanswers = models.UnlockAnswer.objects.filter(unlock__puzzle=g.for_puzzle)
-                gl['unlocked'] = any([a.validate_guess(g) for a in unlockanswers])
 
         return JsonResponse({
             'guesses': guesses_list,
@@ -219,6 +227,8 @@ class Stats(LoginRequiredMixin, View):
         )
 
 
+# 5 seconds is the default refresh interval on the page
+@method_decorator(cache.cache_page(5), name='dispatch')
 class StatsContent(LoginRequiredMixin, View):
     def get(self, request, episode_id=None):
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -229,7 +239,6 @@ class StatsContent(LoginRequiredMixin, View):
         now = timezone.now()
         end_time = min(now, request.tenant.end_date) + timedelta(minutes=10)
 
-        # TODO select and prefetch all the things
         episodes = models.Episode.objects.filter(event=request.tenant).order_by('start_date')
         if episode_id is not None:
             episodes = episodes.filter(pk=episode_id)
@@ -244,43 +253,21 @@ class StatsContent(LoginRequiredMixin, View):
             at_event=request.tenant,
             role=TeamRole.PLAYER,
             num_members__gte=1,
-        ).prefetch_related('members', 'members__user')
+        ).select_related('at_event').prefetch_related('members', 'members__user').seal()
 
-        # Get the first correct guess for each team on each puzzle.
-        # We use Guess.correct_for (i.e. the cache) because otherwise we perform a query for every
-        # (team, puzzle) pair i.e. a butt-ton. This comes at the cost of possibly seeing
-        # a team doing worse than it really is.
-        all_guesses = models.Guess.objects.filter(
-            correct_for__isnull=False,
-        ).select_related('for_puzzle', 'by_team')
-        correct_guesses = defaultdict(dict)
-        for guess in all_guesses:
-            team_guesses = correct_guesses[guess.for_puzzle]
-            if guess.by_team not in team_guesses or guess.given < team_guesses[guess.by_team].given:
-                team_guesses[guess.by_team] = guess
-
-        # Get when each team started each puzzle, and in how much time they solved each puzzle if they did.
-        puzzle_datas = models.TeamPuzzleData.objects.filter(puzzle__in=puzzles, team__in=all_teams).select_related('puzzle', 'team')
-        start_times = defaultdict(lambda: defaultdict(dict))
-        solved_times = defaultdict(list)
-        for data in puzzle_datas:
-            if data.team in correct_guesses[data.puzzle] and data.start_time:
-                start_times[data.team][data.puzzle] = None
-                solved_times[data.puzzle].append(correct_guesses[data.puzzle][data.team].given - data.start_time)
-            else:
-                start_times[data.team][data.puzzle] = data.start_time
-
-        # How long a team has been on a puzzle.
-        stuckness = {
-            team: [
-                now - start for start in start_times[team].values() if start
-            ] for team in all_teams
-        }
-        # How many teams have been active on each puzzle
-        num_active_teams = {
-            puzzle: len([1 for t in all_teams if start_times[t][puzzle]])
-            for puzzle in puzzles
-        }
+        now = timezone.now()
+        puzzle_progresses = models.TeamPuzzleProgress.objects.filter(
+            puzzle__in=puzzles, team__in=all_teams
+        ).annotate(
+            time_on=now - F('start_time'),
+            solved_time=F('solved_by__given') - F('start_time')
+        ).select_related('puzzle', 'team', 'solved_by').seal()
+        tpp_dict = defaultdict(dict)
+        num_solved = defaultdict(int)
+        for progress in puzzle_progresses:
+            tpp_dict[progress.puzzle][progress.team] = progress
+            if progress.solved_by:
+                num_solved[progress.puzzle] += 1
 
         # Now assemble all the stats ready for giving back to the user
         puzzle_progress = [
@@ -288,39 +275,27 @@ class StatsContent(LoginRequiredMixin, View):
                 'team': t.get_verbose_name(),
                 'progress': [{
                     'puzzle': p.title,
-                    'time': correct_guesses[p][t].given
-                } for p in puzzles if t in correct_guesses[p]]
+                    'time': tpp_dict[p][t].solved_by.given
+                } for p in puzzles if t in tpp_dict[p] and tpp_dict[p][t].solved_by]
             } for t in all_teams]
         puzzle_completion = [
             {
                 'puzzle': p.title,
-                'completion': len(correct_guesses[p])
+                'completion': num_solved[p]
             } for p in puzzles]
         team_puzzle_stuckness = [
             {
                 'team': t.get_verbose_name(),
                 'puzzleStuckness': [{
                     'puzzle': p.title,
-                    'stuckness': (now - start_times[t][p]).total_seconds()
-                } for p in puzzles if start_times[t][p]]
+                    'stuckness': (tpp_dict[p][t].time_on).total_seconds()
+                } for p in puzzles if t in tpp_dict[p] and not tpp_dict[p][t].solved_by and tpp_dict[p][t].time_on is not None]
             } for t in all_teams]
-        team_total_stuckness = [
-            {
-                'team': t.get_verbose_name(),
-                'stuckness': sum(stuckness[t], timedelta()).total_seconds(),
-            } for t in all_teams]
-        puzzle_average_stuckness = [
-            {
-                'puzzle': p.title,
-                'stuckness': sum([
-                    now - start_times[t][p] for t in all_teams if start_times[t][p]
-                ], timedelta()).total_seconds() / num_active_teams[p]
-            } for p in puzzles if num_active_teams[p] > 0]
         puzzle_difficulty = [
             {
                 'puzzle': p.title,
-                'average_time': sum(solved_times[p], timedelta()).total_seconds() / len(solved_times[p])
-            } for p in puzzles if solved_times[p]]
+                'average_time': sum([tpp.solved_time for tpp in tpp_dict[p].values() if tpp.solved_time], timedelta()).total_seconds() / num_solved[p]
+            } for p in puzzles if num_solved[p]]
 
         data = {
             'teams': [t.get_verbose_name() for t in all_teams],
@@ -330,9 +305,7 @@ class StatsContent(LoginRequiredMixin, View):
             'puzzles': [p.title for p in puzzles],
             'puzzleCompletion': puzzle_completion,
             'puzzleProgress': puzzle_progress,
-            'teamTotalStuckness': team_total_stuckness,
             'teamPuzzleStuckness': team_puzzle_stuckness,
-            'puzzleAverageStuckness': puzzle_average_stuckness,
             'puzzleDifficulty': puzzle_difficulty
         }
         return JsonResponse(data)
@@ -365,6 +338,8 @@ class Progress(LoginRequiredMixin, View):
         )
 
 
+# The cache timeout of 5 seconds is set equal to the refresh interval used on the page.
+@method_decorator(cache.cache_page(5), name='dispatch')
 class ProgressContent(LoginRequiredMixin, View):
     def get(self, request):
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -381,69 +356,71 @@ class ProgressContent(LoginRequiredMixin, View):
             'episode__event__episode_set',
             'episode__puzzle_set',
             'hint_set',
-        )
-
-        # TODO only teams which have opened a puzzle/guessed/some other criterion
-        teams = Team.objects.filter(at_event=request.tenant).prefetch_related('members').seal()
-
-        all_guesses = models.Guess.objects.filter(
-            for_puzzle__episode__event=request.tenant
-        ).select_related(
-            'by_team', 'for_puzzle', 'correct_for'
         ).seal()
 
-        team_guessed_on_puzzle = defaultdict(dict)
-        puzzle_activity = all_guesses.values('by_team', 'for_puzzle').annotate(
-            latest=Max('given'),
-            guesses=Count('id')
-        ).order_by()
-        for pz_team in puzzle_activity:
-            team_guessed_on_puzzle[pz_team['by_team']][pz_team['for_puzzle']] = {
-                'latest': pz_team['latest'],
-                'guesses': pz_team['guesses'],
-            }
+        # Sort teams according to how urgently we expect them to need help
+        # Current implementation: number of unsolved, looked-at puzzles.
+        # for linear episodes, that would be be always be 1, so sort secondarily by number
+        # of solved puzzles to discriminate.
+        teams = Team.objects.filter(
+            at_event=request.tenant
+        ).annotate(
+            num_solved_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False)),
+            num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False)),
+            guess_exists=Exists(models.Guess.objects.filter(by_team_id=OuterRef('id'))),
+        ).filter(
+            guess_exists=True
+        ).order_by(
+            F('num_solved_puzzles') - F('num_started_puzzles'),
+            'num_solved_puzzles'
+        ).prefetch_related('members').seal()
 
-        all_puzzle_data = models.TeamPuzzleData.objects.filter(
+        all_puzzle_progress = models.TeamPuzzleProgress.objects.filter(
             team__at_event=request.tenant
-        ).select_related(
-            'team', 'puzzle'
+        ).annotate(
+            guess_count=Count('guesses'),
+            latest_guess_time=Max('guesses__given'),
+        ).filter(
+            guess_count__gt=0
         ).prefetch_related(
             Prefetch(
-                'puzzle__guess_set',
-                queryset=models.Guess.objects.order_by(
-                    'given'
-                ).select_related('by', 'by__user')
-            ),
-            Prefetch(
-                'puzzle__hint_set',
-                queryset=models.Hint.objects.select_related(
-                    'start_after', 'start_after__puzzle'
-                ).prefetch_related('start_after__unlockanswer_set')
-            ),
-            'puzzle__unlock_set__unlockanswer_set',
+                'teamunlock_set',
+                queryset=models.TeamUnlock.objects.select_related(
+                    'unlockanswer',
+                    'unlocked_by',
+                )
+            )
         ).seal()
-        puzzle_data = defaultdict(dict)
-        for pzd in all_puzzle_data:
-            puzzle_data[pzd.team.id][pzd.puzzle.id] = pzd
+        puzzle_progress = defaultdict(dict)
+        for progress in all_puzzle_progress:
+            puzzle_progress[progress.team_id][progress.puzzle_id] = progress
 
         def team_puzzle_state(team, puzzle):
             hints_scheduled = None
             guesses = None
             latest_guess = None
+            progress = puzzle_progress[team.id].get(puzzle.id)
 
-            if any(g.get_correct_for() for g in all_guesses if g.for_puzzle == puzzle and g.by_team == team):
-                state = 'solved'
-                guesses = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('guesses', 0)
-            elif not puzzle_data[team.id].get(puzzle.id) or not puzzle_data[team.id][puzzle.id].start_time:
+            if not progress or not progress.start_time:
                 state = 'not_opened'
+            elif progress.solved_by_id:
+                state = 'solved'
+                guesses = progress.guess_count
             else:
                 state = 'open'
-                guesses = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('guesses', 0)
-                latest_guess = team_guessed_on_puzzle[team.id].get(puzzle.id, {}).get('latest', None)
+                guesses = progress.guess_count
+                latest_guess = progress.latest_guess_time
+                unlocked_unlocks = {
+                    tu.unlockanswer.unlock_id: tu.unlocked_by.given
+                    for tu in progress.teamunlock_set.all()
+                }
                 hints_scheduled = any([
                     True
                     for h in puzzle.hint_set.all()
-                    if h.unlocks_at(team, puzzle_data[team.id][puzzle.id]) and not h.unlocked_by(team, puzzle_data[team.id][puzzle.id], puzzle.guess_set.all())
+                    if (
+                        not h.start_after_id
+                        or h.start_after_id in unlocked_unlocks
+                    ) and not h.unlocked_by(team, progress, unlocked_unlocks=unlocked_unlocks)
                 ])
             return {
                 'puzzle_id': puzzle.id,
@@ -453,21 +430,6 @@ class ProgressContent(LoginRequiredMixin, View):
                 'latest_guess': latest_guess,
                 'hints_scheduled': hints_scheduled,
             }
-
-        def team_help_needed_rating(team):
-            """Rate how much admins should be trying to assist this team relative to others"""
-            # Current implementation: number of unsolved, looked-at puzzles.
-            solved = len([1 for pz in puzzles
-                          if any(g.get_correct_for() for g in all_guesses
-                                 if g.for_puzzle == pz and g.by_team == team)
-                          ])
-            looked_at = len([1 for pz in puzzles
-                             if puzzle_data[team.id].get(pz.id) and puzzle_data[team.id][pz.id].start_time])
-            # for linear episodes, that would be be always be 1, so add in the number of solved puzzles
-            # to discriminate.
-            return looked_at - solved, -solved
-
-        teams = sorted(teams, key=team_help_needed_rating, reverse=True)
 
         data = {
             'puzzles': [{
@@ -542,108 +504,142 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
 
         # All the data is keyed off puzzles. Only return puzzles which
         # are unsolved but have a guess.
-        puzzles = models.Puzzle.objects.filter(
-            guess__by_team=team_id
-        ).distinct().annotate(
-            num_guesses=Count('guess')
+        tp_progresses = models.TeamPuzzleProgress.objects.filter(
+            team=team,
+            start_time__isnull=False,
+        ).annotate(
+            num_guesses=Count('guesses'),
+        ).filter(
+            num_guesses__gt=0,
+        ).select_related(
+            'puzzle',
+            'puzzle__episode',
+            'team',
+            'solved_by',
+        ).only(
+            'puzzle__title',
+            'puzzle__episode__name',
+            'solved_by__given',
+            'start_time',
+            'team__id',
         ).prefetch_related(
+            Prefetch(
+                'teamunlock_set',
+                queryset=models.TeamUnlock.objects.select_related(
+                    'unlockanswer',
+                    'unlockanswer__unlock',
+                    'unlocked_by',
+                ).only(
+                    'team_puzzle_progress__id',
+                    'unlockanswer__unlock__text',
+                    'unlocked_by__given',
+                )
+            ),
             # Only prefetch guesses by the requested team; puzzle.guess_set.all()
             # will not be all, which means we don't need to filter again.
             Prefetch(
-                'guess_set',
-                queryset=models.Guess.objects.filter(
-                    by_team_id=team_id
-                ).order_by(
-                    '-given'
-                ).select_related('by', 'by__user')
+                'guesses',
+                queryset=models.Guess.objects.order_by(
+                    '-given',
+                ).select_related(
+                    'by', 'by__user',
+                ).only(
+                    'by__user__username',
+                    'by_team_id',
+                    'for_puzzle_id',
+                    'given',
+                    'guess',
+                )
             ),
             Prefetch(
-                'hint_set',
+                'puzzle__hint_set',
                 queryset=models.Hint.objects.select_related(
                     'start_after', 'start_after__puzzle'
-                ).prefetch_related('start_after__unlockanswer_set')
+                ).only(
+                    'puzzle__id',
+                    'start_after_id',
+                    'text',
+                    'time',
+                ).prefetch_related(
+                    'start_after__unlockanswer_set'
+                )
             ),
-            'unlock_set',
-            'unlock_set__unlockanswer_set',
-        )
+        ).seal()
 
-        # Most info is only needed for un-solved puzzles; find which are solved
-        # now so we can save some work
-        solved_puzzles = {}
-        for pz in puzzles:
-            correct = [g for g in pz.guess_set.all() if g.correct_for]
-            if correct:
-                solved_puzzles[pz.id] = correct[0]
-
-        # Grab the TeamPuzzleData necessary to calculate hint timings
-        tp_datas = models.TeamPuzzleData.objects.filter(
-            puzzle__in=puzzles,
-            team_id=team_id
-        )
-        tp_datas = {tp_data.puzzle_id: tp_data for tp_data in tp_datas}
-
-        # Collate visible hints and unlocks
-        clues_visible = {
-            puzzle.id: [{
-                'type': 'Unlock',
-                'text': u.text,
-                'received_at': u.unlocked_by(team, puzzle.guess_set.all())[0].given}
-                for u in puzzle.unlock_set.all()
-                if u.unlocked_by(team, puzzle.guess_set.all())
-            ] + [{
-                'type': 'Hint',
-                'text': h.text,
-                'received_at': h.unlocks_at(team, tp_datas[puzzle.id], puzzle.guess_set.all())}
-                for h in puzzle.hint_set.all()
-                if h.unlocked_by(team, tp_datas[puzzle.id], puzzle.guess_set.all())
-            ]
-            for puzzle in puzzles
-        }
-
-        # Hints which depend on not-unlocked unlocks are not included
-        hints_scheduled = {
-            puzzle.id: sorted([
-                {
-                    'text': h.text,
-                    'time': h.unlocks_at(team, tp_datas[puzzle.id])
-                }
-                for h in puzzle.hint_set.all()
-                if h.unlocks_at(team, tp_datas[puzzle.id]) and not h.unlocked_by(team, tp_datas[puzzle.id], puzzle.guess_set.all())
-            ], key=lambda x: x['time'])
-            for puzzle in puzzles
-        }
+        solved_puzzles = []
+        unsolved_puzzles = []
 
         # Unsolved puzzles from last year's hunts haven't been "on" for a year :)
         latest = min(timezone.now(), event.end_date)
 
+        for tp_progress in tp_progresses:
+            puzzle_info = {
+                'title': tp_progress.puzzle.title,
+                'id': tp_progress.puzzle.id,
+                'num_guesses': tp_progress.num_guesses,
+            }
+            if tp_progress.solved_by:
+                solved_puzzles.append({
+                    **puzzle_info,
+                    'time_finished': tp_progress.solved_by.given,
+                    'time_taken': tp_progress.solved_by.given - tp_progress.start_time,
+                })
+            else:
+                # Collate visible hints and unlocks
+                clues_visible = [
+                    {
+                        'type': 'Unlock',
+                        'text': tu.unlockanswer.unlock.text,
+                        'received_at': tu.unlocked_by.given
+                    }
+                    for tu in tp_progress.teamunlock_set.all()
+                ] + [
+                    {
+                        'type': 'Hint',
+                        'text': h.text,
+                        'received_at': h.unlocks_at(team, tp_progress)
+                    }
+                    for h in itertools.chain(*tp_progress.hints().values())
+                ]
+
+                # Hints which depend on not-unlocked unlocks are not included
+                unlocked_unlocks = {
+                    tu.unlockanswer.unlock.id: tu.unlocked_by.given
+                    for tu in tp_progress.teamunlock_set.all()
+                }
+                hints_scheduled = sorted(
+                    [
+                        {
+                            'text': h.text,
+                            'time': h.unlocks_at(team, tp_progress)
+                        }
+                        for h in tp_progress.puzzle.hint_set.all()
+                        if (
+                            h.unlocks_at(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlocks)
+                            and not h.unlocked_by(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlocks)
+                        )
+                    ],
+                    key=lambda x: x['time'],
+                )
+
+                unsolved_puzzles.append({
+                    **puzzle_info,
+                    'episode_name': tp_progress.puzzle.episode.name,
+                    'time_started': tp_progress.start_time,
+                    'time_on': latest - tp_progress.start_time,
+                    'guesses': [{
+                        'user': guess.by.username,
+                        'guess': guess.guess,
+                        'given': guess.given}
+                        for guess in tp_progress.guesses.all()[:5]
+                    ],
+                    'clues_visible': clues_visible,
+                    'hints_scheduled': hints_scheduled,
+                })
+
         response = {
-            'puzzles': [{
-                'title': puzzle.title,
-                'episode_name': puzzle.episode.name,
-                'id': puzzle.id,
-                'time_started': tp_datas[puzzle.id].start_time,
-                'time_on': latest - tp_datas[puzzle.id].start_time,
-                'num_guesses': puzzle.num_guesses,
-                'guesses': [{
-                    'user': guess.by.username,
-                    'guess': guess.guess,
-                    'given': guess.given}
-                    for guess in puzzle.guess_set.all()[:5]
-                ],
-                'clues_visible': clues_visible[puzzle.id],
-                'hints_scheduled': hints_scheduled[puzzle.id]}
-                for puzzle in puzzles
-                if puzzle.id not in solved_puzzles
-            ],
-            'solved_puzzles': [{
-                'title': puzzle.title,
-                'id': puzzle.id,
-                'time_finished': solved_puzzles[puzzle.id].given,
-                'time_taken': solved_puzzles[puzzle.id].given - tp_datas[puzzle.id].start_time,
-                'num_guesses': puzzle.num_guesses}
-                for puzzle in puzzles
-                if puzzle.id in solved_puzzles
-            ],
+            'puzzles': unsolved_puzzles,
+            'solved_puzzles': solved_puzzles,
         }
 
         return JsonResponse(response)

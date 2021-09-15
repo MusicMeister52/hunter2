@@ -25,7 +25,6 @@ from events.utils import annotate_userprofile_queryset_with_seat
 from hunter2.mixins import APITokenRequiredMixin
 from . import forms, models
 from .forms import CreateTeamForm, InviteForm, RequestForm
-from .mixins import TeamMixin
 
 import json
 
@@ -42,7 +41,7 @@ class TeamAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
         return qs
 
 
-class CreateTeamView(LoginRequiredMixin, TeamMixin, UpdateView):
+class CreateTeamView(LoginRequiredMixin, UpdateView):
     form_class = forms.CreateTeamForm
     template_name = 'teams/create.html'
 
@@ -54,7 +53,7 @@ class CreateTeamView(LoginRequiredMixin, TeamMixin, UpdateView):
         return reverse('team', kwargs={'team_id': team_id})
 
 
-class ManageTeamView(LoginRequiredMixin, TeamMixin, TemplateView):
+class ManageTeamView(LoginRequiredMixin, TemplateView):
     template_name = "teams/manage.html"
 
     def get_context_data(self, **kwargs):
@@ -88,7 +87,7 @@ class ManageTeamView(LoginRequiredMixin, TeamMixin, TemplateView):
         return context
 
 
-class TeamView(LoginRequiredMixin, TeamMixin, View):
+class TeamView(LoginRequiredMixin, View):
     def get(self, request, team_id):
         team = get_object_or_404(
             models.Team, at_event=request.tenant, pk=team_id
@@ -110,7 +109,7 @@ class TeamView(LoginRequiredMixin, TeamMixin, View):
             )
 
 
-class Invite(LoginRequiredMixin, TeamMixin, View):
+class Invite(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -152,7 +151,7 @@ class Invite(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class CancelInvite(LoginRequiredMixin, TeamMixin, View):
+class CancelInvite(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -184,7 +183,7 @@ class CancelInvite(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class AcceptInvite(LoginRequiredMixin, TeamMixin, View):
+class AcceptInvite(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -221,7 +220,7 @@ class AcceptInvite(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class DenyInvite(LoginRequiredMixin, TeamMixin, View):
+class DenyInvite(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -240,7 +239,7 @@ class DenyInvite(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class Request(LoginRequiredMixin, TeamMixin, View):
+class Request(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -269,7 +268,7 @@ class Request(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class CancelRequest(LoginRequiredMixin, TeamMixin, View):
+class CancelRequest(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -288,7 +287,7 @@ class CancelRequest(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class AcceptRequest(LoginRequiredMixin, TeamMixin, View):
+class AcceptRequest(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):
@@ -343,7 +342,7 @@ class AcceptRequest(LoginRequiredMixin, TeamMixin, View):
         })
 
 
-class DenyRequest(LoginRequiredMixin, TeamMixin, View):
+class DenyRequest(LoginRequiredMixin, View):
     raise_exception = True
 
     def post(self, request, team_id):

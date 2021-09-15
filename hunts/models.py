@@ -12,12 +12,13 @@
 
 import secrets
 import uuid
+from collections import defaultdict
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Q
+from django.db.models import Count, Exists, Max, Min, OuterRef, Q, Sum
 from django.utils import timezone
 from django.urls import reverse
 from django_postgresql_dag.models import node_factory, edge_factory
@@ -25,6 +26,7 @@ from django_prometheus.models import ExportModelOperationsMixin
 from enumfields import EnumField, Enum
 from ordered_model.models import OrderedModel
 from seal.models import SealableModel
+from seal.query import SealableQuerySet
 
 import accounts
 import events
@@ -40,7 +42,7 @@ class EpisodePrequel(edge_factory('hunts.Episode', concrete=False)):
     pass
 
 
-class Episode(node_factory(EpisodePrequel)):
+class Episode(node_factory(EpisodePrequel), SealableModel):
     name = models.CharField(max_length=255)
     flavour = models.TextField(blank=True)
     start_date = models.DateTimeField()
@@ -103,26 +105,36 @@ class Episode(node_factory(EpisodePrequel)):
 
         if self.parallel:
             unlocked = None
-            for i, puzzle in enumerate(self.puzzle_set.all()):
-                if not puzzle.answered_by(team):
+            for i, puzzle in enumerate(self.puzzle_set.all().annotate_solved_by(team)):
+                if not puzzle.solved:
                     if unlocked is None:  # If this is the first not unlocked puzzle, it might be the "next puzzle"
                         unlocked = i + 1
                     else:  # We've found a second not unlocked puzzle, we can terminate early and return None
                         return None
             return unlocked  # This is either None, if we found no unlocked puzzles, or the one puzzle we found above
         else:
-            for i, puzzle in enumerate(self.puzzle_set.all()):
-                if not puzzle.answered_by(team):
+            for i, puzzle in enumerate(self.puzzle_set.all().annotate_solved_by(team)):
+                if not puzzle.solved:
                     return i + 1
 
         return None
 
-    def started(self, team=None):
-        date = self.start_date
-        if team:
-            date -= self.headstart_applied(team)
+    def available(self, team):
+        """Returns whether puzzles on the episode could be available"""
+        now = timezone.now()
+        if self.event.end_date < now:
+            return True
 
-        return date < timezone.now()
+        if not self.started_for(team):
+            return False
+
+        # Compare number of puzzles in the prequel episodes solved by the team to the total number of such puzzles
+        puzzles = Puzzle.objects.filter(episode__in=self.prequels.all())
+        return puzzles.solved_count(team) == puzzles.count()
+
+    def started_for(self, team):
+        """Returns whether the episode has started for the given team"""
+        return self.start_date - self.headstart_applied(team) < timezone.now()
 
     def get_relative_id(self):
         if not hasattr(self, 'relative_id'):
@@ -134,77 +146,55 @@ class Episode(node_factory(EpisodePrequel)):
                     break
         return self.relative_id
 
-    def unlocked_by(self, team):
-        result = self.event.end_date < timezone.now() or \
-            all([episode.finished_by(team) for episode in self.prequels.all()])
-        return result
-
-    def finished_by(self, team):
-        return all([puzzle.answered_by(team) for puzzle in self.puzzle_set.all()])
-
     def finished_times(self):
-        """Get a list of teams who have finished this episode together with the time at which they finished."""
-        if not self.puzzle_set.all():
-            return []
-
-        if self.parallel:
-            # The position is determined by when the latest of a team's first successful guesses came in, over
-            # all puzzles in the episode. Teams which haven't answered all questions are discarded.
-            last_team_guesses = {team: None for team in teams.models.Team.objects.filter(at_event=self.event)}
-
-            for p in self.puzzle_set.all():
-                team_guesses = p.first_correct_guesses(self.event)
-                for team in list(last_team_guesses.keys()):
-                    if team not in team_guesses:
-                        del last_team_guesses[team]
-                        continue
-                    if not last_team_guesses[team]:
-                        last_team_guesses[team] = team_guesses[team]
-                    elif team_guesses[team].given > last_team_guesses[team].given:
-                        last_team_guesses[team] = team_guesses[team]
-
-            last_team_times = ((t, last_team_guesses[t].given) for t in last_team_guesses)
-            return last_team_times
-
-        else:
-            last_puzzle = self.puzzle_set.all().last()
-            return last_puzzle.finished_team_times(self.event)
+        """Get a list of player teams who have finished this episode with their finish time, in the order in which they finished."""
+        return [(t, t.last_solve) for t in teams.models.Team.objects.annotate(
+            solved_count=Count('teampuzzleprogress', filter=Q(
+                teampuzzleprogress__puzzle__episode=self,
+                teampuzzleprogress__solved_by__isnull=False),
+            ),
+            last_solve=Max('teampuzzleprogress__solved_by__given', filter=Q(
+                teampuzzleprogress__puzzle__episode=self,
+            )),
+        ).filter(
+            role=teams.models.TeamRole.PLAYER,
+            solved_count__gt=0,
+            solved_count=self.puzzle_set.count(),
+        ).order_by('last_solve')]
 
     def finished_positions(self):
-        """Get a list of teams who have finished this episode in the order in which they finished."""
-        return [team for team, time in sorted(self.finished_times(), key=lambda x: x[1])]
+        """Get a list of player teams who have finished this episode in the order in which they finished."""
+        return [team for team, time in self.finished_times()]
 
     def headstart_applied(self, team):
-        """The headstart that the team has acquired that will be applied to this episode"""
-        seconds = sum([e.headstart_granted(team).total_seconds() for e in self.headstart_from.all()])
+        """Get how much headstart the given team has acquired for the episode
+
+        This is formed from the headstart granted from those episodes which the given one specifies
+        in its `headstart_from` field, plus any adjustment added for the team.
+        """
+        headstart = sum(TeamPuzzleProgress.objects.filter(
+            team=team, puzzle__episode__in=self.headstart_from.all()
+        ).headstart_granted().values(), start=timedelta(0))
         try:
-            seconds += self.headstart_set.get(team=team).headstart_adjustment.total_seconds()
+            headstart += self.headstart_set.get(team=team).headstart_adjustment
         except Headstart.DoesNotExist:
             pass
-        return timedelta(seconds=seconds)
+        return headstart
 
     def headstart_granted(self, team):
         """The headstart that the team has acquired by completing puzzles in this episode"""
-        seconds = sum([p.headstart_granted.total_seconds() for p in self.puzzle_set.all() if p.answered_by(team)])
+        seconds = sum([
+            p.headstart_granted.total_seconds()
+            for p in self.puzzle_set.all().annotate_solved_by(team)
+            if p.solved
+        ])
         return timedelta(seconds=seconds)
 
-    def _puzzle_unlocked_by(self, puzzle, team):
+    def available_puzzles(self, team):
+        """Return the list of puzzles which should be visible for the given team annotated with an additional boolean `done` indicating whether the team has
+        already completed them."""
         now = timezone.now()
-        started_puzzles = self.puzzle_set.all()
-        if self.parallel:
-            started_puzzles = started_puzzles.filter(start_date__lt=now)
-        if self.parallel or self.event.end_date < now:
-            return puzzle in started_puzzles
-        else:
-            for p in started_puzzles:
-                if p == puzzle:
-                    return True
-                if not p.answered_by(team):
-                    return False
-
-    def unlocked_puzzles(self, team):
-        now = timezone.now()
-        started_puzzles = self.puzzle_set.all()
+        started_puzzles = self.puzzle_set.all().annotate_solved_by(team)
         if self.parallel:
             started_puzzles = started_puzzles.filter(start_date__lt=now)
         if self.parallel or self.event.end_date < now:
@@ -213,7 +203,7 @@ class Episode(node_factory(EpisodePrequel)):
             result = []
             for p in started_puzzles:
                 result.append(p)
-                if not p.answered_by(team):
+                if not p.solved:
                     break
 
             return result
@@ -227,8 +217,22 @@ def generate_url_id():
     return id
 
 
-class Puzzle(OrderedModel):
+class PuzzleQuerySet(SealableQuerySet):
+    def annotate_solved_by(self, team):
+        """Annotate the queryset with whether the given team has solved each puzzle"""
+        return self.annotate(
+            solved=Exists(TeamPuzzleProgress.objects.filter(
+                puzzle=OuterRef('pk'), team=team, solved_by__isnull=False
+            )),
+        )
+
+    def solved_count(self, team):
+        return self.annotate_solved_by(team).filter(solved=True).count()
+
+
+class Puzzle(OrderedModel, SealableModel):
     order_with_respect_to = 'episode'
+    objects = PuzzleQuerySet.as_manager()
 
     class Meta:
         ordering = ('episode', 'order')
@@ -335,31 +339,40 @@ class Puzzle(OrderedModel):
             return str(self.id)
         return f'{self.episode.get_relative_id()}.{self.get_relative_id()}'
 
-    def started(self, team):
-        """Determine whether this puzzle should be visible to teams yet.
+    def available(self, team):
+        """Returns whether the puzzle is available to look at and guess on"""
+        now = timezone.now()
+        episode = self.episode
 
-        Puzzles in linear episodes are always visible if their episode has started.
-        Puzzles in parallel episodes become visible at their individual start time.
+        if episode.event.end_date < now:
+            return True
+
+        if not episode.available(team):
+            return False
+
+        if episode.parallel:
+            return self.started()
+
+        prev_puzzles = Puzzle.objects.filter(
+            episode=episode,
+            order__lt=self.order
+        )
+
+        return prev_puzzles.solved_count(team) == prev_puzzles.count()
+
+    def started(self):
+        """Return whether this puzzle could be available at the current time
+
+        This is always true for puzzles in linear episodes
+        Puzzles in parallel episodes become available at their individual start time.
         """
         return not self.episode.parallel or self.start_date < timezone.now()
 
-    def unlocked_by(self, team):
-        # Is this puzzle playable?
-        return self.episode.event.end_date < timezone.now() or \
-            self.episode.unlocked_by(team) and self.episode._puzzle_unlocked_by(self, team)
-
     def answered_by(self, team):
-        """Return a list of correct guesses for this puzzle by the given team, ordered by when they were given."""
-        # Select related since get_correct_for() will want it
-        guesses = Guess.objects.filter(
-            by__in=team.members.all(),
-            for_puzzle=self,
-        ).order_by(
-            'given'
-        ).select_related('correct_for')
-
-        # TODO: Should return bool
-        return [g for g in guesses if g.get_correct_for()]
+        """Return whether the team has answered this puzzle. Always results in a query."""
+        return TeamPuzzleProgress.objects.filter(
+            team=team, puzzle=self, solved_by__isnull=False
+        ).exists()
 
     def first_correct_guesses(self, event):
         """Returns a dictionary of teams to guesses, where the guess is that team's earliest correct, validated guess for this puzzle"""
@@ -378,16 +391,14 @@ class Puzzle(OrderedModel):
 
         return team_guesses
 
-    def finished_team_times(self, event):
+    def finished_team_times(self):
         """Return an iterable of (team, time) tuples of teams who have completed this puzzle at the given event,
-together with the team at which they completed the puzzle."""
-        team_guesses = self.first_correct_guesses(event)
+together with the time at which they completed the puzzle."""
+        return [(tpp.team, tpp.solved_by.given) for tpp in self.teampuzzleprogress_set.filter(solved_by__isnull=False)]
 
-        return ((team, team_guesses[team].given) for team in team_guesses)
-
-    def finished_teams(self, event):
+    def finished_teams(self):
         """Return a list of teams who have completed this puzzle at the given event in order of completion."""
-        return [team for team, time in sorted(self.finished_team_times(event), key=lambda x: x[1])]
+        return [team for team, time in sorted(self.finished_team_times(), key=lambda x: x[1])]
 
     def files_map(self, request):
         # This assumes that a single request concerns a single puzzle, which seems reasonable for now.
@@ -410,7 +421,7 @@ together with the team at which they completed the puzzle."""
     def position(self, team):
         """Returns the position in which the given team finished this puzzle: 0 = first, None = not yet finished."""
         try:
-            return self.finished_teams(team.at_event).index(team)
+            return self.finished_teams().index(team)
         except ValueError:
             return None
 
@@ -465,7 +476,7 @@ class SolutionFile(models.Model):
         unique_together = (('puzzle', 'slug'), ('puzzle', 'url_path'))
 
 
-class Clue(models.Model):
+class Clue(SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     text = models.TextField(help_text="Text displayed when this clue is unlocked")
@@ -498,38 +509,41 @@ class Hint(Clue):
     def __str__(self):
         return f'Hint unlocked after {self.time}'
 
-    def unlocked_by(self, team, tp_data, possible_guesses=None):
+    def unlocked_by(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns whether the hint is unlocked by the given team.
 
-        The TeamPuzzleData associated with the team and puzzle must be supplied.
-        An iterable of possible guesses may be supplied in order to speed up any
-            calls to `Unlock.unlocked_by`.
+        The TeamPuzzleProgress associated with the team and puzzle must be supplied.
+        The following parameters can be supplied in order to speed up any calls to `Unlock.unlocked_by`:
+          - An iterable of possible guesses
+          - A mapping from unlock ID to unlocked time
         """
-        unlocks_at = self.unlocks_at(team, tp_data, possible_guesses)
+        unlocks_at = self.unlocks_at(team, progress, possible_guesses, unlocked_unlocks)
         return unlocks_at is not None and unlocks_at < timezone.now()
 
-    def delay_for_team(self, team, tp_data, possible_guesses=None):
+    def delay_for_team(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns how long until the hint unlocks for the given team.
 
         Parameters as for `unlocked_by`.
         """
-        unlocks_at = self.unlocks_at(team, tp_data, possible_guesses)
+        unlocks_at = self.unlocks_at(team, progress, possible_guesses, unlocked_unlocks)
         return None if unlocks_at is None else unlocks_at - timezone.now()
 
-    def unlocks_at(self, team, tp_data, possible_guesses=None):
+    def unlocks_at(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns when the hint unlocks for the given team.
 
         Parameters as for `unlocked_by`.
         """
-        if self.start_after:
-            guesses = self.start_after.unlocked_by(team, possible_guesses)
-            if guesses:
-                start_time = guesses[0].given
+        if self.start_after_id:
+            if unlocked_unlocks:
+                start_time = unlocked_unlocks.get(self.start_after_id)
             else:
-                return None
-        elif tp_data.start_time:
-            start_time = tp_data.start_time
+                start_time = progress.teamunlock_set.filter(
+                    unlockanswer__unlock_id=self.start_after_id
+                ).aggregate(start=Min('unlocked_by__given'))['start']
         else:
+            start_time = progress.start_time
+
+        if start_time is None:
             return None
 
         return start_time + self.time
@@ -552,7 +566,7 @@ class Unlock(Clue):
         return f'"{self.text}"'
 
 
-class UnlockAnswer(models.Model):
+class UnlockAnswer(SealableModel):
     unlock = models.ForeignKey(Unlock, editable=False, on_delete=models.CASCADE)
     runtime = EnumField(
         Runtime, max_length=1, default=Runtime.STATIC,
@@ -644,27 +658,46 @@ Regex:
         except SyntaxError as e:
             raise ValidationError(e) from e
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        guesses = Guess.objects.filter(
-            Q(for_puzzle=self.for_puzzle),
-            Q(correct_for__isnull=True) | Q(correct_for=self)
-        )
-        guesses.update(correct_current=False)
-
-    def delete(self, *args, **kwargs):
-        guesses = Guess.objects.filter(
-            for_puzzle=self.for_puzzle,
-            correct_for=self
-        )
-        guesses.update(correct_current=False)
-        super().delete(*args, **kwargs)
-
     def validate_guess(self, guess):
         return self.runtime.create(self.options).validate_guess(
             self.answer,
             guess.guess,
         )
+
+
+class GuessQuerySet(SealableQuerySet):
+    def evaluate_correctness(self, answers):
+        """Refresh the correctness cache on the guesses in the queryset against the supplied answers"""
+        for guess in self:
+            guess.correct_current = True
+            guess.correct_for = None
+            for answer in answers:
+                if answer.validate_guess(guess):
+                    guess.correct_for = answer
+                    break
+        self.bulk_update(self, ['correct_current', 'correct_for'])
+
+
+class Relationship(models.ForeignObject):
+    """Defines a relationship that can be traversed in the database and ORM,
+    but which doesn't add any columns to the table
+    """
+
+    def __init__(self, model, from_fields, to_fields, **kwargs):
+        super().__init__(
+            model,
+            on_delete=models.DO_NOTHING,
+            from_fields=from_fields,
+            to_fields=to_fields,
+            null=True,
+            blank=True,
+            **kwargs,
+        )
+
+    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
+        # override the default to always make it private
+        # this ensures that no additional columns are created
+        super().contribute_to_class(cls, name, private_only=True, **kwargs)
 
 
 class Guess(ExportModelOperationsMixin('guess'), SealableModel):
@@ -673,16 +706,29 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     by = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
     by_team = models.ForeignKey(teams.models.Team, on_delete=models.SET_NULL, null=True, blank=True)
     guess = models.TextField()
-    given = models.DateTimeField(auto_now_add=True)
+    given = models.DateTimeField(default=timezone.now)
     # The following two fields cache whether the guess is correct. Do not use them directly.
     correct_for = models.ForeignKey(Answer, blank=True, null=True, on_delete=models.SET_NULL)
     correct_current = models.BooleanField(default=False)
+
+    # Directly provide a means of accessing the unique progress object associated with this guess
+    # most often we're interested in using this in the opposite direction
+    progress = Relationship(
+        'TeamPuzzleProgress', ('by_team', 'for_puzzle'), ('team', 'puzzle'), related_name='guesses'
+    )
+
+    objects = GuessQuerySet.as_manager()
 
     class Meta:
         verbose_name_plural = 'Guesses'
 
     def __str__(self):
         return f'"{self.guess}" by {self.by} ({self.by_team}) @ {self.given}'
+
+    def full_clean(self, exclude=("progress",), validate_unique=True):
+        if "progress" not in exclude:
+            exclude = exclude + ("progress",)
+        super().full_clean(exclude, validate_unique)
 
     @property
     def compact_id(self):
@@ -695,43 +741,29 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     def get_correct_for(self):
         """Get the first answer this guess is correct for, if such exists."""
         if not self.correct_current:
+            # TODO: progress: where previously saving a guess triggers a re-evaluation,
+            #  now saving an existing guess does nothing for progress. Hence this needs
+            #  to be reworked when reconciling the old and new progress code.
             self.save()
 
         return self.correct_for
 
-    def _evaluate_correctness(self, data=None, answers=None):
-        """Re-evaluate self.correct_current and self.correct_for.
-
-        Sets self.correct_current to True, and self.correct_for to the first
-        answer this is correct for, if such exists. Does not save the model."""
-        if data is None:
-            data = PuzzleData(self.for_puzzle, self.by_team)
-        if answers is None:
-            answers = self.for_puzzle.answer_set.all()
-
-        self.correct_for = None
-        self.correct_current = True
-
-        for answer in answers:
-            if answer.validate_guess(self):
-                self.correct_for = answer
-                return
-
     def save(self, *args, **kwargs):
-        if not self.by_team:
+        if not self.by_team_id:
             self.by_team = self.get_team()
-        self._evaluate_correctness()
+        # ensure PuzzleData exists
+        # TODO - don't do this, and enforce use of `get_or_create` or similar
+        #  elsewhere. This will be easier once `TeamPuzzleProgress` is the
+        #  model we need for stats and admin views, but we'll have the same
+        #  problem there, then.
+        PuzzleData(self.for_puzzle, self.by_team)
         super().save(*args, **kwargs)
 
     def time_on_puzzle(self):
-        data = TeamPuzzleData.objects.filter(
-            puzzle=self.for_puzzle,
-            team=self.by_team
-        ).get()
-        if not data.start_time:
-            # This should never happen, but can do with sample data.
+        if not self.progress.start_time:
+            # This should never happen, but can do with sample progress.
             return '0'
-        return self.given - data.start_time
+        return self.given - self.progress.start_time
 
 
 class TeamData(models.Model):
@@ -761,7 +793,6 @@ class UserData(models.Model):
 class TeamPuzzleData(SealableModel):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
-    start_time = models.DateTimeField(blank=True, null=True)
     data = models.JSONField(blank=True, null=True)
 
     class Meta:
@@ -770,6 +801,127 @@ class TeamPuzzleData(SealableModel):
 
     def __str__(self):
         return f'Data for {self.team.name} on {self.puzzle.title}'
+
+
+class TeamPuzzleProgressQuerySet(SealableQuerySet):
+    def with_first_correct_guess(self):
+        """Annotate the queryset with the ID of the first guess which is marked as correct
+
+        The added field is called `first_correct_guess_id`
+        This relies on `correct_for` being up to date
+        """
+        # NOTE: if the `correct_for` field is removed from `Guess` and added to `TeamPuzzleProgress`
+        # then an analog of this is probably not necessary
+        return self.annotate(
+            first_correct_guess_id=models.Subquery(Guess.objects.filter(
+                correct_for__isnull=False,
+                for_puzzle=models.OuterRef('puzzle'),
+                by_team=models.OuterRef('team')
+            ).order_by('given').values('pk')[:1])
+        )
+
+    def reevaluate(self):
+        """Re-evaluate these Progress objects to reflect the current correct guesses
+
+        "current correct guesses" are those whose `correct_for` is not null.
+        This method is oriented to updating *progress* only, so will not make changes
+        to which `solved_by` if the puzzle was previously solved and is still solved,
+        or previously was not solved and is still not solved.
+        """
+        qs = self.with_first_correct_guess().select_related('solved_by').seal()
+        for pr in qs:
+            # Only update if needed, i.e. if the solvedness of the puzzle has changed, or if
+            # the guess which had previously solved the puzzle is now incorrect.
+            # This means for example that if a new answer is added which makes an earlier guess
+            # correct, we maintain the record of the guess which originally brought the team forward.
+            if not (pr.solved_by_id and pr.solved_by.correct_for_id and pr.first_correct_guess_id):
+                pr.solved_by_id = pr.first_correct_guess_id
+        qs.bulk_update(qs, ['solved_by_id'])
+
+    def headstart_granted(self):
+        """Transform the queryset into a dictionary of:
+        (team_id, episode_id): total headstart in seconds
+
+        Note: not every (team, episode) combination will exist as a key.
+        """
+
+        # values(<fields>) gives us a GROUP BY on those fields.
+        headstart_values = self.filter(
+            solved_by__isnull=False,
+            puzzle__episode__isnull=False
+        ).values('team', 'puzzle__episode').annotate(
+            total_headstart=Sum('puzzle__headstart_granted')
+        )
+        # Assemble the dictionary
+        return dict(((v['team'], v['puzzle__episode']), v['total_headstart']) for v in headstart_values)
+
+
+class TeamPuzzleProgress(SealableModel):
+    puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
+    team = models.ForeignKey(teams.models.Team, on_delete=models.CASCADE)
+    start_time = models.DateTimeField(blank=True, null=True)
+    solved_by = models.ForeignKey(Guess, blank=True, null=True, on_delete=models.SET_NULL, related_name="+")
+    unlockanswers = models.ManyToManyField(UnlockAnswer, through='TeamUnlock')
+
+    objects = TeamPuzzleProgressQuerySet.as_manager()
+
+    class Meta:
+        unique_together = (('puzzle', 'team'), )
+        verbose_name_plural = 'Team puzzle progresses'
+
+    @property
+    def unlocks(self):
+        return set(ua.unlock for ua in self.unlockanswers.all())
+
+    def hints(self):
+        """Returns a dictionary of {unlock_id: visible hint}
+
+        a key of `None` is used for hints that aren't dependent on an unlock
+        """
+        hints = self.puzzle.hint_set.all()
+        hint_dict = defaultdict(list)
+        for hint in hints:
+            if hint.unlocked_by(self.team, self, self.guesses.all()):
+                hint_dict[hint.start_after_id].append(hint)
+
+        return hint_dict
+
+    def unlocks_to_guesses(self):
+        d = defaultdict(list)
+        for teamunlock in self.teamunlock_set.all():
+            d[teamunlock.unlockanswer.unlock].append(teamunlock.unlocked_by)
+
+        return dict(d)
+
+    def reevaluate(self, answers, guesses):
+        """Update this instance to reflect the team's progress in the supplied guesses.
+
+        This method does not save the instance.
+
+        Args:
+            answers: all the answers for the puzzle.
+            guesses: all this team's guesses for the puzzle, ordered by time given.
+                if some can be determined not to be correct, they can be omitted.
+        """
+
+        self.solved_by = None
+
+        for guess in guesses:
+            for answer in answers:
+                if answer.validate_guess(guess):
+                    self.solved_by = guess
+                    break
+            if self.solved_by_id:
+                break
+
+
+class TeamUnlock(SealableModel):
+    team_puzzle_progress = models.ForeignKey(TeamPuzzleProgress, on_delete=models.CASCADE)
+    unlockanswer = models.ForeignKey(UnlockAnswer, on_delete=models.CASCADE)
+    unlocked_by = models.ForeignKey(Guess, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = (('team_puzzle_progress', 'unlockanswer', 'unlocked_by'))
 
 
 class UserPuzzleData(models.Model):
@@ -853,7 +1005,7 @@ class Announcement(models.Model):
     event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING, related_name='announcements')
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE, related_name='announcements', null=True, blank=True)
     title = models.CharField(max_length=255)
-    posted = models.DateTimeField(auto_now_add=True)
+    posted = models.DateTimeField(default=timezone.now)
     message = models.TextField(blank=True)
     type = EnumField(AnnouncementType, max_length=1, default=AnnouncementType.INFO)
 

@@ -1,6 +1,8 @@
 import $ from 'jquery'
 import 'bootstrap/js/dist/collapse'
 import { easeLinear, format, select } from 'd3'
+import durationFilters from './human-duration'
+import { Duration } from 'luxon'
 import RobustWebSocket from 'robust-websocket'
 import { encode } from 'html-entities'
 
@@ -26,7 +28,7 @@ function incorrect_answer(guess, timeout_length, timeout) {
 }
 
 function correct_answer() {
-  var form = $('.form-inline')
+  var form = $('#answer-form')
   if (form.length) {
     // We got a direct response before the WebSocket notified us (possibly because the WebSocket is broken
     // in this case, we still want to tell the user that they got the right answer. If the WebSocket is
@@ -37,7 +39,7 @@ function correct_answer() {
 
 function message(message, error) {
   var error_msg = $('<div class="submission-error-container"><p class="submission-error" title="' + error + '">' + message + '</p></div>')
-  error_msg.appendTo($('.form-inline')).delay(5000).fadeOut(2000, function(){$(this).remove()})
+  error_msg.appendTo($('#answer-form')).delay(5000).fadeOut(2000, function(){$(this).remove()})
 }
 
 function evaluateButtonDisabledState(button) {
@@ -198,28 +200,35 @@ function addAnswer(user, guess, correct, guess_uid) {
   guesses.push(guess_uid)
 }
 
-function receivedNewAnswer(content) {
-  if (!guesses.includes(content.guess_uid)) {
-    addAnswer(content.by, content.guess, content.correct, content.guess_uid)
-    if (content.correct) {
-      var message = $('#correct-answer-message')
-      var html = `"${content.guess} was correct! Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
-      if (message.length) {
-        // The server already replied so we already put up a temporary message; just update it
-        message.html(html)
-      } else {
-        // That did not happen, so add the message
-        var form = $('.form-inline')
-        form.after(`<div id="correct-answer-message">${html}</div>`)
-        form.remove()
-      }
-      setTimeout(function () {window.location.href = content.redirect}, 3000)
+function receivedNewAnswers(content) {
+  content.forEach(info => {
+    if (!guesses.includes(info.guess_uid)) {
+      addAnswer(info.by, info.guess, info.correct, info.guess_uid)
     }
-  }
+  })
 }
 
-function receivedOldAnswer(content) {
-  addAnswer(content.by, content.guess, content.correct, content.guess_uid)
+function receivedOldAnswers(content) {
+  content.forEach(info => {
+    addAnswer(info.by, info.guess, info.correct, info.guess_uid)
+  })
+}
+
+function receivedSolvedMsg(content) {
+  let message = $('#correct-answer-message')
+  const time = durationFilters.filters.durationForHumans(Duration.fromMillis(content.time * 1000).toISO())
+  const html = `"${content.guess} by ${content.by} was correct! You spent ${time} on the puzzle.` +
+    `Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
+  if (message.length) {
+    // The server already replied so we already put up a temporary message; just update it
+    message.html(html)
+  } else {
+    // That did not happen, so add the message
+    var form = $('#answer-form')
+    form.after(`<div id="correct-answer-message">${html}</div>`)
+    form.remove()
+  }
+  setTimeout(function () {window.location.href = content.redirect}, 3000)
 }
 
 function updateUnlocks() {
@@ -304,6 +313,9 @@ function receivedDeleteUnlockGuess(content) {
   var unlockguesses = unlocks.get(content.unlock_uid).guesses
   var i = unlockguesses.indexOf(content.guess)
   unlockguesses.splice(i, 1)
+  if (unlockguesses.length == 0) {
+    unlocks.delete(content.unlock_uid)
+  }
   updateUnlocks()
 }
 
@@ -365,8 +377,9 @@ function openEventSocket() {
   const socketHandlers = {
     'announcement': window.alertList.addAnnouncement,
     'delete_announcement': window.alertList.deleteAnnouncement,
-    'new_guess': receivedNewAnswer,
-    'old_guess': receivedOldAnswer,
+    'new_guesses': receivedNewAnswers,
+    'old_guesses': receivedOldAnswers,
+    'solved': receivedSolvedMsg,
     'new_unlock': receivedNewUnlock,
     'old_unlock': receivedNewUnlock,
     'change_unlock': receivedChangeUnlock,
@@ -379,7 +392,17 @@ function openEventSocket() {
   }
 
   var ws_scheme = (window.location.protocol == 'https:' ? 'wss' : 'ws') + '://'
-  var sock = new RobustWebSocket(ws_scheme + window.location.host + '/ws' + window.location.pathname)
+  var sock = new RobustWebSocket(
+    ws_scheme + window.location.host + '/ws' + window.location.pathname, undefined,
+    {
+      timeout: 30000,
+      shouldReconnect: function(event, ws) {
+        if (event.code === 1008 || event.code === 1011) return
+        // reconnect with exponential back-off and 10% jitter until 7 attempts (32 second intervals thereafter)
+        return (ws.attempts < 7 ? Math.pow(2, ws.attempts) * 500 : 32000) * (1 + Math.random() * 0.1)
+      },
+    },
+  )
   sock.onmessage = function(e) {
     var data = JSON.parse(e.data)
     lastUpdated = Date.now()
@@ -392,10 +415,26 @@ function openEventSocket() {
     }
   }
   sock.onerror = function() {
-    //TODO this message is ugly and disappears after a while
-    message('Websocket is broken. You will not receive new information without refreshing the page.')
+    let conn_status = $('#connection-status')
+    conn_status.html('<p class="connection-error">' +
+      'Websocket is disconnected; attempting to reconnect. ' +
+      'If the problem persists, please notify the admins.</p>',
+    )
   }
   sock.onopen = function() {
+    let error = $('#connection-status > .connection-error')
+    // If connecting when there is an existing error message, hide it and display a
+    // message to say we reconnected.
+    if (error.length) {
+      error.remove()
+      let conn_status = $('#connection-status')
+      let msg = $('<p class="connection-opened">' +
+        'Websocket connection re-established.</p>',
+      )
+      msg.appendTo(conn_status).delay(5000).fadeOut(2000, function() {
+        $(this).remove()
+      })
+    }
     if (lastUpdated != undefined) {
       sock.send(JSON.stringify({'type': 'guesses-plz', 'from': lastUpdated}))
       sock.send(JSON.stringify({'type': 'hints-plz', 'from': lastUpdated}))
@@ -426,7 +465,7 @@ $(function() {
 
   openEventSocket()
 
-  $('.form-inline').submit(function(e) {
+  $('#answer-form').submit(function(e) {
     e.preventDefault()
     if (!field.val()) {
       field.focus()
