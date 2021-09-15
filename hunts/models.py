@@ -105,16 +105,16 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
 
         if self.parallel:
             unlocked = None
-            for i, puzzle in enumerate(self.puzzle_set.all()):
-                if not puzzle.answered_by(team):
+            for i, puzzle in enumerate(self.puzzle_set.all().annotate_solved_by(team)):
+                if not puzzle.solved:
                     if unlocked is None:  # If this is the first not unlocked puzzle, it might be the "next puzzle"
                         unlocked = i + 1
                     else:  # We've found a second not unlocked puzzle, we can terminate early and return None
                         return None
             return unlocked  # This is either None, if we found no unlocked puzzles, or the one puzzle we found above
         else:
-            for i, puzzle in enumerate(self.puzzle_set.all()):
-                if not puzzle.answered_by(team):
+            for i, puzzle in enumerate(self.puzzle_set.all().annotate_solved_by(team)):
+                if not puzzle.solved:
                     return i + 1
 
         return None
@@ -125,22 +125,16 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         if self.event.end_date < now:
             return True
 
-        if self.start_date - self.headstart_applied(team) > now:
+        if not self.started_for(team):
             return False
 
         # Compare number of puzzles in the prequel episodes solved by the team to the total number of such puzzles
-        return TeamPuzzleProgress.objects.filter(
-            puzzle__episode__in=self.prequels.all(),
-            team=team,
-            solved_by__isnull=False,
-        ).count() == Puzzle.objects.filter(episode__in=self.prequels.all()).count()
+        puzzles = Puzzle.objects.filter(episode__in=self.prequels.all())
+        return puzzles.solved_count(team) == puzzles.count()
 
-    def started(self, team):
-        date = self.start_date
-        if team:
-            date -= self.headstart_applied(team)
-
-        return date < timezone.now()
+    def started_for(self, team):
+        """Returns whether the episode has started for the given team"""
+        return self.start_date - self.headstart_applied(team) < timezone.now()
 
     def get_relative_id(self):
         if not hasattr(self, 'relative_id'):
@@ -151,14 +145,6 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
                     self.relative_id = index + 1
                     break
         return self.relative_id
-
-    def unlocked_by(self, team):
-        result = self.event.end_date < timezone.now() or \
-            all([episode.finished_by(team) for episode in self.prequels.all()])
-        return result
-
-    def finished_by(self, team):
-        return all([puzzle.answered_by(team) for puzzle in self.puzzle_set.all()])
 
     def finished_times(self):
         """Get a list of player teams who have finished this episode with their finish time, in the order in which they finished."""
@@ -199,32 +185,16 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         """The headstart that the team has acquired by completing puzzles in this episode"""
         seconds = sum([
             p.headstart_granted.total_seconds()
-            for p in self.puzzle_set.all()
-            if p.answered_by(team)
+            for p in self.puzzle_set.all().annotate_solved_by(team)
+            if p.solved
         ])
         return timedelta(seconds=seconds)
 
-    def _puzzle_unlocked_by(self, puzzle, team):
-        now = timezone.now()
-        started_puzzles = self.puzzle_set.all()
-        if self.parallel:
-            started_puzzles = started_puzzles.filter(start_date__lt=now)
-        if self.parallel or self.event.end_date < now:
-            return puzzle in started_puzzles
-        else:
-            for p in started_puzzles:
-                if p == puzzle:
-                    return True
-                if not p.answered_by(team):
-                    return False
-
-    def unlocked_puzzles(self, team):
+    def available_puzzles(self, team):
         """Return the list of puzzles which should be visible for the given team annotated with an additional boolean `done` indicating whether the team has
         already completed them."""
         now = timezone.now()
-        started_puzzles = self.puzzle_set.all().annotate(
-            done=Exists(TeamPuzzleProgress.objects.filter(puzzle=OuterRef('pk'), team=team, solved_by__isnull=False)),
-        )
+        started_puzzles = self.puzzle_set.all().annotate_solved_by(team)
         if self.parallel:
             started_puzzles = started_puzzles.filter(start_date__lt=now)
         if self.parallel or self.event.end_date < now:
@@ -233,7 +203,7 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
             result = []
             for p in started_puzzles:
                 result.append(p)
-                if not p.answered_by(team):
+                if not p.solved:
                     break
 
             return result
@@ -247,8 +217,22 @@ def generate_url_id():
     return id
 
 
+class PuzzleQuerySet(SealableQuerySet):
+    def annotate_solved_by(self, team):
+        """Annotate the queryset with whether the given team has solved each puzzle"""
+        return self.annotate(
+            solved=Exists(TeamPuzzleProgress.objects.filter(
+                puzzle=OuterRef('pk'), team=team, solved_by__isnull=False
+            )),
+        )
+
+    def solved_count(self, team):
+        return self.annotate_solved_by(team).filter(solved=True).count()
+
+
 class Puzzle(OrderedModel, SealableModel):
     order_with_respect_to = 'episode'
+    objects = PuzzleQuerySet.as_manager()
 
     class Meta:
         ordering = ('episode', 'order')
@@ -367,33 +351,22 @@ class Puzzle(OrderedModel, SealableModel):
             return False
 
         if episode.parallel:
-            return self.start_date < timezone.now()
+            return self.started()
 
         prev_puzzles = Puzzle.objects.filter(
             episode=episode,
             order__lt=self.order
-        ).count()
-        prev_solved_puzzles = TeamPuzzleProgress.objects.filter(
-            puzzle__episode=episode,
-            team=team,
-            solved_by__isnull=False,
-            puzzle__order__lt=self.order
-        ).count()
+        )
 
-        return prev_puzzles == prev_solved_puzzles
+        return prev_puzzles.solved_count(team) == prev_puzzles.count()
 
-    def started(self, team):
-        """Determine whether this puzzle should be visible to teams yet.
+    def started(self):
+        """Return whether this puzzle could be available at the current time
 
-        Puzzles in linear episodes are always visible if their episode has started.
-        Puzzles in parallel episodes become visible at their individual start time.
+        This is always true for puzzles in linear episodes
+        Puzzles in parallel episodes become available at their individual start time.
         """
         return not self.episode.parallel or self.start_date < timezone.now()
-
-    def unlocked_by(self, team):
-        # Is this puzzle playable?
-        return self.episode.event.end_date < timezone.now() or \
-            self.episode.unlocked_by(team) and self.episode._puzzle_unlocked_by(self, team)
 
     def answered_by(self, team):
         """Return whether the team has answered this puzzle. Always results in a query."""

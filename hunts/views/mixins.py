@@ -31,7 +31,13 @@ class EpisodeUnlockedMixin():
         request.episode = utils.event_episode(request.tenant, episode_number)
         request.admin = is_admin_for_event.test(request.user, request.tenant)
 
-        if not request.episode.started(request.team) and not request.admin:
+        if request.admin or request.episode.available(request.team):
+            return super().dispatch(request, *args, episode_number=episode_number, **kwargs)
+
+        if not request.accepts('text/html'):
+            raise PermissionDenied
+
+        if not request.episode.started_for(request.team) and not request.admin:
             if not request.accepts('text/html'):
                 raise PermissionDenied
             return TemplateResponse(
@@ -45,15 +51,9 @@ class EpisodeUnlockedMixin():
                 status=403,
             )
 
-        # TODO: May need caching of progress to avoid DB load
-        if not request.episode.unlocked_by(request.team) and not request.admin:
-            if not request.accepts('text/html'):
-                raise PermissionDenied
-            return TemplateResponse(
-                request, 'hunts/episodelocked.html', status=403
-            )
-
-        return super().dispatch(request, *args, episode_number=episode_number, **kwargs)
+        return TemplateResponse(
+            request, 'hunts/episodelocked.html', status=403
+        )
 
 
 class PuzzleUnlockedMixin():
@@ -74,7 +74,7 @@ class PuzzleUnlockedMixin():
         if not request.accepts('text/html'):
             raise PermissionDenied
 
-        if not request.puzzle.started(None):
+        if not request.puzzle.started():
             return TemplateResponse(
                 request,
                 'hunts/puzzlenotstarted.html',
