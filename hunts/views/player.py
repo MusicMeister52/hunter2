@@ -55,7 +55,7 @@ class EpisodeIndex(LoginRequiredMixin, EpisodeUnlockedMixin, View):
 
 class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
-        puzzles = request.episode.unlocked_puzzles(request.team)
+        puzzles = request.episode.available_puzzles(request.team)
 
         positions = request.episode.finished_positions()
         if request.team in positions:
@@ -108,7 +108,7 @@ class EventIndex(LoginRequiredMixin, View):
         episodes = [
             e for e in
             models.Episode.objects.filter(event=event.id).order_by('start_date')
-            if e.started(request.team)
+            if e.started_for(request.team)
         ]
 
         # Annotate the episodes with their position in the event.
