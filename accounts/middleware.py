@@ -18,10 +18,8 @@ class AccountMiddleware(object):
         self.get_response = get_response
 
     def __call__(self, request):
-        return self.get_response(request)
-
-    def process_view(self, request, view_func, view_args, view_kwargs):
         if request.user.is_authenticated:
             # Pre-fetch / create the UserInfo and UserProfile for the current user
             request.user.info, _ = UserInfo.objects.get_or_create(user=request.user)
             request.user.profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        return self.get_response(request)
