@@ -102,7 +102,10 @@ class Guesses(LoginRequiredMixin, View):
             {'wide': True},
         )
 
-
+# The cache timeout of 5 seconds is set equal to the refresh interval used on the page. A single user
+# will see virtually no difference, but multiple people observing the page will not cause additional
+# load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
+@method_decorator(cache.cache_page(5), name='dispatch')
 class GuessesList(LoginRequiredMixin, View):
     def get(self, request):
         admin = is_admin_for_event.test(request.user, request.tenant)
@@ -370,9 +373,7 @@ class Progress(LoginRequiredMixin, View):
         )
 
 
-# The cache timeout of 5 seconds is set equal to the refresh interval used on the page. A single user
-# will see virtually no difference, but multiple people observing the page will not cause additional
-# load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
+# The cache timeout of 5 seconds is set equal to the refresh interval used on the page.
 @method_decorator(cache.cache_page(5), name='dispatch')
 class ProgressContent(LoginRequiredMixin, View):
     def get(self, request):
