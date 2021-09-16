@@ -298,6 +298,9 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         if given_answer == '':
             return JsonResponse({'error': 'no answer given'}, status=400)
 
+        if len(given_answer) > 512:
+            return JsonResponse({'error': 'answer too long'}, status=400)
+
         if request.tenant.end_date < now:
             return JsonResponse({'error': 'event is over'}, status=400)
 
