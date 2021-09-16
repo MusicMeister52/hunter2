@@ -12,7 +12,7 @@ $(function () {
     var tab = $(this)
     $(target).load(url, function () {
       tab.tab('show')
-      window.location.hash = target.substr(1)
+      history.pushState({}, '', '#' + target.substr(1))
       window.document.title = tab.text() + ' - ' + eventTitle
     })
   })
