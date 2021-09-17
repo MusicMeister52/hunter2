@@ -363,7 +363,8 @@ class ProgressContent(LoginRequiredMixin, View):
         # for linear episodes, that would be be always be 1, so sort secondarily by number
         # of solved puzzles to discriminate.
         teams = Team.objects.filter(
-            at_event=request.tenant
+            at_event=request.tenant,
+            role=TeamRole.PLAYER,
         ).annotate(
             num_solved_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False)),
             num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False)),
@@ -376,7 +377,7 @@ class ProgressContent(LoginRequiredMixin, View):
         ).prefetch_related('members').seal()
 
         all_puzzle_progress = models.TeamPuzzleProgress.objects.filter(
-            team__at_event=request.tenant
+            team__in=teams,
         ).annotate(
             guess_count=Count('guesses'),
             latest_guess_time=Max('guesses__given'),
