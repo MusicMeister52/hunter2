@@ -1,5 +1,5 @@
 {% if position %}
-<p>You came {{ position }} in this episode!</p>
+	<div id="episode-complete" class="episode-completed-{{ position }}"><p>Your team came {{ position }} in this episode!</p></div>
 {% endif %}
 {% if flavour %}<div class="episode-flavour">{{ flavour | safe }}</div>{% endif %}
 <div class="container-fluid puzzle-list">
