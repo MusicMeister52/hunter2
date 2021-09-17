@@ -216,6 +216,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
     def schedule_hint(self, hint, send_expired=False):
         try:
             self.hint_events[hint.id].cancel()
+            del self.hint_events[hint.id]
         except KeyError:
             pass
 
@@ -228,10 +229,9 @@ class PuzzleEventWebsocket(HuntWebsocket):
             return
         loop = sync_to_async.threadlocal.main_event_loop
         # run the hint sender function on the asyncio event loop so we don't have to bother writing scheduler stuff
-        # `create_task` internally uses `call_soon` so can only be run safely from on the event loop. Schedule a short coroutine on the event loop using
-        # `call_soon_threadsafe` that will do the creation.
-        task = loop.call_soon_threadsafe(loop.create_task, self.send_new_hint(self.team, hint, delay))
-        self.hint_events[hint.id] = task
+        # we need a future in order to be able to cancel it. This seems to be the easiest way to get one.
+        future = asyncio.run_coroutine_threadsafe(self.send_new_hint(self.team, hint, delay), loop)
+        self.hint_events[hint.id] = future
 
     def cancel_scheduled_hint(self, content):
         hint = models.Hint.objects.get(id=content['hint_uid'])
