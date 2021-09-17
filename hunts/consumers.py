@@ -533,7 +533,11 @@ class PuzzleEventWebsocket(HuntWebsocket):
         hint = instance
 
         for team in Team.objects.all():
-            progress = hint.puzzle.teampuzzleprogress_set.get(team=team)
+            try:
+                progress = hint.puzzle.teampuzzleprogress_set.get(team=team)
+            except TeamPuzzleProgress.DoesNotExist:
+                continue
+
             if hint.unlocked_by(team, progress):
                 cls.send_delete_hint(team.id, hint)
 

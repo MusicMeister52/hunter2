@@ -2677,3 +2677,12 @@ class PlayerStatsViewTests(EventTestCase):
         self.tenant.end_date = timezone.now()
         self.tenant.save()
         self.client.get(self.url)
+
+
+class ObjectDeletionTests(EventTestCase):
+    def test_delete_hint(self):
+        hint = HintFactory()
+        # Regression test: issue #408
+        TeamMemberFactory()
+
+        hint.delete()
