@@ -1395,6 +1395,9 @@ class AdminContentTests(EventTestCase):
         team1 = self.guesses[0].by_team
         team2 = self.guesses[1].by_team
 
+        # Add a guess by an admin to confirm they don't appear
+        GuessFactory(by=self.admin_user, by_team=self.admin_team, for_puzzle=self.puzzle)
+
         TeamPuzzleProgressFactory(team=team1, puzzle=self.puzzle, start_time=timezone.now())
 
         GuessFactory(by=team2.members.all()[0], for_puzzle=self.puzzle, correct=True)
