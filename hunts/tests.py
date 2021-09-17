@@ -13,6 +13,7 @@
 
 import datetime
 import random
+import string
 import time
 
 import freezegun
@@ -281,6 +282,21 @@ class AnswerSubmissionTests(EventTestCase):
         })
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()['error'], 'no answer given')
+
+    def test_answer_long(self):
+        response = self.client.post(self.url, {
+            'last_updated': '0',
+            'answer': ''.join(random.choice(string.ascii_letters) for _ in range(512)),
+        })
+        self.assertEqual(response.status_code, 200)
+
+    def test_answer_too_long(self):
+        response = self.client.post(self.url, {
+            'last_updated': '0',
+            'answer': ''.join(random.choice(string.ascii_letters) for _ in range(513)),
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error'], 'answer too long')
 
     def test_answer_cooldown(self):
         with freezegun.freeze_time() as frozen_datetime:

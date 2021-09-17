@@ -705,7 +705,7 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     for_puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
     by = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
     by_team = models.ForeignKey(teams.models.Team, on_delete=models.SET_NULL, null=True, blank=True)
-    guess = models.TextField()
+    guess = models.TextField(max_length=512)
     given = models.DateTimeField(default=timezone.now)
     # The following two fields cache whether the guess is correct. Do not use them directly.
     correct_for = models.ForeignKey(Answer, blank=True, null=True, on_delete=models.SET_NULL)
