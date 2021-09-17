@@ -114,7 +114,7 @@ export default {
     return {
       puzzles: [],
       team_progress: [],
-      autoUpdate: false,
+      autoUpdate: true,
       filters: {
         episodes: [],
         open_puzzles: [-Infinity, Infinity],
