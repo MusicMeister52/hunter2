@@ -19,8 +19,10 @@ Progress - {{ block.super }}
 <h1>Progress</h1>
 {% endblock %}
 
-{% block content %}
-<div id="admin_progress_widget" href="{% url 'admin_progress_content' %}"></div>
+{% block main %}
+	<main class="flex-shrink-0 container-fluid pt-3">
+		<div id="admin_progress_widget" href="{% url 'admin_progress_content' %}"></div>
+	</main>
 {% endblock %}
 
 
