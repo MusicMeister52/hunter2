@@ -24,11 +24,8 @@ class LeadersGenerator(AbstractGenerator):
 
     Leaders are defined as the first teams to finished all puzzles in all winning episodes.
     """
-    id = 'leaders'
     title = 'Leaderboard'
     version = 1
-
-    template = 'hunts/stats/leaders.html'
 
     schema = Schema({
         'by_team': {

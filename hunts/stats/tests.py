@@ -30,6 +30,8 @@ from .totals import TotalsGenerator
 
 
 class MockStat(AbstractGenerator):
+    id = 'mock'
+    title = 'Mock Statistic'
     version = 1
 
     schema = Schema(dict)

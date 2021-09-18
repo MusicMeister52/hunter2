@@ -29,11 +29,8 @@ class ProgressGenerator(AbstractGenerator):
 
     There is a graph per episode showing the number of puzzles completed against time.
     """
-    id = 'progress'
     title = 'Progress Graph'
     version = 2
-
-    template = 'hunts/stats/progress.html'
 
     schema = Schema({
         'episode_progress': [
