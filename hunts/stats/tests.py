@@ -22,11 +22,13 @@ from events.models import Event
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
+from . import PuzzleTimesGenerator
 from ..factories import GuessFactory, PuzzleFactory
 from .abstract import AbstractGenerator
 from .leaders import LeadersGenerator
 from .top_guesses import TopGuessesGenerator
 from .totals import TotalsGenerator
+from ..models import TeamPuzzleProgress
 
 
 class MockStat(AbstractGenerator):
@@ -362,3 +364,81 @@ class TotalsTests(EventTestCase):
         self.assertEqual(data['active_teams'], 1)
         self.assertEqual(data['correct_teams'], 1)
         self.assertEqual(data['guess_count'], 1)
+
+
+class PuzzleTimesTests(EventTestCase):
+    def test_event_puzzle_times(self):
+        puzzle = PuzzleFactory(episode__winning=True)
+        players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
+        now = timezone.now()
+        # Players finish the puzzle in order 1-4
+        guesses = [GuessFactory(by=player, for_puzzle=puzzle, correct=True, given=now - timedelta(minutes=4 - i)) for i, player in enumerate(players)]
+        # Player 4 also guessed wrong
+        GuessFactory(by=players[3], for_puzzle=puzzle, correct=False, given=now - timedelta(minutes=5))
+
+        data = PuzzleTimesGenerator(event=self.tenant, number=3).generate()
+        PuzzleTimesGenerator.schema.is_valid(data)
+
+        # "Top" has 3 entries, in order, with the correct times
+        self.assertEqual(len(data[0]['puzzles'][0]['top']), 3)
+        for i, player in enumerate(players[:3]):
+            team = player.team_at(self.tenant)
+            tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=team)
+            self.assertEqual(
+                data[0]['puzzles'][0]['top'][i],
+                (i + 1, team.get_display_name(), PuzzleTimesGenerator.format_solve_time(guesses[i].given - tpp.start_time)),
+            )
+        # The fourth team appears correctly in the indexed data
+        team = players[3].team_at(self.tenant)
+        tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=team)
+        team_name = team.get_display_name()
+        self.assertIn(team_name, data[0]['puzzles'][0]['by_team'])
+        self.assertEqual(data[0]['puzzles'][0]['by_team'][team_name]['position'], 4)
+        self.assertEqual(data[0]['puzzles'][0]['by_team'][team_name]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
+
+    def test_episode_puzzle_times(self):
+        puzzle1 = PuzzleFactory(episode__winning=False)
+        puzzle2 = PuzzleFactory(episode__winning=True, episode__prequels=puzzle1.episode)
+        players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
+        now = timezone.now()
+        # Players finish the puzzle in order 1-4
+        for i, player in enumerate(players):
+            GuessFactory(by=player, for_puzzle=puzzle1, correct=True, given=now - timedelta(minutes=4 - i))
+        # Players finish the puzzle in order 4-1
+        guesses = [
+            GuessFactory(by=player, for_puzzle=puzzle2, correct=True, given=now - timedelta(minutes=4 - i))
+            for i, player in enumerate(reversed(players))
+        ]
+
+        data = PuzzleTimesGenerator(event=self.tenant, number=3).generate()
+        PuzzleTimesGenerator.schema.is_valid(data)
+
+        # "Top" has 3 entries, in order, with the correct times
+        self.assertEqual(len(data[1]['puzzles'][0]['top']), 3)
+        for i, player in enumerate(players[:3]):
+            team = player.team_at(self.tenant)
+            tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle1, team=team)
+            self.assertEqual(
+                data[1]['puzzles'][0]['top'][i],
+                (i + 1, team.get_display_name(), PuzzleTimesGenerator.format_solve_time(guesses[i].given - tpp.start_time)),
+            )
+        # The fourth team appears correctly in the indexed data
+        team = players[3].team_at(self.tenant)
+        tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle1, team=team)
+        team_name = team.get_display_name()
+        self.assertIn(team_name, data[1]['puzzles'][0]['by_team'])
+        self.assertEqual(data[1]['puzzles'][0]['by_team'][team_name]['position'], 4)
+        self.assertEqual(data[1]['puzzles'][0]['by_team'][team_name]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
+
+    def test_admin_excluded(self):
+        puzzle = PuzzleFactory()
+        admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
+        player = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        GuessFactory(by=admin, for_puzzle=puzzle, correct=True)
+        GuessFactory(by=player, for_puzzle=puzzle, correct=True)
+
+        data = PuzzleTimesGenerator(event=self.tenant).generate()
+        PuzzleTimesGenerator.schema.is_valid(data)
+
+        self.assertEqual(len(data[0]['puzzles'][0]['top']), 1)
+        self.assertNotIn(admin.team_at(self.tenant).get_display_name(), data[0]['puzzles'][0]['by_team'])

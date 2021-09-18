@@ -13,6 +13,7 @@
 
 from .leaders import LeadersGenerator
 from .progress import ProgressGenerator
+from .puzzle_times import PuzzleTimesGenerator
 from .top_guesses import TopGuessesGenerator
 from .totals import TotalsGenerator
 
@@ -22,4 +23,5 @@ __all__ = (
     ProgressGenerator,
     TopGuessesGenerator,
     TotalsGenerator,
+    PuzzleTimesGenerator,
 )

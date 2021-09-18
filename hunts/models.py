@@ -132,9 +132,13 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         puzzles = Puzzle.objects.filter(episode__in=self.prequels.all())
         return puzzles.solved_count(team) == puzzles.count()
 
+    def start_time_for(self, team):
+        """Returns the start time for the given team"""
+        return self.start_date - self.headstart_applied(team)
+
     def started_for(self, team):
         """Returns whether the episode has started for the given team"""
-        return self.start_date - self.headstart_applied(team) < timezone.now()
+        return self.start_time_for(team) < timezone.now()
 
     def get_relative_id(self):
         if not hasattr(self, 'relative_id'):
@@ -359,6 +363,14 @@ class Puzzle(OrderedModel, SealableModel):
         )
 
         return prev_puzzles.solved_count(team) == prev_puzzles.count()
+
+    def start_time_for(self, team):
+        """Return the time this puzzle could be available for the given team
+
+        This is the episode start time factoring in headstarts for linear episodes
+        For puzzles in parallel episodes this is their individual start time.
+        """
+        return self.start_date if self.episode.parallel else self.episode.start_time_for(team)
 
     def started(self):
         """Return whether this puzzle could be available at the current time
