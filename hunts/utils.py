@@ -62,5 +62,21 @@ def finishing_positions(event):
     return sorted(team_times.keys(), key=lambda t: team_times[t])
 
 
+def position_for_display(position):
+    """Return numerical position and text description (in English)
+
+    Args: position (int): 0-indexed finishing position
+    Returns:
+        1-indexed integer finishing position
+        text description suitable for template
+    """
+    position += 1
+    if position < 4:
+        text = {1: 'first', 2: 'second', 3: 'third'}[position]
+    else:
+        text = f'in position {position}'
+    return position, text
+
+
 def encode_uuid(uuid):
     return urlsafe_b64encode(uuid.bytes).strip(b'=').decode('ascii')
