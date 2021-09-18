@@ -95,7 +95,7 @@ class EventIndex(LoginRequiredMixin, View):
         positions = utils.finishing_positions(event)
         if request.team in positions:
             position = positions.index(request.team)
-            position_text = utils.position_to_text(position)
+            position, position_text = utils.position_for_display(position)
         else:
             position = None
             position_text = None
@@ -116,7 +116,7 @@ class EventIndex(LoginRequiredMixin, View):
             context={
                 'event_title':   event.name,
                 'episodes':      list(episodes),
-                'position':      position + 1,
+                'position':      position,
                 'position_text': position_text
             }
         )
