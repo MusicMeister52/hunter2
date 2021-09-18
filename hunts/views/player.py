@@ -60,13 +60,10 @@ class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
         positions = request.episode.finished_positions()
         if request.team in positions:
             position = positions.index(request.team)
-            if position < 3:
-                position = {0: 'first', 1: 'second', 2: 'third'}[position]
-            else:
-                position += 1
-                position = f'in position {position}'
+            position, position_text = utils.position_for_display(position)
         else:
             position = None
+            position_text = None
 
         files = request.tenant.files_map(request)
         flavour = Template(request.episode.flavour).safe_substitute(**files)
@@ -78,6 +75,7 @@ class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
                 'episode': request.episode.name,
                 'flavour': flavour,
                 'position': position,
+                'position_text': position_text,
                 'episode_number': episode_number,
                 'puzzles': puzzles,
             }
@@ -97,13 +95,10 @@ class EventIndex(LoginRequiredMixin, View):
         positions = utils.finishing_positions(event)
         if request.team in positions:
             position = positions.index(request.team)
-            if position < 3:
-                position = {0: 'first', 1: 'second', 2: 'third'}[position]
-            else:
-                position += 1
-                position = f'in position {position}'
+            position_text = utils.position_to_text(position)
         else:
             position = None
+            position_text = None
 
         episodes = [
             e for e in
@@ -119,9 +114,10 @@ class EventIndex(LoginRequiredMixin, View):
             request,
             'hunts/event.html',
             context={
-                'event_title':  event.name,
-                'episodes':     list(episodes),
-                'position':     position,
+                'event_title':   event.name,
+                'episodes':      list(episodes),
+                'position':      position + 1,
+                'position_text': position_text
             }
         )
 
