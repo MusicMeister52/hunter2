@@ -12,6 +12,7 @@
 
 
 import abc
+import inspect
 from enum import Enum
 from typing import Mapping, Sequence, Tuple, Any
 
@@ -26,14 +27,36 @@ class AbstractGenerator(abc.ABC):
     Abstract base class for statistic generators. Generators each provide a fragment of content to be included in the stats page(s).
     """
 
-    id = 'abstract'
-    title = 'Abstract Statistic Module'
-    version = 0
+    @property
+    def id(self):
+        """
+        Default to using the name of the module containing the generator as the generator's ID
+        """
+        return inspect.getmodule(self.__class__).__name__.split('.')[-1]
 
     @property
-    @staticmethod
     @abc.abstractmethod
-    def schema():
+    def title(self):
+        """
+        Subclasses should override this method to specify the title for the section in the stats page.
+        """
+        raise NotImplementedError("Abstract Generator does not define a title property")
+
+    @property
+    @abc.abstractmethod
+    def version(self):
+        """
+        Subclasses should override this method to specify the version of the generator, used to determine validity of cached data.
+        """
+        raise NotImplementedError("Abstract Generator does not define a version property")
+
+    @property
+    def template(self):
+        return f'hunts/stats/{self.id}.html'
+
+    @property
+    @abc.abstractmethod
+    def schema(self):
         """
         Subclasses should override this method to specify the schema for the data returned by the generator.
         While this schema is not validated at runtime it's highly encouraged to use this to write tests for the generator.

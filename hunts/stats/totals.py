@@ -30,11 +30,8 @@ class TotalsGenerator(AbstractGenerator):
         - Correct Teams  - The number of teams which correctly solved at least one puzzle.
         - Guess Count    - The total number of guesses submitted by all players and teams.
     """
-    id = 'totals'
     title = 'Totals'
     version = 1
-
-    template = 'hunts/stats/totals.html'
 
     schema = Schema({
         'active_players': int,

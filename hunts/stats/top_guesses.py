@@ -26,7 +26,6 @@ class TopGuessesGenerator(AbstractGenerator):
 
     Guess counts are aggregated by user and team and those who submitted the most guesses are included in the output.
     """
-    id = 'top-guesses'
     title = 'Most Guesses'
     version = 1
 
@@ -55,8 +54,6 @@ class TopGuessesGenerator(AbstractGenerator):
             _top_entry_schema,
         ],
     })
-
-    template = 'hunts/stats/top_guesses.html'
 
     def __init__(self, number=10, **kwargs):
         super().__init__(**kwargs)
