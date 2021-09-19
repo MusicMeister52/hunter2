@@ -5,13 +5,16 @@ FROM ${IMAGE_TAG} AS app
 USER root
 RUN /opt/hunter2/venv/bin/python manage.py collectstatic
 
-FROM openresty/openresty:1.19.3.2-2-alpine@sha256:93a6b195771191d7402b66f91d5b6f52ca4797c8584261ebc1743b970478f6aa
+# Sadly lua-resty-dns-client is not available via OPM so we need luarocks here, which means using the fat image
+# https://github.com/Kong/lua-resty-dns-client/issues/136
+FROM openresty/openresty:1.19.9.1-alpine-fat@sha256:86278fd15ecb1389ca01ab591e2deceb4284f043779ee1f9006d6623ede2d4fb
 
-RUN --mount=type=cache,target=/var/cache/apk apk add -t opm \
-    curl \
-    perl \
+RUN --mount=type=cache,target=/var/cache/apk apk add -t build_deps \
+    git \
  && opm get knyar/nginx-lua-prometheus=0.20201118 \
- && apk del --no-cache opm
+ && /usr/local/openresty/luajit/bin/luarocks install lua-resty-dns-client 6.0.2 \
+ && apk del build_deps
 
 COPY default.conf /etc/nginx/conf.d/default.conf
+COPY *.lua /usr/local/openresty/nginx/
 COPY --from=app /static /static
