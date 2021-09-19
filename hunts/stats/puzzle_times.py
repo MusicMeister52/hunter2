@@ -34,14 +34,14 @@ class PuzzleTimesGenerator(AbstractGenerator):
     Generates a table of solve times per puzzle
     """
     title = 'Puzzle Solve Times'
-    version = 1
+    version = 2
 
     schema = Schema([{
         'name': And(str, len),
         'puzzles': [{
             'title': And(str, len),
             'by_team': {
-                And(str, len): {
+                int: {
                     'position': int,
                     'solve_time': timedelta,
                 }
@@ -107,7 +107,8 @@ class PuzzleTimesGenerator(AbstractGenerator):
                         if tpp.puzzle.episode.parallel or puzzle_number == 1:
                             start_time = tpp.puzzle.start_time_for(tpp.team)
                         else:
-                            prior_puzzle = tpp.puzzle.episode.puzzle_set.all()[puzzle_number - 1]
+                            # The position we have is 1-indexed and we're indexing into a 0-indexed array
+                            prior_puzzle = tpp.puzzle.episode.puzzle_set.all()[puzzle_number - 2]
                             try:
                                 start_time = TeamPuzzleProgress.objects.get(
                                     puzzle=prior_puzzle,
@@ -122,7 +123,7 @@ class PuzzleTimesGenerator(AbstractGenerator):
 
                 for position, tpp in enumerate(tpps):
                     team_name = tpp.team.get_display_name()
-                    by_team[team_name] = {
+                    by_team[tpp.team.id] = {
                         'position': position + 1,
                         'solve_time': self.format_solve_time(tpp.solve_time),
                     }

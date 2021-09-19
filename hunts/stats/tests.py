@@ -394,10 +394,9 @@ class PuzzleTimesTests(EventTestCase):
         # The fourth team appears correctly in the indexed data
         team = players[3].team_at(self.tenant)
         tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=team)
-        team_name = team.get_display_name()
-        self.assertIn(team_name, data[0]['puzzles'][0]['by_team'])
-        self.assertEqual(data[0]['puzzles'][0]['by_team'][team_name]['position'], 4)
-        self.assertEqual(data[0]['puzzles'][0]['by_team'][team_name]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
+        self.assertIn(team.id, data[0]['puzzles'][0]['by_team'])
+        self.assertEqual(data[0]['puzzles'][0]['by_team'][team.id]['position'], 4)
+        self.assertEqual(data[0]['puzzles'][0]['by_team'][team.id]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
 
     def test_episode_puzzle_times(self):
         puzzle1 = PuzzleFactory(episode__winning=False)
@@ -428,10 +427,9 @@ class PuzzleTimesTests(EventTestCase):
         # The fourth team appears correctly in the indexed data
         team = players[3].team_at(self.tenant)
         tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle1, team=team)
-        team_name = team.get_display_name()
-        self.assertIn(team_name, data[1]['puzzles'][0]['by_team'])
-        self.assertEqual(data[1]['puzzles'][0]['by_team'][team_name]['position'], 4)
-        self.assertEqual(data[1]['puzzles'][0]['by_team'][team_name]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
+        self.assertIn(team.id, data[1]['puzzles'][0]['by_team'])
+        self.assertEqual(data[1]['puzzles'][0]['by_team'][team.id]['position'], 4)
+        self.assertEqual(data[1]['puzzles'][0]['by_team'][team.id]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
 
     def test_admin_excluded(self):
         puzzle = PuzzleFactory()
