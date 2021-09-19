@@ -1,0 +1,22 @@
+{% for episode in episodes %}
+<h2>{{ episode.name }}</h3>
+	{% for puzzle in episode.puzzles %}
+		<h3 class="stats-puzzle-heading">{{ puzzle.title }}</h3>
+		<table class="player-stats-table">
+			<colgroup>
+				<col />
+				<col />
+				<col class="duration-column" />
+			</colgroup>
+			<tbody>
+				{% for position, team, time in puzzle.times %}
+				<tr>
+					<td>{{ position }}</td>
+					<td>{{ team }}</td>
+					<td>{{ time }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	{% endfor %}
+{% endfor %}

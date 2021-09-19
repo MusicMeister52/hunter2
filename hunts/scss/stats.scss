@@ -6,8 +6,16 @@
 @import "~bootstrap/scss/tables";
 @import "~bootstrap/scss/transitions";
 
+h3.stats-puzzle-heading {
+    padding-top: 0.6em;
+}
+
 table.player-stats-table {
     @extend .table;
     @extend .table-sm;
     @extend .table-striped;
+}
+
+col.duration-column {
+    width: 10em;
 }
