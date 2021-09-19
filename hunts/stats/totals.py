@@ -15,7 +15,7 @@ from django.db.models import Count, Q
 from schema import Schema
 
 from accounts.models import UserProfile
-from hunts.models import Guess
+from hunts.models import Guess, TeamPuzzleProgress
 from teams.models import Team, TeamRole
 from .abstract import AbstractGenerator
 
@@ -28,15 +28,17 @@ class TotalsGenerator(AbstractGenerator):
         - Active Players - The number of users who were part of a team which submitted at least one guess.
         - Active Teams   - The number of teams who submitted at least one guess.
         - Correct Teams  - The number of teams which correctly solved at least one puzzle.
+        - Puzzles Solved - The number of puzzles solved by all teams combined.
         - Guess Count    - The total number of guesses submitted by all players and teams.
     """
     title = 'Totals'
-    version = 1
+    version = 2
 
     schema = Schema({
         'active_players': int,
         'active_teams': int,
         'correct_teams': int,
+        'puzzles_solved': int,
         'guess_count': int,
     })
 
@@ -44,9 +46,11 @@ class TotalsGenerator(AbstractGenerator):
         if self.episode is not None:
             guesses_filter = Q(for_puzzle__episode=self.episode)
             team_guesses_filter = Q(guess__for_puzzle__episode=self.episode)
+            team_puzzle_progress_filter = Q(puzzle__episode=self.episode)
         else:
             guesses_filter = Q()
             team_guesses_filter = Q()
+            team_puzzle_progress_filter = Q()
         teams = Team.objects.filter(role=TeamRole.PLAYER).annotate(
             guesses=Count('guess', filter=team_guesses_filter),
             correct_guesses=Count('guess', filter=team_guesses_filter & Q(guess__correct_for__isnull=False, guess__correct_current=True)),
@@ -54,10 +58,16 @@ class TotalsGenerator(AbstractGenerator):
         active_teams = teams.filter(guesses__gt=0)
         correct_teams = active_teams.filter(correct_guesses__gt=0)
         active_players = UserProfile.objects.filter(teams__in=active_teams)
+        puzzles_solved = TeamPuzzleProgress.objects.filter(
+            team_puzzle_progress_filter,
+            team__role=TeamRole.PLAYER,
+            solved_by__isnull=False,
+        )
         guesses = Guess.objects.filter(guesses_filter & Q(by_team__role=TeamRole.PLAYER))
         return {
             'active_players': active_players.count(),
             'active_teams': active_teams.count(),
             'correct_teams': correct_teams.count(),
+            'puzzles_solved': puzzles_solved.count(),
             'guess_count': guesses.count()
         }
