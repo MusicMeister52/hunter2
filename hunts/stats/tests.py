@@ -330,6 +330,7 @@ class TotalsTests(EventTestCase):
         self.assertEqual(data['active_players'], 4)
         self.assertEqual(data['active_teams'], 3)
         self.assertEqual(data['correct_teams'], 2)
+        self.assertEqual(data['puzzles_solved'], 2)
         self.assertEqual(data['guess_count'], 7)
 
     def test_episode_totals(self):
@@ -346,6 +347,7 @@ class TotalsTests(EventTestCase):
         self.assertEqual(data['active_players'], 1)
         self.assertEqual(data['active_teams'], 1)
         self.assertEqual(data['correct_teams'], 1)
+        self.assertEqual(data['puzzles_solved'], 1)
         self.assertEqual(data['guess_count'], 1)
 
     def test_admin_excluded(self):
@@ -361,4 +363,5 @@ class TotalsTests(EventTestCase):
         self.assertEqual(data['active_players'], 1)
         self.assertEqual(data['active_teams'], 1)
         self.assertEqual(data['correct_teams'], 1)
+        self.assertEqual(data['puzzles_solved'], 1)
         self.assertEqual(data['guess_count'], 1)
