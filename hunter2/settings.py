@@ -15,9 +15,12 @@ import os
 
 import environ
 import sentry_sdk
+from psycopg2cffi import compat
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from .utils import load_or_create_secret_key
+
+compat.register()
 
 # Tell django-tenants to use the prometheus instrumented postgresql backend
 ORIGINAL_BACKEND = 'django_prometheus.db.backends.postgresql'

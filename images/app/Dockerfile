@@ -1,42 +1,43 @@
 # Construct a common base image for creating python wheels and the final image
-FROM python:3.8.11-alpine3.14@sha256:b12462dab319994e6a4be09eee3be7a29b6b7abf6202fb8030f45af4d39d7e24 AS runtime_base
+FROM pypy:3.8-7.3.7-slim-bullseye AS runtime_base
 
-RUN --mount=type=cache,target=/var/cache/apk apk add \
-    lua5.2 \
-    postgresql-client \
-    postgresql-libs \
-    imlib2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libffi7 \
+    libimlib2 \
+    liblua5.3 \
+    libpq5 \
+ && rm -rf /var/lib/apt/lists/*
 
 # Setup user
-RUN addgroup -g 500 -S hunter2 \
- && adduser -h /opt/hunter2 -s /sbin/nologin -G hunter2 -S -u 500 hunter2
+RUN adduser --system --home /opt/hunter2 --shell /sbin/nologin --uid 500 --group hunter2
 WORKDIR /opt/hunter2/src
 
 
 # Build image with all the python dependencies.
 FROM runtime_base AS python_build
 
-RUN --mount=type=cache,target=/var/cache/apk apk add \
-    cargo \
-    gcc \
-    git \
-    libffi-dev \
-    linux-headers \
-    lua5.2-dev \
-    musl-dev \
-    postgresql-dev \
-    rust
-
 # Suppress pip version warning, we're keeping the version from the docker base image
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 
 ENV PATH "/root/.poetry/bin:${PATH}"
 ARG poetry_version=1.1.4
-RUN wget "https://raw.githubusercontent.com/python-poetry/poetry/${poetry_version}/get-poetry.py" \
- && python get-poetry.py --version "${poetry_version}" \
- && rm get-poetry.py \
- && poetry config virtualenvs.create false \
- && python -m venv /opt/hunter2/venv
+ADD https://raw.githubusercontent.com/python-poetry/poetry/${poetry_version}/get-poetry.py /usr/local/lib/
+# Poetry wants Python to be called `python` or `python3`, let's add both for maximum compatability
+RUN ln -s /opt/pypy/bin/pypy3 /usr/local/bin/python3 && ln -s /opt/pypy/bin/pypy3 /usr/local/bin/python
+RUN pypy /usr/local/lib/get-poetry.py --version "${poetry_version}"
+RUN poetry config virtualenvs.create false
+RUN pypy -m venv /opt/hunter2/venv
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cargo \
+    gcc \
+    git \
+    libffi-dev \
+    liblua5.3-dev \
+    libpq-dev \
+    libssl-dev \
+    pkg-config \
+ && rm -rf /var/lib/apt/lists/*
 
 ARG dev_flag=" --no-dev"
 COPY poetry.lock pyproject.toml /opt/hunter2/src/
@@ -47,25 +48,26 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 
 # Build all the required Lua components
-FROM alpine:3.14.2@sha256:e1c082e3d3c45cccac829840a25941e679c25d438cc8412c2fa221cf1a824e6a AS lua_build
+FROM debian:bullseye-slim AS lua_build
 
-COPY hunts/runtimes/lua/luarocks/config.lua /etc/luarocks/config-5.2.lua
-
-RUN  --mount=type=cache,target=/var/cache/apk apk add \
-    curl \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    imlib2-dev \
-    lua5.2-dev \
-    luarocks5.2 \
-    musl-dev
+    libimlib2-dev \
+    liblua5.3-dev \
+    lua5.3 \
+    luarocks \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY hunts/runtimes/lua/luarocks/config.lua /etc/luarocks/config-5.3.lua
+
 RUN --mount=type=cache,target=/root/.cache/luarocks \
-    luarocks-5.2 install lua-cjson 2.1.0-1
+    luarocks install lua-cjson 2.1.0-1
 RUN --mount=type=cache,target=/root/.cache/luarocks \
-    luarocks-5.2 install lua-imlib2 dev-2
+    luarocks install lua-imlib2 dev-2
 
 
 # Build the production webpack'ed assets
-FROM node:16.13.0-alpine3.14@sha256:3bca55259ada636e5fee8f2836aba7fa01fed7afd0652e12773ad44af95868b9 as webpack_build
+FROM node:16.13.0-bullseye-slim as webpack_build
 
 WORKDIR /opt/hunter2/src
 

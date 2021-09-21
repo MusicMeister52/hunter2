@@ -2532,7 +2532,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         # It would be better to mock the asyncio event loop in order to fake advancing time
         # but that's too much effort (and freezegun doesn't support it yet) so just use
         # short delays and hope.
-        delay = 0.2
+        delay = 0.5
 
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
