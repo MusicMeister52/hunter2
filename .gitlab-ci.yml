@@ -11,6 +11,7 @@ stages:
   - build1
   - build2
   - test
+  - report
   - release
 
 .base_job:
@@ -142,7 +143,7 @@ doc:graph:
     paths:
       - diagram/models.*
 
-test:app:
+.test:app:
   extends: .base_job
   dependencies:
     - image:app
@@ -157,11 +158,9 @@ test:app:
     - export IMAGE_TAG="${CI_REGISTRY_IMAGE}/${SERVICE}:${GIT_DESCRIBE}"
     - docker load -i "app.tar"
     - docker load -i "db.tar"
-    - install -d -m 777 coverage reports
+    - install -d -m 777 coverage pytest_cache reports
     - echo "POSTGRES_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
-    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" --entrypoint "/opt/hunter2/venv/bin/python" --rm app -Wd -m coverage run --source . manage.py test -v 2
-    - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${IMAGE_TAG}" -m coverage html
-    - docker run -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/python" --rm "${IMAGE_TAG}" -m coverage report
+    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" -v "${PWD}/pytest_cache:/opt/hunter2/src/.pytest_cache" --entrypoint "/opt/hunter2/venv/bin/pytest" --rm -e COVERAGE_FILE="coverage/${SHARD}.data" app --tb=short --cov . --shard-id="${SHARD}" --num-shards=8
   after_script:
     - docker-compose logs db > db.log
     - docker-compose logs redis > redis.log
@@ -174,6 +173,81 @@ test:app:
     reports:
       junit: reports/TEST-*.xml
     when: always
+
+test:app:0:
+  extends: .test:app
+  variables:
+    SHARD: 0
+
+test:app:1:
+  extends: .test:app
+  variables:
+    SHARD: 1
+
+test:app:2:
+  extends: .test:app
+  variables:
+    SHARD: 2
+
+test:app:3:
+  extends: .test:app
+  variables:
+    SHARD: 3
+
+test:app:4:
+  extends: .test:app
+  variables:
+    SHARD: 4
+
+test:app:5:
+  extends: .test:app
+  variables:
+    SHARD: 5
+
+test:app:6:
+  extends: .test:app
+  variables:
+    SHARD: 6
+
+test:app:7:
+  extends: .test:app
+  variables:
+    SHARD: 7
+
+report:coverage:
+  extends: .base_job
+  stage: report
+  dependencies:
+    - image:app
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
+  needs:
+    - image:app
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
+  script:
+    - docker load -i "app.tar"
+    - chmod 777 coverage
+    - docker-compose run --no-deps -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/coverage" --rm app combine coverage/*.data
+    - docker-compose run --no-deps -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/coverage" --rm app html
+    - docker-compose run --no-deps -v "${PWD}/coverage:/opt/hunter2/src/coverage" --entrypoint "/opt/hunter2/venv/bin/coverage" --rm app report
+  artifacts:
+    expire_in: 180 days
+    name: coverage
+    paths:
+      - coverage/
   coverage: /\d+\%\s*$/
 
 release:app:
@@ -181,6 +255,16 @@ release:app:
   stage: release
   dependencies:
     - image:app
+  needs:
+    - image:app
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i app.tar
@@ -196,6 +280,16 @@ release:db:
   stage: release
   dependencies:
     - image:db
+  needs:
+    - image:db
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i db.tar
@@ -211,6 +305,16 @@ release:metrics:
   stage: release
   dependencies:
     - image:metrics
+  needs:
+    - image:metrics
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i metrics.tar
@@ -226,6 +330,16 @@ release:python:
   stage: release
   dependencies:
     - image:app
+  needs:
+    - image:app
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
     - docker load -i python.tar
@@ -241,6 +355,16 @@ release:web:
   stage: release
   dependencies:
     - image:web
+  needs:
+    - image:web
+    - test:app:0
+    - test:app:1
+    - test:app:2
+    - test:app:3
+    - test:app:4
+    - test:app:5
+    - test:app:6
+    - test:app:7
   variables:
   script:
     - echo "${CI_JOB_TOKEN}" | docker login -u gitlab-ci-token --password-stdin "${CI_REGISTRY}"
