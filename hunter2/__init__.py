@@ -9,5 +9,3 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
-
-default_app_config = 'hunter2.apps.Hunter2Config'
