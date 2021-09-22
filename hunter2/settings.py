@@ -80,6 +80,8 @@ if DEBUG:
 
     warnings.filterwarnings('error', category=UnsealedAttributeAccess)
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
 # Generate a secret key and store it the first time it is accessed
 SECRET_KEY = load_or_create_secret_key("/config/secrets.ini")
 
