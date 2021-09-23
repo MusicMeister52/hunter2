@@ -1,3 +1,8 @@
+workflow:
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 image: registry.gitlab.com/rconan/docker-and-compose:1.25.3-0@sha256:8b1c5954a86520e4d5c65534935dd08f58e89e1f98b6b9e59ec94cc218dd44da
 
 variables:
@@ -8,6 +13,7 @@ services:
   - docker:20.10.8-dind@sha256:1efacb06edbb1e2bd4a39dcc69883866c7dd98562a49fa97d7d29c2da1c3974f
 
 stages:
+  - build0
   - build1
   - build2
   - test
@@ -63,9 +69,28 @@ check:eslint:
     reports:
       junit: reports/junit.xml
 
+wheels:
+  stage: build0
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - poetry.lock
+  image:
+    name: python:3.8.11-alpine3.14@sha256:b12462dab319994e6a4be09eee3be7a29b6b7abf6202fb8030f45af4d39d7e24
+    entrypoint: []
+  script:
+    - apk add cargo gcc git libffi-dev linux-headers lua5.2-dev musl-dev postgresql-dev rust
+    - poetry_version="$(cat poetry.version)"
+    - wget "https://raw.githubusercontent.com/python-poetry/poetry/${poetry_version}/get-poetry.py"
+    - python get-poetry.py --version "${poetry_version}"
+    - /root/.poetry/bin/poetry export --dev -o requirements.txt --without-hashes
+    - pip wheel -r requirements.txt -w wheels
+    - pip install twine==3.4.1
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --skip-existing --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi wheels/*
+
 image:app:
   extends: .base_job
-  needs: []
+  needs: [wheels]
   stage: build1
   script:
     - docker pull "${PYTHON_LATEST_TAG}" || true
