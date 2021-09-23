@@ -13,7 +13,7 @@ RUN addgroup -g 500 -S hunter2 \
 WORKDIR /opt/hunter2/src
 
 
-# Build image with all the pythong dependancies.
+# Build image with all the python dependencies.
 FROM runtime_base AS python_build
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \

@@ -19,6 +19,10 @@ test: dev-images
 .PHONY: dev-images
 dev-images: .build/app.txt .build/db.txt .build/webpack.txt
 
+.PHONY: docs
+docs: dev-images
+    docker-compose run --rm --entrypoint /opt/hunter2/src/docs/docker-build-docs.sh app
+
 BUILD_TAG ?= latest
 
 export COMPOSE_DOCKER_CLI_BUILD := 1

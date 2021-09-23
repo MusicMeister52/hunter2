@@ -23,3 +23,8 @@ services:
     image: registry.gitlab.com/rconan/docker-flake8:3.7.9-31@sha256:6faacf293c45a125f612e4e3855367fbd542ce27e7327ce8262130d8979775aa
     volumes:
       - ${PWD:-.}:/code
+  docs:
+    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
+    volumes:
+      - ${PWD:-.}:/opt/hunter2/src
+

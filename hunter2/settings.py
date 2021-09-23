@@ -30,7 +30,7 @@ env.DB_SCHEMES['postgresql'] = 'django_tenants.postgresql_backend'
 
 # Default settings which should be overridden by environment variables
 DEBUG              = env.bool      ('H2_DEBUG',         default=False)
-BASE_DOMAIN        = env.str       ('H2_DOMAIN',        default='hunter2.local')
+BASE_DOMAIN        = env.str       ('H2_DOMAIN',        default='hunter2.localhost')
 DEFAULT_URL_SCHEME = env.str       ('H2_SCHEME',        default='http')
 LOG_LEVEL          = env.str       ('H2_LOG_LEVEL',     default='WARNING')
 LANGUAGE_CODE      = env.str       ('H2_LANGUAGE_CODE', default='en-gb')
