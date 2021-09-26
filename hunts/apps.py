@@ -19,4 +19,4 @@ class HuntsConfig(AppConfig):
 
     def ready(self):
         super(HuntsConfig, self).ready()
-        from . import signals  # noqa: F401
+        from . import signals, permissions  # noqa: F401

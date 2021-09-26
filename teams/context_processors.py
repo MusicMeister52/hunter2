@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from .rules import is_admin_for_event
+from .permissions import is_admin_for_event
 
 
 def event_team(request):

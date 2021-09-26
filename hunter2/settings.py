@@ -162,7 +162,7 @@ SHARED_APPS = (
     'django_tenants',
     'nested_admin',
     'ordered_model',
-    'rules.apps.AutodiscoverRulesConfig',
+    'rules',
     'solo',
     'webpack_loader',
 )
