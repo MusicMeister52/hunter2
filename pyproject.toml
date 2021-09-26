@@ -12,7 +12,6 @@ PyYAML = "==5.4.1"
 asgiref = "==3.4.1"  # Not really a direct dependency, included here to provide a version pin
 channels = "2.4.0"
 channels_redis = "==3.3.0"
-coverage = "==5.5"
 daphne = "2.5.0"
 django-allauth = "==0.45.0"
 django-analytical = "==3.0.0"
@@ -47,10 +46,14 @@ schema = "==0.7.4"
 uWSGI = "==2.0.19.1"
 django-sendfile2 = "0.6.0"
 django-postgresql-dag = "==0.3.1"
+pytest-django = "^4.4.0"
+pytest-cov = "^2.12.1"
+pytest-shard = "^0.1.2"
 [tool.poetry.dev-dependencies]
 django-silk = "4.1.0"
 ipython = "==7.27.0"
 ptpython = "==3.0.20"
+pytest-profiling = "1.7.0"
 
 [build-system]
 requires = ["poetry>=0.12"]
