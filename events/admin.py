@@ -40,4 +40,3 @@ class EventAdmin(ObjectPermissionsModelAdmin):
 
 
 admin.site.register(models.Domain)
-admin.site.register(models.Theme)

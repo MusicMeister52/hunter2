@@ -40,14 +40,6 @@ class SiteFactory(factory.django.DjangoModelFactory):
     name = factory.Faker('company')
 
 
-class ThemeFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = 'events.Theme'
-        django_get_or_create = ('name',)
-
-    name = factory.Sequence(lambda n: 'Test Theme %d' % n)
-
-
 class DomainFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'events.Domain'
@@ -67,7 +59,6 @@ class EventFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'Test Event %d' % n)
     schema_name = factory.Sequence(lambda n: f'e{n}')
-    theme = factory.SubFactory(ThemeFactory)
     current = False
     about_text = factory.Faker('text')
     rules_text = factory.Faker('text')
