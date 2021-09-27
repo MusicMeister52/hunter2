@@ -184,6 +184,15 @@ class HomePageTests(EventTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
+    def test_event_script_and_style(self):
+        self.tenant.script = 'console.log("hello");'
+        self.tenant.style = 'body {width: 1234px;}'
+        self.tenant.save()
+        url = reverse('index')
+        response = self.client.get(url)
+        self.assertContains(response, 'console.log("hello");')
+        self.assertContains(response, 'body {width: 1234px;}')
+
 
 class StaticValidationTests(EventTestCase):
     @staticmethod
