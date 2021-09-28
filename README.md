@@ -5,7 +5,8 @@ hunter2 is a web-application for running puzzle hunts. It provides a platform to
 monitor progression of teams, define automatic hints and unlockable clues and display statistics and graphs after the
 hunt is over.
 
-The app is written in python using the Django framework and set up to be quickly deployable with `docker-compose`.
+The app is written in python using the Django framework and set up to be quickly deployable with `docker-compose` on
+either amd64 or ARM64 (v8) platforms.
 
 Quick Evaluation Setup
 ===========
