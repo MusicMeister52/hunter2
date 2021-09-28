@@ -5,7 +5,9 @@ variables:
   DOCKER_DRIVER: overlay2
 
 services:
-  - docker:20.10.8-dind@sha256:1efacb06edbb1e2bd4a39dcc69883866c7dd98562a49fa97d7d29c2da1c3974f
+  - name: docker:20.10.8-dind@sha256:1efacb06edbb1e2bd4a39dcc69883866c7dd98562a49fa97d7d29c2da1c3974f
+    command: ["--mtu=1460"]  # Workaround for https://gitlab.com/gitlab-com/gl-infra/production/-/issues/5590#note_688032420
+    alias: docker
 
 stages:
   - build1
