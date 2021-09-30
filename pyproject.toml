@@ -11,7 +11,7 @@ Django = "==3.2.7"
 PyYAML = "==5.4.1"
 asgiref = "==3.4.1"  # Not really a direct dependency, included here to provide a version pin
 channels = "2.4.0"
-channels_redis = "==3.3.0"
+channels_redis = "==3.3.1"
 daphne = "2.5.0"
 django-allauth = "==0.45.0"
 django-analytical = "==3.0.0"
