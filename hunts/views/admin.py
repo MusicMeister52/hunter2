@@ -21,7 +21,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F
+from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F, Min
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -36,7 +36,7 @@ from events.models import Attendance
 from events.utils import annotate_userprofile_queryset_with_seat
 from teams.models import Team, TeamRole
 from .mixins import PuzzleAdminMixin, EventAdminMixin, EventAdminJSONMixin
-from ..forms import BulkUploadForm
+from ..forms import BulkUploadForm, ResetProgressForm
 from .. import models
 
 
@@ -427,6 +427,7 @@ class TeamAdminDetail(EventAdminMixin, View):
 
         context = {
             'team': team,
+            'player_role': TeamRole.PLAYER,
             'members': members,
         }
 
@@ -519,6 +520,9 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                 'id': tp_progress.puzzle.id,
                 'num_guesses': tp_progress.num_guesses,
             }
+            if team.role != TeamRole.PLAYER:
+                puzzle_info['reset_url'] = reverse('reset_progress') + f'?team={team.id}&puzzle={tp_progress.puzzle.id}'
+
             if tp_progress.solved_by:
                 solved_puzzles.append({
                     **puzzle_info,
@@ -584,3 +588,96 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
         }
 
         return JsonResponse(response)
+
+
+class ResetProgress(EventAdminMixin, View):
+    def _setup(self):
+        try:
+            team_id = self.request.GET['team']
+        except KeyError:
+            raise Http404
+
+        self.team = get_object_or_404(Team, pk=team_id)
+        puzzle_id = self.request.GET.get('puzzle')
+        if puzzle_id:
+            self.puzzle = get_object_or_404(models.Puzzle, pk=puzzle_id)
+        else:
+            self.puzzle = None
+
+        self.event = self.team.at_event
+
+    def _get_warnings(self):
+        # Create some warnings for situations admins probably shouldn't be using this
+        is_player_team = self.team.role == TeamRole.PLAYER
+        event_over = self.event.is_over()
+        event_in_progress = (
+            self.event.episode_set.aggregate(start_date=Min('start_date'))['start_date'] < timezone.now() and
+            not self.event.is_over()
+        )
+        return {
+            'is_player_team': is_player_team,
+            'event_over': event_over,
+            'event_in_progress': event_in_progress,
+        }
+
+    def get(self, request):
+        self._setup()
+        form = ResetProgressForm(warnings=self._get_warnings())
+        return self.common_response(form)
+
+    def post(self, request):
+        self._setup()
+        form = ResetProgressForm(request.POST, warnings=self._get_warnings())
+        if form.is_valid():
+            self.reset_progress()
+            return HttpResponseRedirect(reverse('admin_team_detail', kwargs={'team_id': self.team.id}))
+        return self.common_response(form)
+
+    def common_response(self, form):
+        # Gather some information for the admin to sanity check
+        guesses = models.Guess.objects.filter(by_team=self.team)
+        if self.puzzle:
+            tpp, _ = models.TeamPuzzleProgress.objects.get_or_create(team=self.team, puzzle=self.puzzle)
+            info = {
+                'guesses': guesses.filter(for_puzzle=self.puzzle).count(),
+                'solved': tpp.solved_by_id is not None,
+                'opened': tpp.start_time is not None,
+            }
+        else:
+            info = {
+                'guesses': guesses.count(),
+                'solved_puzzles': models.TeamPuzzleProgress.objects.filter(
+                    team=self.team, solved_by__isnull=False
+                ).count(),
+                'in_progress_puzzles': models.TeamPuzzleProgress.objects.filter(
+                    team=self.team, start_time__isnull=False, solved_by__isnull=True
+                ).count(),
+                'guessed_puzzles': models.Puzzle.objects.filter(
+                    guess__by_team=self.team
+                ).order_by().values('id').distinct().count(),
+            }
+
+        context = {
+            'form': form,
+            'team': self.team,
+            'puzzle': self.puzzle,
+            **info,
+            **self._get_warnings()
+        }
+        return TemplateResponse(
+            self.request,
+            'hunts/admin/reset_progress_confirm.html',
+            context
+        )
+
+    def reset_progress(self):
+        if self.puzzle:
+            puzzle_filter = Q(puzzle=self.puzzle)
+            guess_puzzle_filter = Q(for_puzzle=self.puzzle)
+        else:
+            puzzle_filter = Q()
+            guess_puzzle_filter = Q()
+        models.Guess.objects.filter(guess_puzzle_filter, by_team=self.team).delete()
+        models.TeamPuzzleProgress.objects.filter(puzzle_filter, team=self.team).delete()
+        models.TeamPuzzleData.objects.filter(puzzle_filter, team=self.team).delete()
+        models.UserPuzzleData.objects.filter(puzzle_filter, user__in=self.team.members.all()).delete()

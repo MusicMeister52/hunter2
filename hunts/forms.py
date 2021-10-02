@@ -124,3 +124,32 @@ class BulkUploadForm(forms.Form):
     base_path = forms.CharField(required=False, help_text='Path to be pre-pended to paths in the archive')
     solution = forms.BooleanField(required=False, help_text='Upload files as SolutionFile objects instead of PuzzleFile')
     overwrite = forms.BooleanField(required=False, help_text='Allow upload to overwrite existing files')
+
+
+class ResetProgressForm(forms.Form):
+    confirm = forms.BooleanField(
+        required=True,
+        label='I wish to delete all the above data'
+    )
+    is_player_team_ok = forms.BooleanField(
+        label='Even though the team is a player team',
+        widget=forms.HiddenInput(),
+        initial=True
+    )
+    event_in_progress_ok = forms.BooleanField(
+        label='Even though the event is in progress',
+        widget=forms.HiddenInput(),
+        initial=True
+    )
+    event_over_ok = forms.BooleanField(
+        label='Even though the event is over',
+        widget=forms.HiddenInput(),
+        initial=True
+    )
+
+    def __init__(self, *args, warnings={}, **kwargs):
+        super().__init__(*args, **kwargs)
+        for warning, value in warnings.items():
+            if value:
+                self.fields[f'{warning}_ok'].widget = forms.CheckboxInput()
+                self.fields[f'{warning}_ok'].initial = False

@@ -34,6 +34,7 @@ eventadminpatterns = [
     path('teams', views.admin.TeamAdmin.as_view(), name='admin_team'),
     path('teams/<int:team_id>', views.admin.TeamAdminDetail.as_view(), name='admin_team_detail'),
     path('teams/<int:team_id>/content', views.admin.TeamAdminDetailContent.as_view(), name='admin_team_detail_content'),
+    path('reset_progress', views.admin.ResetProgress.as_view(), name='reset_progress'),
 ]
 
 puzzlepatterns = [

@@ -6,6 +6,7 @@
 					data-toggle="collapse"
 					:data-target="'.puzzle-' + puzzle.id + '-detail'"
 					aria-expanded="false">
+				<a v-if="puzzle.reset_url" :href="puzzle.reset_url" title="Reset progress on this puzzle" class="btn btn-danger reset-button" onclick="event.stopPropagation()">↺</a>
 				<h4>{{ puzzle.episode_name }}: {{ puzzle.title }}</h4>
 				<div >
 					<b>Total guesses:</b> {{ puzzle.num_guesses }} &emsp;
@@ -49,7 +50,10 @@
 	<h3>Solved Puzzles: {{ solved_puzzles.length }}</h3>
 	<ul class="d-flex flex-wrap">
 		<div :id="'puzzle-' + puzzle.id" v-for="puzzle in solved_puzzles" class="card solved-puzzle">
-			<h4 class="card-header">{{ puzzle.title }}</h4>
+			<h4 class="card-header">
+				{{ puzzle.title }}
+				<a v-if="puzzle.reset_url" :href="puzzle.reset_url" title="Reset progress on this puzzle" class="btn btn-danger reset-button">↺</a>
+			</h4>
 			<span class="card-body">
 				After <human-duration v-bind:value="puzzle.time_taken" /> with {{ puzzle.num_guesses }} guesses.
 			</span>
