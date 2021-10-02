@@ -5,9 +5,19 @@
   "lockFileMaintenance": true,
   "packageRules": [
     {
-      "datasources": ["docker"],
-      "packageNames": ["python"],
-      "versionScheme": "pep440"
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["python"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?<prerelease>[^.-]+)?(-(?<compatibility>.*))?$"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "registry.gitlab.com/rconan/docker-and-compose",
+        "registry.gitlab.com/rconan/docker-eslint",
+        "registry.gitlab.com/rconan/docker-flake8",
+        "registry.gitlab.com/rconan/docker-graphviz"
+      ],
+      "versioning": "regex:^(?<major>\\d+)(?:\\.(?<minor>\\d+))?(?:\\.(?<patch>\\d+))?-(?<build>\\d+)$"
     },
     {
       "updateTypes": ["patch", "pin", "digest", "lockFileMaintenance"],
