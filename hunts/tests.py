@@ -2517,7 +2517,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             old_id = output['content']['hint_uid']
             self.assertTrue(self.run_async(comm.receive_nothing)())
 
-            hint.time = datetime.timedelta(seconds=3)
+            delay = 0.3
+            hint.time = datetime.timedelta(seconds=2 + delay)
             hint.save()
             output = self.receive_json(comm, 'Websocket did not remove hint which went into the future')
             self.assertEqual(output['type'], 'delete_hint')
@@ -2537,6 +2538,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             self.assertEqual(output['type'], 'delete_hint')
             self.assertEqual(output['content']['hint_uid'], old_id)
             self.assertTrue(self.run_async(comm.receive_nothing)())
+
+            # Wait for (at most) the delay before the longer hint event would have arrived to check
+            # it was correctly cancelled
+            self.assertTrue(self.run_async(comm.receive_nothing)(delay))
 
             self.run_async(comm.disconnect)()
 
