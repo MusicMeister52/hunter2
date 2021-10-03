@@ -69,8 +69,6 @@ FROM node:16.10.0-alpine3.14@sha256:8924fe15ceecfbdd5de1dd16b2a17ad53376e828f28c
 
 WORKDIR /opt/hunter2/src
 
-RUN  --mount=type=cache,target=/var/cache/apk apk add \
-    python3
 COPY package.json yarn.lock /opt/hunter2/src/
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --frozen-lockfile
