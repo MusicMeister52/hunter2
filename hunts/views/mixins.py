@@ -9,10 +9,9 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
-
-
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -107,3 +106,24 @@ class EventMustBeOverMixin():
             return super().dispatch(request, *args, **kwargs)
         else:
             raise Http404
+
+
+class EventAdminMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        admin = is_admin_for_event.test(request.user, request.tenant)
+        if not admin:
+            raise PermissionDenied
+
+        return super().dispatch(request, *args, **kwargs)
+
+
+class EventAdminJSONMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        admin = is_admin_for_event.test(request.user, request.tenant)
+        if not admin:
+            return JsonResponse({
+                'result': 'Forbidden',
+                'message': 'Must be an admin to access this resource',
+            }, status=403)
+
+        return super().dispatch(request, *args, **kwargs)

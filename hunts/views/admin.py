@@ -18,7 +18,7 @@ import tarfile
 from collections import defaultdict
 from datetime import timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F
@@ -35,8 +35,7 @@ from django.views.generic.edit import FormView
 from events.models import Attendance
 from events.utils import annotate_userprofile_queryset_with_seat
 from teams.models import Team, TeamRole
-from teams.permissions import is_admin_for_event
-from .mixins import PuzzleAdminMixin
+from .mixins import PuzzleAdminMixin, EventAdminMixin, EventAdminJSONMixin
 from ..forms import BulkUploadForm
 from .. import models
 
@@ -76,26 +75,16 @@ class BulkUpload(LoginRequiredMixin, PuzzleAdminMixin, FormView):
         return self.render_to_response(context)
 
 
-class AdminIndex(LoginRequiredMixin, View):
+class AdminIndex(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/index.html',
         )
 
 
-class Guesses(LoginRequiredMixin, View):
+class Guesses(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/guesses.html',
@@ -106,16 +95,8 @@ class Guesses(LoginRequiredMixin, View):
 # will see virtually no difference, but multiple people observing the page will not cause additional
 # load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
 @method_decorator(cache.cache_page(5), name='dispatch')
-class GuessesList(LoginRequiredMixin, View):
+class GuessesList(EventAdminJSONMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            return JsonResponse({
-                'result': 'Forbidden',
-                'message': 'Must be an admin to list guesses',
-            }, status=403)
-
         episode = request.GET.get('episode')
         puzzle = request.GET.get('puzzle')
         team = request.GET.get('team')
@@ -213,13 +194,8 @@ class GuessesList(LoginRequiredMixin, View):
         })
 
 
-class Stats(LoginRequiredMixin, View):
+class Stats(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/stats.html',
@@ -229,13 +205,8 @@ class Stats(LoginRequiredMixin, View):
 
 # 5 seconds is the default refresh interval on the page
 @method_decorator(cache.cache_page(5), name='dispatch')
-class StatsContent(LoginRequiredMixin, View):
+class StatsContent(EventAdminJSONMixin, View):
     def get(self, request, episode_id=None):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         now = timezone.now()
         end_time = min(now, request.tenant.end_date) + timedelta(minutes=10)
 
@@ -311,26 +282,16 @@ class StatsContent(LoginRequiredMixin, View):
         return JsonResponse(data)
 
 
-class EpisodeList(LoginRequiredMixin, View):
+class EpisodeList(EventAdminJSONMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return JsonResponse([{
             'id': episode.pk,
             'name': episode.name
         } for episode in models.Episode.objects.filter(event=request.tenant)], safe=False)
 
 
-class Progress(LoginRequiredMixin, View):
+class Progress(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/progress.html',
@@ -340,13 +301,8 @@ class Progress(LoginRequiredMixin, View):
 
 # The cache timeout of 5 seconds is set equal to the refresh interval used on the page.
 @method_decorator(cache.cache_page(5), name='dispatch')
-class ProgressContent(LoginRequiredMixin, View):
+class ProgressContent(EventAdminJSONMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         puzzles = models.Puzzle.objects.filter(
             episode_id__isnull=False
         ).select_related(
@@ -451,16 +407,10 @@ class ProgressContent(LoginRequiredMixin, View):
         return JsonResponse(data)
 
 
-class TeamAdmin(LoginRequiredMixin, View):
+class TeamAdmin(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-        event = request.tenant
-
-        if not admin:
-            raise PermissionDenied
-
         context = {
-            'teams': Team.objects.filter(at_event=event)
+            'teams': Team.objects.filter(at_event=request.tenant)
         }
 
         return TemplateResponse(
@@ -470,16 +420,10 @@ class TeamAdmin(LoginRequiredMixin, View):
         )
 
 
-class TeamAdminDetail(LoginRequiredMixin, View):
+class TeamAdminDetail(EventAdminMixin, View):
     def get(self, request, team_id):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-        event = request.tenant
-
-        if not admin:
-            raise PermissionDenied
-
         team = get_object_or_404(Team, pk=team_id)
-        members = annotate_userprofile_queryset_with_seat(team.members, event)
+        members = annotate_userprofile_queryset_with_seat(team.members, request.tenant)
 
         context = {
             'team': team,
@@ -493,13 +437,9 @@ class TeamAdminDetail(LoginRequiredMixin, View):
         )
 
 
-class TeamAdminDetailContent(LoginRequiredMixin, View):
+class TeamAdminDetailContent(EventAdminJSONMixin, View):
     def get(self, request, team_id):
-        admin = is_admin_for_event.test(request.user, request.tenant)
         event = request.tenant
-
-        if not admin:
-            raise PermissionDenied
 
         team = get_object_or_404(Team, pk=team_id)
 
