@@ -14,9 +14,6 @@ from django.db import connections
 from django_tenants.utils import get_tenant_database_alias, get_tenant_model
 import rules
 
-from events.models import Event
-from teams.models import Team
-
 
 @rules.predicate
 def is_admin_for_schema_event(user, obj):
@@ -31,6 +28,8 @@ def is_admin_for_schema_event(user, obj):
 
 @rules.predicate
 def is_admin_for_event(user, event):
+    from teams.models import Team
+
     if event is None:
         return is_admin_for_schema_event.test(user, event)
     try:
@@ -41,6 +40,7 @@ def is_admin_for_event(user, event):
 
 @rules.predicate
 def is_admin_for_event_child(user, obj):
+    from events.models import Event
     if obj is None:  # If we have no object we're checking globally for the event specified by the active schema
         return is_admin_for_event.test(user, None)
 

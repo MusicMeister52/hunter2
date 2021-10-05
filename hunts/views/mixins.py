@@ -18,7 +18,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
 
-from teams.rules import is_admin_for_event
+from teams.permissions import is_admin_for_event
 from ..models import Puzzle
 from .. import utils
 

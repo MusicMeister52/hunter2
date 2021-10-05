@@ -271,3 +271,19 @@ release:web:
     - docker pull "${WEB_IMAGE_TAG}"
     - docker tag "${WEB_IMAGE_TAG}" "${WEB_LATEST_TAG}"
     - docker push "${WEB_LATEST_TAG}"
+
+pages:
+  extends: .base_job
+  stage: release
+  needs: ["image:app"]
+  script:
+    - install -d -m 777 docs/_build
+    - docker-compose pull app
+    - docker-compose -f docker-compose.tools.yml run --rm -u root --entrypoint /opt/hunter2/src/docs/docker-build-docs.sh docs
+    - mkdir public
+    - cp -r docs/_build/html/* public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

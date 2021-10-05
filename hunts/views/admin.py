@@ -35,7 +35,7 @@ from django.views.generic.edit import FormView
 from events.models import Attendance
 from events.utils import annotate_userprofile_queryset_with_seat
 from teams.models import Team, TeamRole
-from teams.rules import is_admin_for_event
+from teams.permissions import is_admin_for_event
 from .mixins import PuzzleAdminMixin
 from ..forms import BulkUploadForm
 from .. import models

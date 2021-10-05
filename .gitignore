@@ -23,3 +23,6 @@ webpack-stats.json
 
 # Ignore tracking files from make
 .build
+
+# Ignore built documentation
+docs/_build

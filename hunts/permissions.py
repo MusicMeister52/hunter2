@@ -12,7 +12,7 @@
 
 import rules
 
-from teams.rules import is_admin_for_schema_event
+from teams.permissions import is_admin_for_schema_event
 
 
 def set_all_perms_for_model(app, model, predicate):

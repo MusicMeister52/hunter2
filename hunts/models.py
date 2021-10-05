@@ -44,7 +44,7 @@ class EpisodePrequel(edge_factory('hunts.Episode', concrete=False)):
 
 class Episode(node_factory(EpisodePrequel), SealableModel):
     name = models.CharField(max_length=255)
-    flavour = models.TextField(blank=True)
+    flavour = models.TextField(blank=True, help_text='Optional story or thematic preamble, displayed alongside the list of puzzles')
     start_date = models.DateTimeField()
     event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING)
     parallel = models.BooleanField(default=False, help_text='Allow players to answer riddles in this episode in any order they like')

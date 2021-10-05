@@ -26,7 +26,7 @@ from hunter2.models import APIToken
 from .middleware import TeamMiddleware
 from .factories import TeamFactory, TeamMemberFactory
 from .models import Team, TeamRole
-from . import rules
+from . import permissions
 
 
 class FactoryTests(EventTestCase):
@@ -355,48 +355,48 @@ class RequestTests(EventTestCase):
 class RulesTests(EventTestCase):
     def test_is_admin_for_event_true(self):
         profile = TeamMemberFactory(team__role=TeamRole.ADMIN)
-        self.assertTrue(rules.is_admin_for_event.test(profile.user, None))
-        self.assertTrue(rules.is_admin_for_event.test(profile.user, self.tenant))
+        self.assertTrue(permissions.is_admin_for_event.test(profile.user, None))
+        self.assertTrue(permissions.is_admin_for_event.test(profile.user, self.tenant))
 
     def test_is_admin_for_event_false(self):
         profile = TeamMemberFactory(team__role=TeamRole.PLAYER)
-        self.assertFalse(rules.is_admin_for_event.test(profile.user, None))
-        self.assertFalse(rules.is_admin_for_event.test(profile.user, self.tenant))
+        self.assertFalse(permissions.is_admin_for_event.test(profile.user, None))
+        self.assertFalse(permissions.is_admin_for_event.test(profile.user, self.tenant))
 
     def test_is_admin_for_event_with_no_profile(self):
         user = UserFactory()
-        self.assertFalse(rules.is_admin_for_event.test(user, self.tenant))
+        self.assertFalse(permissions.is_admin_for_event.test(user, self.tenant))
 
     def test_is_admin_for_event_with_no_team(self):
         profile = UserProfileFactory()
-        self.assertFalse(rules.is_admin_for_event.test(profile.user, self.tenant))
+        self.assertFalse(permissions.is_admin_for_event.test(profile.user, self.tenant))
 
     def test_is_admin_for_event_child_true(self):
         profile = TeamMemberFactory(team__role=TeamRole.ADMIN)
         child = EventFileFactory()
-        self.assertTrue(rules.is_admin_for_event_child.test(profile.user, None))
-        self.assertTrue(rules.is_admin_for_event_child.test(profile.user, self.tenant))
-        self.assertTrue(rules.is_admin_for_event_child.test(profile.user, child))
+        self.assertTrue(permissions.is_admin_for_event_child.test(profile.user, None))
+        self.assertTrue(permissions.is_admin_for_event_child.test(profile.user, self.tenant))
+        self.assertTrue(permissions.is_admin_for_event_child.test(profile.user, child))
 
     def test_is_admin_for_event_child_false(self):
         profile = TeamMemberFactory(team__role=TeamRole.PLAYER)
         child = EventFileFactory()
-        self.assertFalse(rules.is_admin_for_event_child.test(profile.user, None))
-        self.assertFalse(rules.is_admin_for_event_child.test(profile.user, self.tenant))
-        self.assertFalse(rules.is_admin_for_event_child.test(profile.user, child))
+        self.assertFalse(permissions.is_admin_for_event_child.test(profile.user, None))
+        self.assertFalse(permissions.is_admin_for_event_child.test(profile.user, self.tenant))
+        self.assertFalse(permissions.is_admin_for_event_child.test(profile.user, child))
 
     def test_is_admin_for_event_child_type_error(self):
         user = UserFactory()
         with self.assertRaises(TypeError):
-            rules.is_admin_for_event_child(user, "A string is not an event child")
+            permissions.is_admin_for_event_child(user, "A string is not an event child")
 
     def test_is_admin_for_schema_event_true(self):
         profile = TeamMemberFactory(team__role=TeamRole.ADMIN)
-        self.assertTrue(rules.is_admin_for_schema_event(profile.user, None))
+        self.assertTrue(permissions.is_admin_for_schema_event(profile.user, None))
 
     def test_is_admin_for_schema_event_false(self):
         profile = TeamMemberFactory(team__role=TeamRole.PLAYER)
-        self.assertFalse(rules.is_admin_for_schema_event(profile.user, None))
+        self.assertFalse(permissions.is_admin_for_schema_event(profile.user, None))
 
 
 class NoSchemaRulesTests(EventAwareTestCase):
@@ -405,7 +405,7 @@ class NoSchemaRulesTests(EventAwareTestCase):
         event.activate()
         profile = TeamMemberFactory(team__at_event=event, team__role=TeamRole.ADMIN)
         event.deactivate()
-        self.assertFalse(rules.is_admin_for_schema_event(profile.user, None))
+        self.assertFalse(permissions.is_admin_for_schema_event(profile.user, None))
 
 
 class TeamInfoTests(EventTestCase):
