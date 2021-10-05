@@ -18,13 +18,13 @@ services:
       - H2_TEST_SEED
     image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
   db:
-    build: postgres
+    build: images/db
     environment:
       - POSTGRES_PASSWORD
     image: ${DB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/db}
   metrics:
-    build: ./prometheus
+    build: images/metrics
     image: ${METRICS_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/metrics}
   web:
-    build: ./nginx
+    build: images/web
     image: ${WEB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/web}
