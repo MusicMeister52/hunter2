@@ -15,6 +15,5 @@ RUN --mount=type=cache,target=/var/cache/apk apk add -t build_deps \
  && /usr/local/openresty/luajit/bin/luarocks install lua-resty-dns-client 6.0.2 \
  && apk del build_deps
 
-COPY default.conf /etc/nginx/conf.d/default.conf
-COPY *.lua /usr/local/openresty/nginx/
+COPY . /
 COPY --from=app /static /static

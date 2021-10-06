@@ -4,8 +4,6 @@
 !.yarnrc
 
 # Ignore docker-related files
-Dockerfile
-Dockerfile.*
 docker-compose.yml
 docker-compose.*.yml
 
@@ -13,9 +11,7 @@ docker-compose.*.yml
 coverage
 
 # Ignore other docker image folders
-nginx
-webpack
-prometheus
+images
 
 # Ignore webpack/npm/css configuration
 webpack-stats.json
@@ -26,3 +22,14 @@ node_modules
 
 # Ignore generated caches
 __pycache__
+
+# Ignore operator scripts
+h2tools.sh
+update.sh
+
+# Ignore documentation files
+LICENSE.md
+README.md
+
+# Ignore renovate configuration
+renovate.json

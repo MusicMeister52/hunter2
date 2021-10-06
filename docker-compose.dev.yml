@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   db:
-    build: postgres
+    build: images/db
     environment:
       - H2_DATABASE_PASSWORD=hunter2
       - POSTGRES_PASSWORD=hunter2
@@ -16,7 +16,7 @@ services:
     volumes:
       - redis:/data
   webpack:
-    build: webpack
+    build: images/webpack
     environment:
       - H2_WEBPACK_DEV_HOST
       - H2_WEBPACK_DEV_PORT
