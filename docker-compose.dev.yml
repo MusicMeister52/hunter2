@@ -32,6 +32,7 @@ services:
   app:
     build:
        context: .
+       dockerfile: images/app/Dockerfile
        args:
          dev_flag: ""
     command: runserver 0.0.0.0:8000

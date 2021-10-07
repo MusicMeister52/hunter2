@@ -2,7 +2,9 @@ version: '3.5'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: images/app/Dockerfile
     environment:
       # Test run needs permission to create databases
       - H2_DATABASE_PASSWORD=${POSTGRES_PASSWORD}
@@ -10,7 +12,9 @@ services:
       - H2_TEST_SEED
     image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
   websocket:
-    build: .
+    build:
+      context: .
+      dockerfile: images/app/Dockerfile
     environment:
       # Test run needs permission to create databases
       - H2_DATABASE_PASSWORD=${POSTGRES_PASSWORD}
