@@ -5,7 +5,7 @@ set -euo pipefail
 
 # The code here is lifted directly from the postgres exporter documentation
 # https://github.com/prometheus-community/postgres_exporter/blob/master/README.md#running-as-non-superuser
-psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER}" <<-EOSQL
+psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" <<-EOSQL
     CREATE EXTENSION pg_stat_statements;
 
     -- To use IF statements, hence to be able to check if the user exists before

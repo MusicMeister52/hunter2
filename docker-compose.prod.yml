@@ -64,7 +64,7 @@ services:
       - POSTGRES_PASSWORD
     image: registry.gitlab.com/hunter2.app/hunter2/db:${H2_IMAGE_VERSION:-latest}
     volumes:
-      - db:/var/lib/postgresql/data
+      - db14:/var/lib/postgresql/data
   db_exporter:
     depends_on:
       - db
@@ -104,7 +104,7 @@ services:
       - uploads_solutions:/media/solutions:ro
 
 volumes:
-  db: {}
+  db14: {}
   config: {}
   metrics: {}
   metrics_spool: {}
