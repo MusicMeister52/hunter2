@@ -31,22 +31,22 @@ export DOCKER_BUILDKIT := 1
 .build:
 	mkdir -p .build
 
-.build/app.txt: pyproject.toml poetry.lock Dockerfile | .build
+.build/app.txt: pyproject.toml poetry.lock images/app/* | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) app
 	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/app:$(BUILD_TAG) > .build/app.txt
 
-.build/db.txt: postgres/* | .build
+.build/db.txt: images/db/* | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) db
 	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/db:$(BUILD_TAG) > .build/db.txt
 
-.build/metrics.txt: prometheus/* | .build
+.build/metrics.txt: images/metrics/* | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) metrics
 	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/metrics:$(BUILD_TAG) > .build/metrics.txt
 
-.build/web.txt: .build/app.txt nginx/* | .build
+.build/web.txt: .build/app.txt images/web/* | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) web
 	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/web:$(BUILD_TAG) > .build/web.txt
 
-.build/webpack.txt: webpack/* | .build
+.build/webpack.txt: images/webpack/* | .build
 	docker-compose build --build-arg BUILD_TAG=$(BUILD_TAG) webpack
 	docker image inspect -f '{{.Id}}' registry.gitlab.com/hunter2.app/hunter2/webpack:$(BUILD_TAG) > .build/webpack.txt
