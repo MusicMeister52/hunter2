@@ -20,17 +20,7 @@ stages:
 
 .base_job:
   before_script:
-    - export GIT_DESCRIBE=$([[ "${CI_COMMIT_BRANCH}" != "${CI_DEFAULT_BRANCH}" ]] && echo "${CI_COMMIT_REF_SLUG}_")$(git describe)
-    - export APP_IMAGE_TAG="${CI_REGISTRY_IMAGE}/app:${GIT_DESCRIBE}"
-    - export APP_LATEST_TAG="${APP_IMAGE_TAG%:*}:latest"
-    - export DB_IMAGE_TAG="${CI_REGISTRY_IMAGE}/db:${GIT_DESCRIBE}"
-    - export DB_LATEST_TAG="${DB_IMAGE_TAG%:*}:latest"
-    - export METRICS_IMAGE_TAG="${CI_REGISTRY_IMAGE}/metrics:${GIT_DESCRIBE}"
-    - export METRICS_LATEST_TAG="${METRICS_IMAGE_TAG%:*}:latest"
-    - export PYTHON_IMAGE_TAG="${CI_REGISTRY_IMAGE}/python:${GIT_DESCRIBE}"
-    - export PYTHON_LATEST_TAG="${PYTHON_IMAGE_TAG%:*}:latest"
-    - export WEB_IMAGE_TAG="${CI_REGISTRY_IMAGE}/web:${GIT_DESCRIBE}"
-    - export WEB_LATEST_TAG="${WEB_IMAGE_TAG%:*}:latest"
+    - export H2_IMAGE_VERSION=$([[ "${CI_COMMIT_BRANCH}" != "${CI_DEFAULT_BRANCH}" ]] && echo "${CI_COMMIT_REF_SLUG}_")$(git describe)
     - chmod -R g-w,o-w .
     - ln -s docker-compose.prod.yml docker-compose.yml
     - ln -s docker-compose.test.yml docker-compose.override.yml
@@ -67,45 +57,71 @@ check:eslint:
     reports:
       junit: reports/junit.xml
 
-image:app:
+.image_job:
   extends: .base_job
   needs: []
   stage: build1
+  before_script:
+    - !reference [.base_job, before_script]
+    - docker buildx create --name hunter2 --use
+    - >
+      if [[ "${CI_COMMIT_REF_PROTECTED}" == "true" ]];
+      then
+        PLATFORMS="linux/amd64,linux/arm64/v8";
+      else
+        PLATFORMS="linux/amd64";
+      fi
+    - >
+      if [[ ${PLATFORMS} == *"linux/arm64/v8"* ]];
+      then
+        printenv ARM64_DOCKER_CERT | base64 -d > cert.pem;
+        printenv ARM64_DOCKER_KEY | base64 -d > key.pem;
+        docker context create arm64 --docker "host=tcp://arm64.build.hunter2.app:2375/,ca=/etc/ssl/cert.pem,cert=cert.pem,key=key.pem";
+        docker buildx create --name hunter2 --append --platform linux/arm64/v8 arm64;
+      fi
   script:
-    - docker pull "${PYTHON_LATEST_TAG}" || true
-    - docker pull "${APP_LATEST_TAG}" || true
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${PYTHON_LATEST_TAG}" --target python_build -t "${PYTHON_IMAGE_TAG}" -t "${PYTHON_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain -f images/app/Dockerfile .
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${APP_LATEST_TAG}" -t "${APP_IMAGE_TAG}" -t "${APP_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain -f images/app/Dockerfile .
-    - docker push "${PYTHON_IMAGE_TAG}"
-    - docker push "${APP_IMAGE_TAG}"
+    - REPO="${CI_REGISTRY_IMAGE}/${SERVICE}"
+    - CACHE_TAG="${REPO}:cache"
+    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --progress plain "images/${SERVICE}" --push
+
+image:app:
+  extends: .image_job
+  script:
+    - PYTHON_REPO="${CI_REGISTRY_IMAGE}/python"
+    - PYTHON_CACHE_TAG="${PYTHON_REPO}:cache"
+    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${PYTHON_CACHE_TAG},mode=max" --cache-from="type=registry,ref=${PYTHON_CACHE_TAG}" --target python_build -t "${PYTHON_REPO}:${H2_IMAGE_VERSION}" --progress plain -f images/app/Dockerfile . --push
+    - APP_REPO="${CI_REGISTRY_IMAGE}/app"
+    - APP_CACHE_TAG="${APP_REPO}:cache"
+    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${APP_CACHE_TAG},mode=max" --cache-from="type=registry,ref=${APP_CACHE_TAG}" -t "${APP_REPO}:${H2_IMAGE_VERSION}" --progress plain -f images/app/Dockerfile . --push
 
 image:db:
-  extends: .base_job
-  stage: build1
+  extends: .image_job
   variables:
-  script:
-    - docker pull "${DB_LATEST_TAG}" || true
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${DB_LATEST_TAG}" -t "${DB_IMAGE_TAG}" -t "${DB_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain images/db
-    - docker push "${DB_IMAGE_TAG}"
+    SERVICE: db
 
 image:metrics:
-  extends: .base_job
-  needs: []
-  stage: build1
+  extends: .image_job
   variables:
-  script:
-    - docker pull "${METRICS_LATEST_TAG}" || true
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${METRICS_LATEST_TAG}" -t "${METRICS_IMAGE_TAG}" -t "${METRICS_LATEST_TAG}" --build-arg BUILD_TAG="${GIT_DESCRIBE}" --progress plain images/metrics
-    - docker push "${METRICS_IMAGE_TAG}"
+    SERVICE: metrics
+
+image:postgres_exporter:
+  extends: .image_job
+  variables:
+    SERVICE: postgres_exporter
+
+image:redis_exporter:
+  extends: .image_job
+  variables:
+    SERVICE: redis_exporter
 
 image:web:
-  extends: .base_job
+  extends: .image_job
   needs: ["image:app"]
   stage: build2
-  script:
-    - docker pull "${WEB_LATEST_TAG}" || true
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from "${WEB_LATEST_TAG}" -t "${WEB_IMAGE_TAG}" -t "${WEB_LATEST_TAG}" --build-arg IMAGE_TAG="${APP_IMAGE_TAG}" --progress plain images/web
-    - docker push "${WEB_IMAGE_TAG}"
+  script:  # Web needs the build tag as an argument
+    - REPO="${CI_REGISTRY_IMAGE}/web"
+    - CACHE_TAG="${REPO}:cache"
+    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --build-arg BUILD_TAG="${H2_IMAGE_VERSION}" --progress plain ./images/web --push
 
 doc:graph:
   extends: .base_job
@@ -236,41 +252,48 @@ report:coverage:
     - test:app:7
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - REPO="${CI_REGISTRY_IMAGE}/${SERVICE}"
+    - IMAGE_TAG="${REPO}:${H2_IMAGE_VERSION}"
+    - LATEST_TAG="${REPO}:latest"
+    - docker pull "${IMAGE_TAG}"
+    - docker tag "${IMAGE_TAG}" "${LATEST_TAG}"
+    - docker push "${LATEST_TAG}"
 
 release:app:
   extends: .release_job
-  script:
-    - docker pull "${APP_IMAGE_TAG}"
-    - docker tag "${APP_IMAGE_TAG}" "${APP_LATEST_TAG}"
-    - docker push "${APP_LATEST_TAG}"
+  variables:
+    SERVICE: app
 
 release:db:
   extends: .release_job
-  script:
-    - docker pull "${DB_IMAGE_TAG}"
-    - docker tag "${DB_IMAGE_TAG}" "${DB_LATEST_TAG}"
-    - docker push "${DB_LATEST_TAG}"
+  variables:
+    SERVICE: db
 
 release:metrics:
   extends: .release_job
-  script:
-    - docker pull "${METRICS_IMAGE_TAG}"
-    - docker tag "${METRICS_IMAGE_TAG}" "${METRICS_LATEST_TAG}"
-    - docker push "${METRICS_LATEST_TAG}"
+  variables:
+    SERVICE: metrics
 
 release:python:
   extends: .release_job
-  script:
-    - docker pull "${PYTHON_IMAGE_TAG}"
-    - docker tag "${PYTHON_IMAGE_TAG}" "${PYTHON_LATEST_TAG}"
-    - docker push "${PYTHON_LATEST_TAG}"
+  variables:
+    SERVICE: python
+
+release:postgres_exporter:
+  extends: .release_job
+  variables:
+    SERVICE: postgres_exporter
+
+release:redis_exporter:
+  extends: .release_job
+  variables:
+    SERVICE: redis_exporter
 
 release:web:
   extends: .release_job
-  script:
-    - docker pull "${WEB_IMAGE_TAG}"
-    - docker tag "${WEB_IMAGE_TAG}" "${WEB_LATEST_TAG}"
-    - docker push "${WEB_LATEST_TAG}"
+  variables:
+    SERVICE: web
 
 pages:
   extends: .base_job

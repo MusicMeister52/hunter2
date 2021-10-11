@@ -10,7 +10,6 @@ services:
       - H2_DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - H2_DATABASE_USER=postgres
       - H2_TEST_SEED
-    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
   websocket:
     build:
       context: .
@@ -20,15 +19,15 @@ services:
       - H2_DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - H2_DATABASE_USER=postgres
       - H2_TEST_SEED
-    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app}
   db:
     build: images/db
     environment:
       - POSTGRES_PASSWORD
-    image: ${DB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/db}
   metrics:
     build: images/metrics
-    image: ${METRICS_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/metrics}
+  postgres_exporter:
+    build: images/postgres_exporter
+  redis_exporter:
+    build: images/redis_exporter
   web:
     build: images/web
-    image: ${WEB_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/web}
