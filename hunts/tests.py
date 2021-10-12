@@ -54,7 +54,7 @@ from .factories import (
     UserDataFactory,
     UserPuzzleDataFactory,
 )
-from .models import PuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
+from .models import PuzzleData, TeamPuzzleData, UserPuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
 from .utils import encode_uuid
 from .runtimes import Runtime
 
@@ -1181,7 +1181,7 @@ class AdminContentTests(EventTestCase):
         self.episode = EpisodeFactory(event=self.tenant)
         self.admin_user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
         self.admin_team = self.admin_user.team_at(self.tenant)
-        self.puzzle = PuzzleFactory()
+        self.puzzle = PuzzleFactory(episode=self.episode)
         self.guesses = GuessFactory.create_batch(5, for_puzzle=self.puzzle)
         self.guesses_url = reverse('admin_guesses_list')
 
@@ -1488,6 +1488,138 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(response.status_code, 200)
             progress = self._check_team_get_progress(response, team)
             self.assertTrue(progress[0]['hints_scheduled'])
+
+    def test_non_admin_cant_reset_progress(self):
+        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
+        self.client.force_login(player.user)
+
+        url = reverse('reset_progress') + f'?team={player.team_at(self.tenant).id}'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_can_reset_progress(self):
+        self.client.force_login(self.admin_user.user)
+
+        url = reverse('reset_progress') + f'?team={self.admin_team.id}'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_reset_progress_resets_progress(self):
+        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
+        team = player.team_at(self.tenant)
+
+        # We are going to first reset progress on a specific puzzle and check that the following
+        # all disappears
+        tpp_1 = TeamPuzzleProgressFactory(team=self.admin_team)
+        GuessFactory(for_puzzle=tpp_1.puzzle, by_team=self.admin_team)
+        UnlockAnswerFactory(unlock__puzzle=tpp_1.puzzle, guess='__UNLOCK__')
+        GuessFactory(for_puzzle=tpp_1.puzzle, by_team=self.admin_team, guess='__UNLOCK__')
+        TeamPuzzleDataFactory(team=self.admin_team, puzzle=tpp_1.puzzle)
+        UserPuzzleDataFactory(user=self.admin_user, puzzle=tpp_1.puzzle)
+
+        # We will check that all of the following still exists. Then we will delete all progress
+        # for the admin team and check it is gone.
+        tpp_2 = TeamPuzzleProgressFactory(team=self.admin_team)
+        GuessFactory(for_puzzle=tpp_2.puzzle, by_team=self.admin_team)
+        UnlockAnswerFactory(unlock__puzzle=tpp_2.puzzle, guess='__UNLOCK__')
+        GuessFactory(for_puzzle=tpp_2.puzzle, by_team=self.admin_team, guess='__UNLOCK__')
+        TeamPuzzleDataFactory(team=self.admin_team, puzzle=tpp_2.puzzle)
+        UserPuzzleDataFactory(user=self.admin_user, puzzle=tpp_2.puzzle)
+
+        # In the meantime we will check that all of this other data isn't deleted
+        tpp_player = TeamPuzzleProgressFactory(team=team)
+        GuessFactory(for_puzzle=tpp_player.puzzle, by_team=team)
+        UnlockAnswerFactory(unlock__puzzle=tpp_player.puzzle, guess='__UNLOCK__')
+        GuessFactory(for_puzzle=tpp_player.puzzle, by_team=team, guess='__UNLOCK__')
+        TeamPuzzleDataFactory(team=team, puzzle=tpp_player.puzzle)
+        UserPuzzleDataFactory(user=player, puzzle=tpp_player.puzzle)
+
+        self.client.force_login(self.admin_user.user)
+        url = reverse('reset_progress') + f'?team={self.admin_team.id}&puzzle={tpp_1.puzzle.id}'
+        response = self.client.post(
+            url,
+            {'confirm': True, 'is_player_team_ok': True, 'event_over_ok': True, 'event_in_progress_ok': True}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Guess.objects.filter(by_team=self.admin_team, for_puzzle=tpp_1.puzzle).count(), 0)
+        self.assertEqual(TeamPuzzleProgress.objects.filter(team=self.admin_team, puzzle=tpp_1.puzzle).count(), 0)
+        self.assertEqual(TeamUnlock.objects.filter(team_puzzle_progress__team=self.admin_team, team_puzzle_progress__puzzle=tpp_1.puzzle).count(), 0)
+        self.assertEqual(TeamPuzzleData.objects.filter(team=self.admin_team, puzzle=tpp_1.puzzle).count(), 0)
+        self.assertEqual(UserPuzzleData.objects.filter(user__in=self.admin_team.members.all(), puzzle=tpp_1.puzzle).count(), 0)
+
+        self.assertGreater(Guess.objects.filter(by_team=self.admin_team).count(), 0)
+        self.assertGreater(TeamPuzzleProgress.objects.filter(team=self.admin_team).count(), 0)
+        self.assertGreater(TeamUnlock.objects.filter(team_puzzle_progress__team=self.admin_team).count(), 0)
+        self.assertGreater(TeamPuzzleData.objects.filter(team=self.admin_team).count(), 0)
+        self.assertGreater(UserPuzzleData.objects.filter(user__in=self.admin_team.members.all()).count(), 0)
+
+        url = reverse('reset_progress') + f'?team={self.admin_team.id}'
+        response = self.client.post(
+            url,
+            {'confirm': True, 'is_player_team_ok': True, 'event_over_ok': True, 'event_in_progress_ok': True}
+        )
+        self.assertEqual(response.status_code, 302)
+
+        self.assertEqual(Guess.objects.filter(by_team=self.admin_team).count(), 0)
+        self.assertEqual(TeamPuzzleProgress.objects.filter(team=self.admin_team).count(), 0)
+        self.assertEqual(TeamUnlock.objects.filter(team_puzzle_progress__team=self.admin_team).count(), 0)
+        self.assertEqual(TeamPuzzleData.objects.filter(team=self.admin_team).count(), 0)
+        self.assertEqual(UserPuzzleData.objects.filter(user__in=self.admin_team.members.all()).count(), 0)
+
+        self.assertGreater(Guess.objects.filter(by_team=team).count(), 0)
+        self.assertGreater(TeamPuzzleProgress.objects.filter(team=team).count(), 0)
+        self.assertGreater(TeamUnlock.objects.filter(team_puzzle_progress__team=team).count(), 0)
+        self.assertGreater(TeamPuzzleData.objects.filter(team=team).count(), 0)
+        self.assertGreater(UserPuzzleData.objects.filter(user__in=team.members.all()).count(), 0)
+
+    def test_reset_progress_warnings(self):
+        self.client.force_login(self.admin_user.user)
+        player_team = TeamFactory(role=TeamRole.PLAYER)
+
+        self.episode.start_date = timezone.now() + datetime.timedelta(days=1)
+        self.episode.save()
+        url = reverse('reset_progress') + f'?team={player_team.id}'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode(response.charset)
+        self.assertIn('the team is a player team', content)
+        self.assertNotIn('the event is in progress', content)
+        self.assertNotIn('the event is over', content)
+
+        url = reverse('reset_progress') + f'?team={self.admin_team.id}'
+
+        self.episode.start_date = timezone.now() - datetime.timedelta(days=1)
+        self.episode.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode(response.charset)
+        self.assertNotIn('the team is a player team', content)
+        self.assertIn('the event is in progress', content)
+        self.assertNotIn('the event is over', content)
+
+        self.episode.start_date = timezone.now() + datetime.timedelta(days=1)
+        self.episode.save()
+        self.tenant.end_date = timezone.now() - datetime.timedelta(days=1)
+        self.tenant.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode(response.charset)
+        self.assertNotIn('the team is a player team', content)
+        self.assertNotIn('the event is in progress', content)
+        self.assertIn('the event is over', content)
+
+        self.tenant.end_date = timezone.now() + datetime.timedelta(days=1)
+        self.tenant.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode(response.charset)
+        self.assertNotIn('the team is a player team', content)
+        self.assertNotIn('the event is in progress', content)
+        self.assertNotIn('the event is over', content)
 
 
 class StatsTests(EventTestCase):

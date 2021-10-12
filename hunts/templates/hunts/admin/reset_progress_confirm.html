@@ -1,0 +1,73 @@
+{% extends 'hunts/admin/base.html' %}
+{% load render_bundle from webpack_loader %}
+
+{% block style %}
+	{% render_bundle 'hunts_admin_reset_progress' 'css' %}
+{% endblock %}
+
+{% block page_header %}
+	<h1>Reset Progress of <a href="{% url 'admin_team_detail' team.id %}"><i>{{ team.get_verbose_name }}</i></a>{% if puzzle %} on <a href="{% url 'admin:hunts_puzzle_change' puzzle.id %}"><i>{{ puzzle }}</i>{% endif %}</a>?</h1>
+{% endblock %}
+
+{% block content %}
+	{% if is_player_team %}
+		<div class="big-warning"><span>⚠ THIS TEAM IS A PLAYER TEAM! THIS IS PROBABLY WRONG! ⚠</span></div>
+	{% endif %}
+
+	{% if event_over %}
+		<div class="big-warning"><span>⚠ THE EVENT IS OVER! THIS IS PROBABLY WRONG! ⚠</span></div>
+	{% endif %}
+
+	{% if event_in_progress %}
+		<div class="big-warning"><span>⚠ THE EVENT IS IN PROGRESS! BE VERY CAREFUL! ⚠</span></div>
+	{% endif %}
+
+	<p>This <b>{{ team.role|lower }}</b> team has <b>{{ team.members.count }}</b> members:
+		{% for member in team.members.all %}{% if not forloop.first %}{% if not forloop.last %}, {% else %} and{% endif %}{% endif %} {{ member.user.username }}{% endfor %}
+	</p>
+	{% if puzzle %}
+	<p>
+		The team has currently made {{ guesses }} guesses on this puzzle,
+		{% if opened %}has {% else %}has not {% endif %} opened it and
+		{% if solved %}has {% else %}has not {% endif %} solved it.
+	</p>
+	{% else %}
+		<p>
+			The team has currently made {{ guesses }} guesses on {{ guessed_puzzles }} puzzle{{ guessed_puzzles|pluralize }},
+			has solved {{ solved_puzzles }} and looked at a further {{ in_progress_puzzles }}.
+		</p>
+	{% endif %}
+
+	<p>This operation will delete <b>ALL</b> of the following objects associated with this team{% if puzzle %} and puzzle{% endif %}:</p>
+	{% with puzzle_phrase=puzzle|yesno:"the puzzle,any puzzles" %}
+	<ul>
+		<li><code>Guesses</code>: the team will not have made any guesses on {{ puzzle_phrase }}</li>
+		<li><code>TeamPuzzleProgress</code>: the team will not have started or answered {{ puzzle_phrase }}; they will have no hints</li>
+		<li><code>TeamUnlock</code>: the team will not have any unlocks visible on {{ puzzle_phrase }}</li>
+		<li><code>TeamPuzzleData</code>: any per-team custom data associated with {{ puzzle_phrase }} for this team</li>
+		<li><code>UserPuzzleData</code>: any per-user custom data associated with {{ puzzle_phrase }} for each user on the team</li>
+	</ul>
+	{% endwith %}
+	<p>Are you sure you wish to continue? THIS OPERATION IS IRREVERSIBLE!</p>
+
+	<form method="post">
+		{% csrf_token %}
+		{% for field in form.visible_fields %}
+			{% if field.field.widget.input_type == 'checkbox' %}
+			<p>
+				{{ field.errors }}
+				<label>{{ field }} {{ field.label }}</label>
+			</p>
+			{% else %}
+			<p>
+				{{ field.label_tag }} {{ field }}
+			</p>
+			{% endif %}
+		{% endfor %}
+		{% for field in form.hidden_fields %}
+			{{ field }}
+		{% endfor %}
+		<input type="submit" value="Reset Progress">
+	</form>
+
+{% endblock %}

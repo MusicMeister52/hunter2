@@ -13,6 +13,8 @@
 
 from django.contrib import admin
 
+from enumfields.admin import EnumFieldListFilter
+
 from .forms import TeamForm
 from . import models
 
@@ -20,9 +22,12 @@ from . import models
 @admin.register(models.Team)
 class TeamAdmin(admin.ModelAdmin):
     form = TeamForm
+    change_form_template = 'hunts/admin/change_team.html'
     ordering = ['at_event', 'name']
     list_display = ('the_name', 'at_event', 'role', 'member_count')
     list_display_links = ('the_name', )
+    list_filter = (('role', EnumFieldListFilter),)
+    search_fields = ('name', 'members__user__username')
     readonly_fields = ('token', )
 
     def get_queryset(self, request):

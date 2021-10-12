@@ -1,0 +1,21 @@
+.big-warning {
+    background: repeating-linear-gradient(
+            45deg,
+            #fefe11,
+            #fefe11 20px,
+            #111 20px,
+            #111 40px
+    );
+    /*text-shadow: 0 0 20px white, 0 0 20px white, 0 0 20px white;*/
+    padding: 12pt;
+    border: 4pt solid black;
+    border-radius: 6pt;
+    text-align: center;
+    font-size: 2rem;
+    > span {
+        background: yellow;
+        border-radius: 3pt;
+        padding: 6pt;
+        font-weight: bolder;
+    }
+}

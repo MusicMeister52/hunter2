@@ -18,10 +18,10 @@ import tarfile
 from collections import defaultdict
 from datetime import timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.files import File
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F
+from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Subquery, Q, F, Min
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -35,9 +35,8 @@ from django.views.generic.edit import FormView
 from events.models import Attendance
 from events.utils import annotate_userprofile_queryset_with_seat
 from teams.models import Team, TeamRole
-from teams.permissions import is_admin_for_event
-from .mixins import PuzzleAdminMixin
-from ..forms import BulkUploadForm
+from .mixins import PuzzleAdminMixin, EventAdminMixin, EventAdminJSONMixin
+from ..forms import BulkUploadForm, ResetProgressForm
 from .. import models
 
 
@@ -76,26 +75,16 @@ class BulkUpload(LoginRequiredMixin, PuzzleAdminMixin, FormView):
         return self.render_to_response(context)
 
 
-class AdminIndex(LoginRequiredMixin, View):
+class AdminIndex(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/index.html',
         )
 
 
-class Guesses(LoginRequiredMixin, View):
+class Guesses(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/guesses.html',
@@ -106,16 +95,8 @@ class Guesses(LoginRequiredMixin, View):
 # will see virtually no difference, but multiple people observing the page will not cause additional
 # load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
 @method_decorator(cache.cache_page(5), name='dispatch')
-class GuessesList(LoginRequiredMixin, View):
+class GuessesList(EventAdminJSONMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            return JsonResponse({
-                'result': 'Forbidden',
-                'message': 'Must be an admin to list guesses',
-            }, status=403)
-
         episode = request.GET.get('episode')
         puzzle = request.GET.get('puzzle')
         team = request.GET.get('team')
@@ -213,13 +194,8 @@ class GuessesList(LoginRequiredMixin, View):
         })
 
 
-class Stats(LoginRequiredMixin, View):
+class Stats(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/stats.html',
@@ -229,13 +205,8 @@ class Stats(LoginRequiredMixin, View):
 
 # 5 seconds is the default refresh interval on the page
 @method_decorator(cache.cache_page(5), name='dispatch')
-class StatsContent(LoginRequiredMixin, View):
+class StatsContent(EventAdminJSONMixin, View):
     def get(self, request, episode_id=None):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         now = timezone.now()
         end_time = min(now, request.tenant.end_date) + timedelta(minutes=10)
 
@@ -311,26 +282,16 @@ class StatsContent(LoginRequiredMixin, View):
         return JsonResponse(data)
 
 
-class EpisodeList(LoginRequiredMixin, View):
+class EpisodeList(EventAdminJSONMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return JsonResponse([{
             'id': episode.pk,
             'name': episode.name
         } for episode in models.Episode.objects.filter(event=request.tenant)], safe=False)
 
 
-class Progress(LoginRequiredMixin, View):
+class Progress(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         return TemplateResponse(
             request,
             'hunts/admin/progress.html',
@@ -340,13 +301,8 @@ class Progress(LoginRequiredMixin, View):
 
 # The cache timeout of 5 seconds is set equal to the refresh interval used on the page.
 @method_decorator(cache.cache_page(5), name='dispatch')
-class ProgressContent(LoginRequiredMixin, View):
+class ProgressContent(EventAdminJSONMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-
-        if not admin:
-            raise PermissionDenied
-
         puzzles = models.Puzzle.objects.filter(
             episode_id__isnull=False
         ).select_related(
@@ -451,16 +407,10 @@ class ProgressContent(LoginRequiredMixin, View):
         return JsonResponse(data)
 
 
-class TeamAdmin(LoginRequiredMixin, View):
+class TeamAdmin(EventAdminMixin, View):
     def get(self, request):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-        event = request.tenant
-
-        if not admin:
-            raise PermissionDenied
-
         context = {
-            'teams': Team.objects.filter(at_event=event)
+            'teams': Team.objects.filter(at_event=request.tenant)
         }
 
         return TemplateResponse(
@@ -470,19 +420,14 @@ class TeamAdmin(LoginRequiredMixin, View):
         )
 
 
-class TeamAdminDetail(LoginRequiredMixin, View):
+class TeamAdminDetail(EventAdminMixin, View):
     def get(self, request, team_id):
-        admin = is_admin_for_event.test(request.user, request.tenant)
-        event = request.tenant
-
-        if not admin:
-            raise PermissionDenied
-
         team = get_object_or_404(Team, pk=team_id)
-        members = annotate_userprofile_queryset_with_seat(team.members, event)
+        members = annotate_userprofile_queryset_with_seat(team.members, request.tenant)
 
         context = {
             'team': team,
+            'player_role': TeamRole.PLAYER,
             'members': members,
         }
 
@@ -493,13 +438,9 @@ class TeamAdminDetail(LoginRequiredMixin, View):
         )
 
 
-class TeamAdminDetailContent(LoginRequiredMixin, View):
+class TeamAdminDetailContent(EventAdminJSONMixin, View):
     def get(self, request, team_id):
-        admin = is_admin_for_event.test(request.user, request.tenant)
         event = request.tenant
-
-        if not admin:
-            raise PermissionDenied
 
         team = get_object_or_404(Team, pk=team_id)
 
@@ -579,6 +520,9 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
                 'id': tp_progress.puzzle.id,
                 'num_guesses': tp_progress.num_guesses,
             }
+            if team.role != TeamRole.PLAYER:
+                puzzle_info['reset_url'] = reverse('reset_progress') + f'?team={team.id}&puzzle={tp_progress.puzzle.id}'
+
             if tp_progress.solved_by:
                 solved_puzzles.append({
                     **puzzle_info,
@@ -644,3 +588,96 @@ class TeamAdminDetailContent(LoginRequiredMixin, View):
         }
 
         return JsonResponse(response)
+
+
+class ResetProgress(EventAdminMixin, View):
+    def _setup(self):
+        try:
+            team_id = self.request.GET['team']
+        except KeyError:
+            raise Http404
+
+        self.team = get_object_or_404(Team, pk=team_id)
+        puzzle_id = self.request.GET.get('puzzle')
+        if puzzle_id:
+            self.puzzle = get_object_or_404(models.Puzzle, pk=puzzle_id)
+        else:
+            self.puzzle = None
+
+        self.event = self.team.at_event
+
+    def _get_warnings(self):
+        # Create some warnings for situations admins probably shouldn't be using this
+        is_player_team = self.team.role == TeamRole.PLAYER
+        event_over = self.event.is_over()
+        event_in_progress = (
+            self.event.episode_set.aggregate(start_date=Min('start_date'))['start_date'] < timezone.now() and
+            not self.event.is_over()
+        )
+        return {
+            'is_player_team': is_player_team,
+            'event_over': event_over,
+            'event_in_progress': event_in_progress,
+        }
+
+    def get(self, request):
+        self._setup()
+        form = ResetProgressForm(warnings=self._get_warnings())
+        return self.common_response(form)
+
+    def post(self, request):
+        self._setup()
+        form = ResetProgressForm(request.POST, warnings=self._get_warnings())
+        if form.is_valid():
+            self.reset_progress()
+            return HttpResponseRedirect(reverse('admin_team_detail', kwargs={'team_id': self.team.id}))
+        return self.common_response(form)
+
+    def common_response(self, form):
+        # Gather some information for the admin to sanity check
+        guesses = models.Guess.objects.filter(by_team=self.team)
+        if self.puzzle:
+            tpp, _ = models.TeamPuzzleProgress.objects.get_or_create(team=self.team, puzzle=self.puzzle)
+            info = {
+                'guesses': guesses.filter(for_puzzle=self.puzzle).count(),
+                'solved': tpp.solved_by_id is not None,
+                'opened': tpp.start_time is not None,
+            }
+        else:
+            info = {
+                'guesses': guesses.count(),
+                'solved_puzzles': models.TeamPuzzleProgress.objects.filter(
+                    team=self.team, solved_by__isnull=False
+                ).count(),
+                'in_progress_puzzles': models.TeamPuzzleProgress.objects.filter(
+                    team=self.team, start_time__isnull=False, solved_by__isnull=True
+                ).count(),
+                'guessed_puzzles': models.Puzzle.objects.filter(
+                    guess__by_team=self.team
+                ).order_by().values('id').distinct().count(),
+            }
+
+        context = {
+            'form': form,
+            'team': self.team,
+            'puzzle': self.puzzle,
+            **info,
+            **self._get_warnings()
+        }
+        return TemplateResponse(
+            self.request,
+            'hunts/admin/reset_progress_confirm.html',
+            context
+        )
+
+    def reset_progress(self):
+        if self.puzzle:
+            puzzle_filter = Q(puzzle=self.puzzle)
+            guess_puzzle_filter = Q(for_puzzle=self.puzzle)
+        else:
+            puzzle_filter = Q()
+            guess_puzzle_filter = Q()
+        models.Guess.objects.filter(guess_puzzle_filter, by_team=self.team).delete()
+        models.TeamPuzzleProgress.objects.filter(puzzle_filter, team=self.team).delete()
+        models.TeamPuzzleData.objects.filter(puzzle_filter, team=self.team).delete()
+        models.UserPuzzleData.objects.filter(puzzle_filter, user__in=self.team.members.all()).delete()
