@@ -65,7 +65,7 @@ RUN --mount=type=cache,target=/root/.cache/luarocks \
 
 
 # Build the production webpack'ed assets
-FROM node:16.11.0-alpine3.14@sha256:423758cf88673bbeaf6e89425a668892ec9115c4c3a467fd45af15b989338dc4 as webpack_build
+FROM node:16.11.0-alpine3.14@sha256:7fa5235f5ccbda27ea38a3f262e47660ae86142c8433f6ba2fb8c87b7269fe36 as webpack_build
 
 WORKDIR /opt/hunter2/src
 
