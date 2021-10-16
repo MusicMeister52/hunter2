@@ -109,3 +109,16 @@ iframe#runtime {
 .popover label {
     margin-bottom: 0;
 }
+
+.new-clue {
+    background-color: yellow;
+}
+
+@keyframes new-clue-fading {
+    from {background-color: yellow;}
+    to {background-color: inherit;}
+}
+.new-clue-fading {
+    animation-duration: 5s;
+    animation-name: new-clue-fading;
+}

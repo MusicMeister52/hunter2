@@ -245,6 +245,8 @@ function updateUnlocks() {
     })
     .append('ul')
     .attr('class', 'unlock-texts')
+    .classed('new-clue', function(d) {return d[1].new})
+    .each(function(d) {if (d[1].new) {intersectionObserver.observe(this)}})
   subList.append('li')
     .html(function(d) { return `<b>${d[1].unlock}</b>` })
   list.exit()
@@ -265,21 +267,26 @@ function updateUnlocks() {
     .html(function (d) {
       return `${d[1].time}: <b>${d[1].hint}</b>`
     })
+  entries.forEach((entry) => {
+    entry[1].new = false
+  })
 }
 
 function createBlankUnlock(uid) {
-  unlocks.set(uid, {'unlock': null, 'guesses': [], 'hints': {}})
+  unlocks.set(uid, {'unlock': null, 'guesses': [], 'hints': {}, 'new': true})
 }
 
 function receivedNewUnlock(content) {
   if (!(unlocks.has(content.unlock_uid))) {
     createBlankUnlock(content.unlock_uid)
   }
-  unlocks.get(content.unlock_uid).unlock = content.unlock
+  let unlockInfo = unlocks.get(content.unlock_uid)
+  unlockInfo.unlock = content.unlock
   var guess = encode(content.guess)
-  if (!unlocks.get(content.unlock_uid).guesses.includes(guess)) {
-    unlocks.get(content.unlock_uid).guesses.push(guess)
+  if (!unlockInfo.guesses.includes(guess)) {
+    unlockInfo.guesses.push(guess)
   }
+  unlockInfo.new = true
   updateUnlocks()
 }
 
@@ -331,14 +338,19 @@ function updateHints() {
     .html(function (d) {
       return `${d[1].time}: <b>${d[1].hint}</b>`
     })
+    .classed('new-clue', function(d) {return d[1].new})
+    .each(function(d) {if (d[1].new) {intersectionObserver.observe(this)}})
   list.exit()
     .remove()
+  entries.forEach((e) => {
+    e[1].new = false
+  })
 }
 
 
 function receivedNewHint(content) {
   if (content.depends_on_unlock_uid === null) {
-    hints[content.hint_uid] = {'time': content.time, 'hint': content.hint}
+    hints[content.hint_uid] = {'time': content.time, 'hint': content.hint, 'new': true}
     updateHints()
   } else {
     if (!(unlocks.has(content.depends_on_unlock_uid))) {
@@ -366,6 +378,19 @@ function receivedDeleteHint(content) {
 function receivedError(content) {
   throw content.error
 }
+
+function intersectionCallback(entries) {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('new-clue-fading')
+      entry.target.addEventListener('animationend', (e) => {
+        e.target.classList.remove('new-clue', 'new-clue-fading')
+      })
+      intersectionObserver.unobserve(entry.target)
+    }
+  })
+}
+const intersectionObserver = new IntersectionObserver(intersectionCallback)
 
 var lastUpdated
 
