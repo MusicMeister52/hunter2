@@ -24,6 +24,18 @@
       "updateTypes": ["patch", "pin", "build", "digest", "lockFileMaintenance"],
       "automerge": true,
       "automergeType": "branch"
+    },
+    {
+      "matchPackagePatterns": [ "asgiref", "channels", "daphne" ],
+      "groupName": "channels"
+    },
+    {
+      "matchPackagePatterns": [ "django-webpack-loader", "webpack-bundle-tracker" ],
+      "groupName": "django-webpack"
+    },
+    {
+      "matchPackagePatterns": [ "pytest" ],
+      "groupName": "pytest"
     }
   ],
   "pinDigests": true,
