@@ -10,6 +10,7 @@ import 'hunter2/js/base'
 import 'hunter2/js/csrf.js'
 
 import '../scss/puzzle.scss'
+import { SocketHandler, setupNotifications} from './puzzleWebsocketHandlers'
 
 /* global unlocks, hints */
 
@@ -167,11 +168,6 @@ function addSVG() {
 
   var defs = svg.append('defs')
 
-  /*var filter = defs.append("filter")
-		.attr("id", "drop-shadow")
-		.attr("x", "0")
-		.attr("y", "0")
-		.attr(*/
   var filter = defs.append('filter')
     .attr('id', 'drop-shadow')
     .attr('width', '200%')
@@ -249,6 +245,8 @@ function updateUnlocks() {
     })
     .append('ul')
     .attr('class', 'unlock-texts')
+    .classed('new-clue', function(d) {return d[1].new})
+    .each(function(d) {if (d[1].new) {intersectionObserver.observe(this)}})
   subList.append('li')
     .html(function(d) { return `<b>${d[1].unlock}</b>` })
   list.exit()
@@ -269,21 +267,26 @@ function updateUnlocks() {
     .html(function (d) {
       return `${d[1].time}: <b>${d[1].hint}</b>`
     })
+  entries.forEach((entry) => {
+    entry[1].new = false
+  })
 }
 
 function createBlankUnlock(uid) {
-  unlocks.set(uid, {'unlock': null, 'guesses': [], 'hints': {}})
+  unlocks.set(uid, {'unlock': null, 'guesses': [], 'hints': {}, 'new': true})
 }
 
 function receivedNewUnlock(content) {
   if (!(unlocks.has(content.unlock_uid))) {
     createBlankUnlock(content.unlock_uid)
   }
-  unlocks.get(content.unlock_uid).unlock = content.unlock
+  let unlockInfo = unlocks.get(content.unlock_uid)
+  unlockInfo.unlock = content.unlock
   var guess = encode(content.guess)
-  if (!unlocks.get(content.unlock_uid).guesses.includes(guess)) {
-    unlocks.get(content.unlock_uid).guesses.push(guess)
+  if (!unlockInfo.guesses.includes(guess)) {
+    unlockInfo.guesses.push(guess)
   }
+  unlockInfo.new = true
   updateUnlocks()
 }
 
@@ -335,14 +338,19 @@ function updateHints() {
     .html(function (d) {
       return `${d[1].time}: <b>${d[1].hint}</b>`
     })
+    .classed('new-clue', function(d) {return d[1].new})
+    .each(function(d) {if (d[1].new) {intersectionObserver.observe(this)}})
   list.exit()
     .remove()
+  entries.forEach((e) => {
+    e[1].new = false
+  })
 }
 
 
 function receivedNewHint(content) {
   if (content.depends_on_unlock_uid === null) {
-    hints[content.hint_uid] = {'time': content.time, 'hint': content.hint}
+    hints[content.hint_uid] = {'time': content.time, 'hint': content.hint, 'new': true}
     updateHints()
   } else {
     if (!(unlocks.has(content.depends_on_unlock_uid))) {
@@ -371,24 +379,37 @@ function receivedError(content) {
   throw content.error
 }
 
+function intersectionCallback(entries) {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('new-clue-fading')
+      entry.target.addEventListener('animationend', (e) => {
+        e.target.classList.remove('new-clue', 'new-clue-fading')
+      })
+      intersectionObserver.unobserve(entry.target)
+    }
+  })
+}
+const intersectionObserver = new IntersectionObserver(intersectionCallback)
+
 var lastUpdated
 
 function openEventSocket() {
   const socketHandlers = {
-    'announcement': window.alertList.addAnnouncement,
-    'delete_announcement': window.alertList.deleteAnnouncement,
-    'new_guesses': receivedNewAnswers,
-    'old_guesses': receivedOldAnswers,
-    'solved': receivedSolvedMsg,
-    'new_unlock': receivedNewUnlock,
-    'old_unlock': receivedNewUnlock,
-    'change_unlock': receivedChangeUnlock,
-    'delete_unlock': receivedDeleteUnlock,
-    'delete_unlockguess': receivedDeleteUnlockGuess,
-    'new_hint': receivedNewHint,
-    'old_hint': receivedNewHint,
-    'delete_hint': receivedDeleteHint,
-    'error': receivedError,
+    'announcement': new SocketHandler(window.alertList.addAnnouncement, true, 'New announcement'),
+    'delete_announcement': new SocketHandler(window.alertList.deleteAnnouncement),
+    'new_guesses': new SocketHandler(receivedNewAnswers),
+    'old_guesses': new SocketHandler(receivedOldAnswers),
+    'solved': new SocketHandler(receivedSolvedMsg, true, 'Puzzle solved'),
+    'new_unlock': new SocketHandler(receivedNewUnlock, true, 'New unlock'),
+    'old_unlock': new SocketHandler(receivedNewUnlock),
+    'change_unlock': new SocketHandler(receivedChangeUnlock, true, 'Updated unlock'),
+    'delete_unlock': new SocketHandler(receivedDeleteUnlock),
+    'delete_unlockguess': new SocketHandler(receivedDeleteUnlockGuess),
+    'new_hint': new SocketHandler(receivedNewHint, true, 'New hint'),
+    'old_hint': new SocketHandler(receivedNewHint),
+    'delete_hint': new SocketHandler(receivedDeleteHint),
+    'error': new SocketHandler(receivedError),
   }
 
   var ws_scheme = (window.location.protocol == 'https:' ? 'wss' : 'ws') + '://'
@@ -411,7 +432,11 @@ function openEventSocket() {
       throw `Invalid message type: ${data.type}, content: ${data.content}`
     } else {
       var handler = socketHandlers[data.type]
-      handler(data.content)
+      if (typeof handler === 'function') {
+        handler(data.content)
+      } else {
+        handler.handle(data.content)
+      }
     }
   }
   sock.onerror = function() {
@@ -463,6 +488,7 @@ $(function() {
   }
   field.on('input', fieldKeyup)
 
+  setupNotifications()
   openEventSocket()
 
   $('#answer-form').submit(function(e) {

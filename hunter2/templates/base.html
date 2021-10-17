@@ -72,6 +72,10 @@
 </head>
 <body class="d-flex flex-column h-100">
 	{% analytical_body_top %}
+	<audio id="notification-sound" class="d-none">
+		<source src="/static/ping.ogg" type="audio/ogg">
+		<source src="/static/ping.mp3" type="audio/mpeg">
+	</audio>
 
 	<nav class="navbar navbar-expand-md bg-dark navbar-dark">
 		{% block topbar_title %}

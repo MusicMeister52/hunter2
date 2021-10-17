@@ -3,7 +3,7 @@
 		v-for="announcement in announcements"
 		v-bind:key="announcement.id"
 		v-bind:variant="announcement.variant"
-		dismissible="false"
+		v-bind:dismissible="announcement.dismissible"
 		show
 	>
 		<h2 v-html="announcement.title"></h2><p v-html="announcement.text"></p>
@@ -12,7 +12,7 @@
 		v-for="message in messages"
 		v-bind:key="message.text"
 		v-bind:variant="message.variant"
-		dismissible="true"
+		dismissible
 		show
 	>
 		<p>{{ message.text }}</p>

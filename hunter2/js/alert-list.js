@@ -12,7 +12,13 @@ export default {
   },
   methods: {
     addAnnouncement: function(announcement) {
-      this.$set(this.announcements, announcement.announcement_id, {'text': announcement.message, 'title': announcement.title, 'variant': announcement.variant})
+      announcement = {dismissible: false, ...announcement}
+      this.$set(this.announcements, announcement.announcement_id, {
+        text: announcement.message,
+        title: announcement.title,
+        variant: announcement.variant,
+        dismissible: announcement.dismissible,
+      })
     },
     deleteAnnouncement: function(announcement) {
       if (!(announcement.announcement_id in this.announcements)) {

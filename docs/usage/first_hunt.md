@@ -197,6 +197,21 @@ dependent hint you added.
 Previewing the puzzle
 ```
 
+Now would be a good time to look around the puzzle page and get familiar with everything on it in case your users have
+questions. Some players, especially those used to other hunts or hunt websites, may need extra help understanding the
+different type of clues, for example. The notification options, opened through the bell icon, may also present issues
+due to the interactions with browser permissions.
+
+### Notifications
+
+Players have the option of turning on browser notifications and sound notifications. Enabling browser notifications will
+prompt the user to give permission in their browser; if this second step is not done they will not get notifications.
+
+Enabling sound notifications will not prompt for permission, because there is no API to do so. Normally this is not an
+issue because as long as the player has clicked on the page, permission is not necessary (at least in Firefox and
+Chrome; browsers vary on this). If your players encounter issues with this you may be called upon to provide some tech
+support! Knowing how to turn on permissions in the major browsers should be all you need.
+
 ## Regexes and Other Advanced Options
 
 Before we leave the puzzle admin page behind, at the top click the "show advanced options" button. Scroll back down

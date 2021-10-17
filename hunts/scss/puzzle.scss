@@ -99,3 +99,26 @@ iframe#runtime {
     height: 100%;
     width: 100%;
 }
+
+#notification-button {
+    float: right;
+    font-size: 1.5rem;
+    text-shadow: 0 0 6px white;
+}
+
+.popover label {
+    margin-bottom: 0;
+}
+
+.new-clue {
+    background-color: yellow;
+}
+
+@keyframes new-clue-fading {
+    from {background-color: yellow;}
+    to {background-color: inherit;}
+}
+.new-clue-fading {
+    animation-duration: 5s;
+    animation-name: new-clue-fading;
+}

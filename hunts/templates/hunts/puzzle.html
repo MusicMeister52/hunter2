@@ -49,6 +49,16 @@
 </section>
 
 <section id="puzzle-clues">
+<a id="notification-button" class="btn btn-outline-light" title="Notifications" data-toggle="popover" tabindex="-1">🔕</a>
+<div id="notification-popover" class="d-none">
+	<div id="notification-popover-content">
+		<p>Notify on significant puzzle events with:</p>
+		<label><input type="checkbox" id="browser-notifications-cb"/> Browser Notifications</label><br>
+		<span id="notification-permission-msg" class="small">Permission must be granted in the browser!</span><br>
+		<label><input type="checkbox" id="sound-notifications-cb"/> Sound</label><br>
+		<span id="sound-permission-msg" class="small">You may need to enable autoplay audio to reliably hear sound notifications</span>
+	</div>
+</div>
 <h3>Clues</h3>
 {% if not hints and not unlocks %}
 	<i>None yet</i>
