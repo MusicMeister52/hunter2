@@ -292,8 +292,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
             'guess': progress.solved_by.guess,
             'by': progress.solved_by.by.username
         }
-        episode = progress.solved_by.for_puzzle.episode
-        next = episode.next_puzzle(progress.solved_by.by_team)
+        episode = progress.puzzle.episode
+        next = episode.next_puzzle(progress.team)
         if next:
             next = episode.get_puzzle(next)
             content['text'] = f'to the next puzzle'
@@ -405,7 +405,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
     def send_old_guesses(self, start):
         guesses = Guess.objects.filter(for_puzzle=self.puzzle, by_team=self.team).order_by('given')
         if start != 'all':
-            start = datetime.fromtimestamp(int(start) // 1000, timezone.utc)
+            start = datetime.fromtimestamp(int(start) / 1000, timezone.utc)
             # TODO: `start` is given by the client and is the timestamp of the most recently received guess.
             # the following could miss guesses if guesses get the same timestamp, though this is very unlikely.
             guesses = guesses.filter(given__gt=start)
@@ -413,6 +413,17 @@ class PuzzleEventWebsocket(HuntWebsocket):
             # Even though these are "old" they're "new" in the sense that the user will never have
             # seen them before so should trigger the same UI effect.
             msg_type = 'new_guesses'
+
+            # If the puzzle was solved since the time requested, inform the client.
+            try:
+                progress = TeamPuzzleProgress.objects.select_related('puzzle', 'solved_by__by').seal().get(puzzle=self.puzzle, team=self.team)
+                # .get() doesn't transfer members to the retrieved object: avoid select_related for them
+                progress.puzzle = self.puzzle
+                progress.team = self.team
+                if progress.solved_by and progress.solved_by.given > start:
+                    self.send_json({'type': 'solved', 'content': self._solved_json(progress)})
+            except TeamPuzzleProgress.DoesNotExist:
+                pass
         else:
             msg_type = 'old_guesses'
 

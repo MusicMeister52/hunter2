@@ -2357,6 +2357,19 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content'][0]['guess'], g.guess)
         self.assertEqual(output['content'][0]['correct'], True)
         self.assertEqual(output['content'][0]['by'], user.user.username)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        # Request guesses again (as if we had reconnected) and check we get the forwarding message
+        self.run_async(comm.send_json_to)({'type': 'guesses-plz', 'from': g.given.astimezone(timezone.utc).timestamp() * 1000})
+        output = self.receive_json(comm, 'Websocket did not send notification of having solved the puzzle while disconnected')
+        self.assertEqual(output['type'], 'solved')
+        self.assertEqual(output['content']['guess'], g.guess)
+        self.assertEqual(output['content']['by'], user.user.username)
+        output = self.receive_json(comm, 'Websocket did nothing in response to requesting guesses again')
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertEqual(output['content'][0]['guess'], g.guess)
+        self.assertEqual(output['content'][0]['by'], user.user.username)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # Now add another puzzle. We should be redirected to that puzzle, since it is the
         # unique unfinished puzzle on the episode.
@@ -2409,6 +2422,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['unlock'], 'unlock_1')
         self.assertEqual(output['content']['unlock_uid'], ua1.unlock.compact_id)
         self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        self.run_async(comm.disconnect())
 
     def test_websocket_receives_guess_updates(self):
         user = TeamMemberFactory()
