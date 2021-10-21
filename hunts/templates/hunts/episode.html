@@ -1,7 +1,40 @@
+{% load tz %}
+
 {% if position %}
 	<div id="episode-complete" class="episode-completed-{{ position }}"><p>Your team came {{ position_text }} in this episode!</p></div>
 {% endif %}
 {% if flavour %}<div class="episode-flavour">{{ flavour | safe }}</div>{% endif %}
+{% if not puzzles and upcoming_time %}
+	{% spaceless %}
+		{% comment %}
+			Internally the episode is available and the puzzles are not, but to the player
+			this may as well be the episode being "unavailable"
+		{% endcomment %}
+		This episode will become available at
+		<span class="localtime" data-utc="{{ upcoming_time|utc|date:"c" }}" data-format="TIME_WITH_SHORT_OFFSET">
+			{{ upcoming_time|time:"H:i:s O" }}
+		</span>
+		{% if not upcoming_in_next_day %} on {{ upcoming_time.date.isoformat }}{% endif %}
+		({{ upcoming_time | timeuntil }} from now.)
+		{% if headstart %}
+		This includes your headstart of {{ headstart }}.
+		{% endif %}
+	{% endspaceless %}
+{% elif upcoming_time %}
+	{% spaceless %}
+		The next puzzle will become available at
+		<span class="localtime" data-utc="{{ upcoming_time|utc|date:"c" }}" data-format="TIME_WITH_SHORT_OFFSET">
+			{{ upcoming_time|time:"H:i:s O" }}
+		</span>
+		{% if not upcoming_in_next_day %} on {{ upcoming_time.date.isoformat }}{% endif %}
+		({% if not upcoming_under_1_minute %}{{ upcoming_time | timeuntil }}
+		{% else %}less than one minute{% endif %}
+		from now.)
+		{% if headstart %}
+			This includes your headstart of {{ headstart }}.
+		{% endif %}
+	{% endspaceless %}
+{% endif %}
 <div class="container-fluid puzzle-list">
 {% for puzzle in puzzles %}
 {% if puzzle.solved %}

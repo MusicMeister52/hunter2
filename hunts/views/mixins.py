@@ -73,7 +73,7 @@ class PuzzleUnlockedMixin():
         if not request.accepts('text/html'):
             raise PermissionDenied
 
-        if not request.puzzle.started():
+        if not request.puzzle.started_for(request.team):
             return TemplateResponse(
                 request,
                 'hunts/puzzlenotstarted.html',

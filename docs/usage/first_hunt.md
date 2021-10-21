@@ -73,7 +73,9 @@ within it, or something related to the story.
 
 *Flavour text* is optional. Many players skip it, but some enjoy a bit of story!
 
-Before the *start date*, the puzzles in the episode will not be visible except to admins.
+Before the *start date*, the episode will not be visible. If you want the episode to be visible in advance but have the
+puzzles on them be unavailable until a certain time, set the *start date* property of the puzzles to that date and time.
+Players will see a message telling them when the first puzzle will be available.
 Note that episodes have start dates; events have end dates. Episodes and puzzles are available until the entire event
 ends, and the event starts whenever the earliest episode starts.
 
@@ -120,8 +122,16 @@ Adding a puzzle
 *Solution content* can be viewed when the hunt is over. It can also be useful during the hunt so admins can familiarise
 themselves with the puzzle.
 
-*Start date* is only relevant for puzzles in parallel episodes: in this case it is the point at which the puzzle appears
-and becomes available.
+*Start date* is the point at which the puzzle appears and becomes available. It can be left blank to just use the same
+value as the episode, otherwise it must be after the start date of the episode and just as with that value, a team's
+headstart for the episode applies to the start date of puzzles.
+
+```{note}
+If you specify start dates for your puzzles, this affects the order of the puzzles within the episode. If you have
+multiple puzzles starting at the same time, the arrow buttons can be used to re-order them, but you cannot have a sequence
+of puzzles A, B, C where B starts before A. In particular in a linear episode if solving A unlocks B then it makes no
+sense for A to have a start date before that of B!
+```
 
 Remember that you can define which episodes an episode receives headstart from? The amount each puzzle gives is defined
 in *headstart granted*.

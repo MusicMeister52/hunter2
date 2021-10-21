@@ -45,7 +45,11 @@ class EpisodePrequel(edge_factory('hunts.Episode', concrete=False)):
 class Episode(node_factory(EpisodePrequel), SealableModel):
     name = models.CharField(max_length=255)
     flavour = models.TextField(blank=True, help_text='Optional story or thematic preamble, displayed alongside the list of puzzles')
-    start_date = models.DateTimeField()
+    start_date = models.DateTimeField(
+        help_text='Before this point, the episode is invisible and puzzles are unavailable. The actual '
+                  'time is affected by headstarts. Puzzles may also have their own start date which '
+                  'must also be passed.'
+    )
     event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING)
     parallel = models.BooleanField(default=False, help_text='Allow players to answer riddles in this episode in any order they like')
     headstart_from = models.ManyToManyField(
@@ -61,6 +65,11 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
 
     def __str__(self):
         return f'{self.event.name} - {self.name}'
+
+    def clean(self):
+        for puzzle in self.puzzle_set.all():
+            if puzzle.start_date and puzzle.start_date < self.start_date:
+                raise ValidationError(f"Puzzle {puzzle}'s start date of {puzzle.start_date} is before this episode's")
 
     # The following 6 @property methods are aliasing the methods provided by the DAG implementation to names which make sense for our use case
 
@@ -194,24 +203,6 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         ])
         return timedelta(seconds=seconds)
 
-    def available_puzzles(self, team):
-        """Return the list of puzzles which should be visible for the given team annotated with an additional boolean `done` indicating whether the team has
-        already completed them."""
-        now = timezone.now()
-        started_puzzles = self.puzzle_set.all().annotate_solved_by(team)
-        if self.parallel:
-            started_puzzles = started_puzzles.filter(start_date__lt=now)
-        if self.parallel or self.event.end_date < now:
-            return started_puzzles
-        else:
-            result = []
-            for p in started_puzzles:
-                result.append(p)
-                if not p.solved:
-                    break
-
-            return result
-
 
 URL_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz01234356789'
 
@@ -235,11 +226,11 @@ class PuzzleQuerySet(SealableQuerySet):
 
 
 class Puzzle(OrderedModel, SealableModel):
-    order_with_respect_to = 'episode'
+    order_with_respect_to = ('episode', 'start_date')
     objects = PuzzleQuerySet.as_manager()
 
     class Meta:
-        ordering = ('episode', 'order')
+        ordering = ('episode', 'start_date', 'order')
 
     url_id = models.CharField(default=generate_url_id, max_length=8, editable=False, unique=True)
     episode = models.ForeignKey(Episode, blank=True, null=True, on_delete=models.SET_NULL)
@@ -295,8 +286,11 @@ class Puzzle(OrderedModel, SealableModel):
     )
 
     start_date = models.DateTimeField(
-        blank=True, default=timezone.now,
-        help_text='Date/Time for puzzle to start. Only applies if the puzzle is part of a parallel episode.'
+        blank=True,
+        null=True,
+        help_text='Date/Time for puzzle to start. If left blank, it will start at the same time as the episode. '
+                  'Otherwise, this time must be after that of the episode, and must be passed for the puzzle to be available, '
+                  'after taking the headstart applying to the episode into account.'
     )
     headstart_granted = models.DurationField(
         default=timedelta(),
@@ -308,6 +302,11 @@ class Puzzle(OrderedModel, SealableModel):
 
     def clean(self):
         super().clean()
+        if self.episode and self.start_date:
+            if self.start_date < self.episode.start_date:
+                raise ValidationError(f'Puzzle start date must not be before episode start date of {self.episode.start_date}.')
+            elif self.start_date >= self.episode.event.end_date:
+                raise ValidationError(f'Puzzle start date must be before episode end date of {self.episode.event.end_date}.')
         try:
             self.runtime.create(self.options).check_script(self.content)
             self.cb_runtime.create(self.cb_options).check_script(self.cb_content)
@@ -355,30 +354,40 @@ class Puzzle(OrderedModel, SealableModel):
             return False
 
         if episode.parallel:
-            return self.started()
+            return self.started_for(team)
 
+        # In the linear case, we want to check that the number of solved puzzles prior to this puzzle
+        # is equal to total number of puzzles prior to this puzzle
         prev_puzzles = Puzzle.objects.filter(
+            # lexicographically earlier than this puzzle in the (start_date, order) ordering
+            (Q(start_date__lt=self.start_date) if self.start_date else Q()) | Q(start_date=self.start_date, order__lt=self.order),
             episode=episode,
-            order__lt=self.order
         )
 
-        return prev_puzzles.solved_count(team) == prev_puzzles.count()
+        return self.started_for(team) and prev_puzzles.solved_count(team) == prev_puzzles.count()
 
-    def start_time_for(self, team):
+    def start_time_for(self, team, headstart=None):
         """Return the time this puzzle could be available for the given team
 
-        This is the episode start time factoring in headstarts for linear episodes
-        For puzzles in parallel episodes this is their individual start time.
+        Args:
+            team: the team whose start time to return
+            headstart: if supplied, the pre-calculated headstart for that team on this puzzle's episode
         """
-        return self.start_date if self.episode.parallel else self.episode.start_time_for(team)
+        if headstart is None:
+            headstart = self.episode.headstart_applied(team)
+        return (self.start_date if self.start_date else self.episode.start_date) - headstart
 
-    def started(self):
+    def started_for(self, team, headstart=None, now=None):
         """Return whether this puzzle could be available at the current time
 
-        This is always true for puzzles in linear episodes
-        Puzzles in parallel episodes become available at their individual start time.
+        Args:
+            team: the team
+            headstart: if supplied, the pre-calculated headstart for that team on this puzzle's episode
+            now: if supplied, the reference for 'now' to use, which should remain the same throughout a request.
         """
-        return not self.episode.parallel or self.start_date < timezone.now()
+        if now is None:
+            now = timezone.now()
+        return self.start_time_for(team, headstart) < now
 
     def answered_by(self, team):
         """Return whether the team has answered this puzzle. Always results in a query."""

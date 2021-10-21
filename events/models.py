@@ -9,12 +9,12 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
-
-
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 from django_tenants.models import TenantMixin, DomainMixin
+from django_tenants.utils import tenant_context
 
 from .fields import SingleTrueBooleanField
 
@@ -50,6 +50,15 @@ class Event(TenantMixin):
 
     def is_over(self):
         return self.end_date < timezone.now()
+
+    def clean(self):
+        with tenant_context(self):
+            for episode in self.episode_set.all():
+                for puzzle in episode.puzzle_set.all():
+                    if puzzle.start_date and puzzle.start_date >= self.end_date:
+                        raise ValidationError(
+                            f"End date {self.end_date} must be after puzzle {puzzle}'s start date of {puzzle.start_date}"
+                        )
 
     def save(self, verbosity=0, *args, **kwargs):
         super().save(verbosity, *args, **kwargs)

@@ -16,6 +16,7 @@ import random
 import string
 import time
 
+import factory
 import freezegun
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -688,19 +689,23 @@ class EpisodeBehaviourTests(EventTestCase):
         for puzzle in puzzles:
             GuessFactory(by=user3, by_team=team3, for_puzzle=puzzle, correct=True)
 
-        unlocked1 = episode.available_puzzles(team1)
+        url = reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()})
+        self.client.force_login(user1.user)
+        unlocked1 = self.client.get(url).context['puzzles']
         self.assertEqual(3, len(unlocked1))
         for puzzle in unlocked1[:2]:
             self.assertTrue(puzzle.solved)
         self.assertFalse(unlocked1[2].solved)
 
-        unlocked2 = episode.available_puzzles(team2)
+        self.client.force_login(user2.user)
+        unlocked2 = self.client.get(url).context['puzzles']
         self.assertEqual(4, len(unlocked2))
         for puzzle in unlocked2[:3]:
             self.assertTrue(puzzle.solved)
         self.assertFalse(unlocked2[3].solved)
 
-        unlocked3 = episode.available_puzzles(team3)
+        self.client.force_login(user3.user)
+        unlocked3 = self.client.get(url).context['puzzles']
         self.assertEqual(5, len(unlocked3))
         for puzzle in unlocked3:
             self.assertTrue(puzzle.solved)
@@ -709,17 +714,19 @@ class EpisodeBehaviourTests(EventTestCase):
         linear_episode = EpisodeFactory(parallel=False)
         num_puzzles = 10
         PuzzleFactory.create_batch(num_puzzles, episode=linear_episode)
-        user = UserProfileFactory()
-        team = TeamFactory(at_event=linear_episode.event, members=user)
+        user = TeamMemberFactory(team__at_event=linear_episode.event)
+        self.client.force_login(user.user)
+        url = reverse('episode_content', kwargs={'episode_number': linear_episode.get_relative_id()})
 
         with freezegun.freeze_time() as frozen_datetime:
             linear_episode.event.end_date = timezone.now()
-            frozen_datetime.tick(-60)  # Move a minute before the end of the event
-            team_puzzles = linear_episode.available_puzzles(team)
-            self.assertEqual(len(team_puzzles), 1, msg='Before the event ends, only the first puzzle is unlocked')
-            frozen_datetime.tick(120)  # Move a minute after the end of the event
-            team_puzzles = linear_episode.available_puzzles(team)
-            self.assertEqual(len(team_puzzles), num_puzzles, msg='After the event ends, all of the puzzles are unlocked')
+            linear_episode.event.save()
+            frozen_datetime.move_to(linear_episode.puzzle_set.last().start_date)
+            team_puzzles = self.client.get(url).context['puzzles']
+            self.assertEqual(len(team_puzzles), 1, msg='Before the event ends, only the first puzzle should be available')
+            frozen_datetime.move_to(linear_episode.event.end_date + datetime.timedelta(seconds=1))
+            team_puzzles = self.client.get(url).context['puzzles']
+            self.assertEqual(len(team_puzzles), num_puzzles, msg='After the event ends, all of the puzzles should be available')
 
     def test_puzzle_start_dates(self):
         with freezegun.freeze_time():
@@ -741,15 +748,16 @@ class EpisodeBehaviourTests(EventTestCase):
             )
             response = self.client.get(started_parallel_episode_not_started_puzzle.get_absolute_url())
             self.assertEqual(response.status_code, 403)
+            HeadstartFactory(
+                episode=started_parallel_episode,
+                team=user.team_at(self.tenant),
+                headstart_adjustment=datetime.timedelta(minutes=2)
+            )
+            response = self.client.get(started_parallel_episode_not_started_puzzle.get_absolute_url())
+            self.assertEqual(response.status_code, 200)
 
             not_started_parallel_episode = EpisodeFactory(start_date=tz_time + datetime.timedelta(minutes=1), parallel=True)
 
-            not_started_parallel_episode_started_puzzle = PuzzleFactory(
-                episode=not_started_parallel_episode,
-                start_date=tz_time - datetime.timedelta(minutes=1)
-            )
-            response = self.client.get(not_started_parallel_episode_started_puzzle.get_absolute_url())
-            self.assertEqual(response.status_code, 302)  # Not started episode overrides started puzzle
             not_started_parallel_episode_not_started_puzzle = PuzzleFactory(
                 episode=not_started_parallel_episode,
                 start_date=tz_time + datetime.timedelta(minutes=1)
@@ -771,7 +779,43 @@ class EpisodeBehaviourTests(EventTestCase):
                 start_date=tz_time + datetime.timedelta(minutes=1)
             )
             response = self.client.get(started_linear_episode_not_started_puzzle.get_absolute_url())
-            self.assertEqual(response.status_code, 200)  # Puzzle start time should be ignored for linear episode
+            self.assertEqual(response.status_code, 403)
+            HeadstartFactory(
+                episode=started_linear_episode,
+                team=user.team_at(self.tenant),
+                headstart_adjustment=datetime.timedelta(minutes=2)
+            )
+            response = self.client.get(started_linear_episode_not_started_puzzle.get_absolute_url())
+            self.assertEqual(response.status_code, 200)
+
+    def test_puzzle_start_time_validation(self):
+        event_end = self.tenant.end_date
+        episode = EpisodeFactory()
+        episode_start = episode.start_date
+
+        with self.assertRaises(ValidationError):
+            PuzzleFactory(
+                episode=episode,
+                start_date=episode_start - datetime.timedelta(minutes=1)
+            )
+
+        with self.assertRaises(ValidationError):
+            PuzzleFactory(
+                episode=episode,
+                start_date=event_end + datetime.timedelta(minutes=1)
+            )
+
+        PuzzleFactory(episode=episode, start_date=episode_start + datetime.timedelta(seconds=1))
+
+        with self.assertRaises(ValidationError):
+            episode.start_date = episode.start_date + datetime.timedelta(minutes=1)
+            episode.save()
+
+        PuzzleFactory(episode=episode, start_date=event_end - datetime.timedelta(seconds=1))
+
+        with self.assertRaises(ValidationError):
+            self.tenant.end_date = self.tenant.end_date - datetime.timedelta(minutes=1)
+            self.tenant.save()
 
     def test_headstarts(self):
         # TODO: Replace with episode sequence factory?
@@ -888,6 +932,185 @@ class EpisodeBehaviourTests(EventTestCase):
             for i, puzzle in enumerate(PuzzleFactory.create_batch(5, episode=episode)):
                 self.assertEqual(puzzle.get_relative_id(), i + 1, msg='Relative ID should match index in episode')
                 self.assertEqual(episode.get_puzzle(puzzle.get_relative_id()), puzzle, msg='A Puzzle\'s relative ID should retrieve it from its Episode')
+
+    def test_upcoming_puzzle_parallel_episode(self):
+        with freezegun.freeze_time() as frozen_datetime:
+            ep_start = timezone.now() - datetime.timedelta(minutes=60)
+            episode = EpisodeFactory(parallel=True, start_date=ep_start)
+            num_puzzles = 5
+            puzzles = PuzzleFactory.create_batch(
+                num_puzzles,
+                episode=episode,
+                start_date=factory.Iterator([timezone.now() + datetime.timedelta(seconds=i + 1) for i in range(num_puzzles)])
+            )
+            user = TeamMemberFactory(team__at_event=episode.event)
+            self.client.force_login(user.user)
+            url = reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()})
+
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when no puzzles are visible'
+            )
+            self.assertEqual(
+                upcoming_time,
+                timezone.now() + datetime.timedelta(seconds=1),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # advance time so we are 0.1 seconds past the first puzzle. The next puzzle is therefore 0.9 seconds away.
+            frozen_datetime.tick(datetime.timedelta(seconds=1.1))
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when not all puzzles are visible'
+            )
+            self.assertEqual(
+                upcoming_time,
+                timezone.now() + datetime.timedelta(seconds=0.9),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # With the first puzzle solved, we will still see an announcement for the second puzzle 0.9 seconds from now.
+            GuessFactory(for_puzzle=puzzles[0], by=user, correct=True)
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when no puzzles are visible'
+            )
+            self.assertEqual(
+                upcoming_time,
+                timezone.now() + datetime.timedelta(seconds=0.9),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # Give the team a headstart of 1.5 seconds, so we are now 0.6 seconds past the second
+            # puzzle, and 0.4 away from the third
+            HeadstartFactory(
+                team=user.team_at(episode.event),
+                episode=episode,
+                headstart_adjustment=datetime.timedelta(seconds=1.5)
+            )
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when no puzzles are visible'
+            )
+            self.assertEqual(
+                upcoming_time, timezone.now() + datetime.timedelta(seconds=0.4),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # Advance time for a total of 6 seconds (the time of the final puzzle), so we
+            # can see all puzzles and there is no upcoming one
+            frozen_datetime.tick(datetime.timedelta(seconds=6.0 - 1.1 - 1.5))
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNone(
+                upcoming_time,
+                'Episode content should not set the upcoming puzzle time when all puzzles are visible'
+            )
+
+    def test_upcoming_puzzle_linear_episode(self):
+        with freezegun.freeze_time() as frozen_datetime:
+            now = timezone.now()
+            ep_start = now - datetime.timedelta(minutes=60)
+            episode = EpisodeFactory(parallel=False, start_date=ep_start)
+            num_puzzles = 5
+            puzzles = PuzzleFactory.create_batch(
+                num_puzzles,
+                episode=episode,
+                start_date=factory.Iterator([now + datetime.timedelta(seconds=i+0.9) for i in range(num_puzzles)])
+            )
+            user = TeamMemberFactory(team__at_event=episode.event)
+            self.client.force_login(user.user)
+            url = reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()})
+
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when no puzzles are visible'
+            )
+            self.assertEqual(
+                upcoming_time,
+                timezone.now() + datetime.timedelta(seconds=0.9),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # After 1 second, the first puzzle has started and has not been solved, so the next should not
+            # be displayed as "upcoming"
+            frozen_datetime.tick(datetime.timedelta(seconds=1))
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNone(
+                upcoming_time,
+                'Episode content should not set the upcoming puzzle time when the preceding puzzle is unsolved'
+            )
+
+            # After solving the first puzzle, the second should be announced
+            GuessFactory(by=user, for_puzzle=puzzles[0], correct=True)
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when the preceding puzzle is solved'
+            )
+            self.assertEqual(
+                upcoming_time,
+                timezone.now() + datetime.timedelta(seconds=0.9),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # Solving the second puzzle, something only an admin can do
+            GuessFactory(by=user, for_puzzle=puzzles[1], correct=True)
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNotNone(
+                upcoming_time,
+                'Episode content should set the upcoming puzzle time when the preceding puzzle is solved'
+            )
+            self.assertEqual(
+                upcoming_time,
+                timezone.now() + datetime.timedelta(seconds=1.9),
+                'Upcoming puzzle time was incorrect'
+            )
+
+            # Adding a headstart so that the next puzzle appears leaves the latest visible puzzle unsolved so again
+            # we have no upcoming time.
+            HeadstartFactory(
+                team=user.team_at(episode.event),
+                episode=episode,
+                headstart_adjustment=datetime.timedelta(seconds=2.5)
+            )
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNone(
+                upcoming_time,
+                'Episode content should not set the upcoming puzzle time when the preceding puzzle is unsolved'
+            )
+
+            for pz in puzzles[2:-1]:
+                GuessFactory(by=user, for_puzzle=pz, correct=True)
+                upcoming_time = self.client.get(url).context['upcoming_time']
+                self.assertIsNotNone(
+                    upcoming_time,
+                    'Episode content should set the upcoming puzzle time when the preceding puzzle is solved'
+                )
+                self.assertEqual(
+                    upcoming_time,
+                    timezone.now() + datetime.timedelta(seconds=0.4),
+                    'Upcoming puzzle time was incorrect'
+                )
+
+                frozen_datetime.tick(datetime.timedelta(seconds=1))
+                upcoming_time = self.client.get(url).context['upcoming_time']
+                self.assertIsNone(
+                    upcoming_time,
+                    'Episode content should not set the upcoming puzzle time when the preceding puzzle is unsolved'
+                )
+
+            pz = puzzles[-1]
+            GuessFactory(by=user, for_puzzle=pz, correct=True)
+            upcoming_time = self.client.get(url).context['upcoming_time']
+            self.assertIsNone(
+                upcoming_time,
+                'Episode content should not set the upcoming puzzle time when all puzzles are solved'
+            )
 
 
 class EpisodeSequenceTests(EventTestCase):
@@ -1181,7 +1404,7 @@ class AdminContentTests(EventTestCase):
         self.episode = EpisodeFactory(event=self.tenant)
         self.admin_user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
         self.admin_team = self.admin_user.team_at(self.tenant)
-        self.puzzle = PuzzleFactory(episode=self.episode)
+        self.puzzle = PuzzleFactory(episode=self.episode, start_date=None)
         self.guesses = GuessFactory.create_batch(5, for_puzzle=self.puzzle)
         self.guesses_url = reverse('admin_guesses_list')
 
