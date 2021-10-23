@@ -50,7 +50,7 @@ pytest-django = "4.4.0"
 pytest-cov = "==3.0.0"
 pytest-shard = "0.1.2"
 [tool.poetry.dev-dependencies]
-django-silk = "4.1.0"
+django-silk = "==4.2.0"
 ipython = "==7.28.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
