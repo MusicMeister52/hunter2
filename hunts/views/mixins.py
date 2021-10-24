@@ -44,8 +44,6 @@ class EpisodeUnlockedMixin():
                 'hunts/episodenotstarted.html',
                 context={
                     'episode': request.episode.name,
-                    'startdate': request.episode.start_date - request.episode.headstart_applied(request.team),
-                    'headstart': request.episode.headstart_applied(request.team),
                 },
                 status=403,
             )
