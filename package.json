@@ -42,7 +42,7 @@
   "dependencies": {
     "@sentry/browser": "6.13.3",
     "@sentry/integrations": "6.13.3",
-    "bootstrap": "4.6.0",
+    "bootstrap": "4.6.1",
     "bootstrap-vue": "2.21.2",
     "chart.js": "3.6.0",
     "chartjs-adapter-luxon": "1.1.0",
