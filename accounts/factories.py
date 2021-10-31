@@ -83,6 +83,6 @@ class UserFactory(DjangoModelFactory):
         if self.first_name and self.last_name:
             first_letter = (unicodedata.normalize('NFKD', self.first_name).encode('ascii', 'ignore').decode('utf8'))[:1]
             last_name = (unicodedata.normalize('NFKD', self.last_name).encode('ascii', 'ignore').decode('utf8'))[:9]
-            return '{0}.{1}{2}@'.format(first_letter, last_name, n, factory.Faker('free_email_domain'))
+            return '{}.{}{}@{}'.format(first_letter, last_name, n, factory.Faker('free_email_domain'))
         else:
             return factory.Faker('ascii_safe_email')
