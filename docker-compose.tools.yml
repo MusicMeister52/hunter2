@@ -6,7 +6,7 @@ services:
     environment:
       PATH: /opt/hunter2/venv/bin:/root/.poetry/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       VIRTUAL_ENV: /opt/hunter2/venv
-    image: ${PYTHON_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/python@sha256:c8cb6cc2679229c19678abdb775c06a2f23860d7f77cb6583305061796f4e6f1}
+    image: ${PYTHON_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/python@sha256:bf8408398226c3c737d009650cdca154b5e151350f214aecbb04b5b5c0d1ddfc}
     volumes:
       - ${PWD:-.}:/opt/hunter2/src
   dot:
