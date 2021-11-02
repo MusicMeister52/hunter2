@@ -24,7 +24,7 @@ services:
     volumes:
       - ${PWD:-.}:/code
   docs:
-    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app@sha256:a1e5526c0eb95928ac029016b4dae501e65281102eaca7bbaad0c8c3b02e5744}
+    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app@sha256:8cd1985a8c826fddbce6cad0370d2e6e279a23def939a660c11c8500edfd2193}
     volumes:
       - ${PWD:-.}:/opt/hunter2/src
 
