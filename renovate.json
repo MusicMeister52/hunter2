@@ -36,6 +36,10 @@
     {
       "matchPackagePatterns": [ "pytest" ],
       "groupName": "pytest"
+    },
+    {
+      "matchPackagePrefixes": [ "registry.gitlab.com/hunter2.app/hunter2" ],
+      "enabled": false
     }
   ],
   "pinDigests": true,
