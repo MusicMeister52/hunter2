@@ -91,6 +91,7 @@ class Guesses(EventAdminMixin, View):
             {'wide': True},
         )
 
+
 # The cache timeout of 5 seconds is set equal to the refresh interval used on the page. A single user
 # will see virtually no difference, but multiple people observing the page will not cause additional
 # load (but will potentially be out of date by up to 10 instead of up to 5 seconds)

@@ -296,7 +296,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         next = episode.next_puzzle(progress.team)
         if next:
             next = episode.get_puzzle(next)
-            content['text'] = f'to the next puzzle'
+            content['text'] = 'to the next puzzle'
             content['redirect'] = next.get_absolute_url()
         else:
             content['text'] = f'back to {episode.name}'
