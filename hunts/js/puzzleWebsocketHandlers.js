@@ -44,9 +44,10 @@ function getLargestFavicon () {
     if (el.sizes[0] === 'any') return Infinity
     return (el.sizes[0] && parseInt(el.sizes[0], 10)) || 0
   }
-  return [...document.querySelectorAll('link[rel="icon"]')].reduce((a, b) => {
+  const icons = [...document.querySelectorAll('link[rel="icon"]')]
+  return icons.length > 0 ? icons.reduce((a, b) => {
     return getSize(a) > getSize(b) ? a : b
-  }).href
+  }).href : null
 }
 const icon = getLargestFavicon()
 
