@@ -55,7 +55,31 @@ class EpisodeIndex(LoginRequiredMixin, EpisodeUnlockedMixin, View):
 
 class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
     def get(self, request, episode_number):
-        puzzles = request.episode.available_puzzles(request.team)
+        now = timezone.now()
+        headstart = request.episode.headstart_applied(request.team)
+
+        puzzles = request.episode.puzzle_set.all().annotate_solved_by(request.team).seal()
+        if request.episode.parallel or request.episode.event.end_date < now:
+            started_puzzles = [pz for pz in puzzles if pz.started_for(request.team, headstart=headstart, now=now)]
+            available = started_puzzles
+            try:
+                upcoming_puzzle = puzzles[len(started_puzzles)]
+            except IndexError:
+                upcoming_puzzle = None
+        else:
+            available = []
+            upcoming_puzzle = None
+            # Every started puzzle is available until the first unsolved puzzle is encountered.
+            # that puzzle is also available. If the last available puzzle is solved, then, if there
+            # is another unstarted puzzle, that is the *upcoming* puzzle.
+            for p in puzzles:
+                if p.started_for(request.team, headstart=headstart, now=now):
+                    available.append(p)
+                elif not p.solved:
+                    upcoming_puzzle = p
+                if not p.solved:
+                    break
+        upcoming_time = upcoming_puzzle.start_date - headstart if upcoming_puzzle and upcoming_puzzle.start_date else None
 
         positions = request.episode.finished_positions()
         if request.team in positions:
@@ -77,7 +101,15 @@ class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
                 'position': position,
                 'position_text': position_text,
                 'episode_number': episode_number,
-                'puzzles': puzzles,
+                'puzzles': available,
+                'headstart': headstart,
+                'upcoming_time': upcoming_time,
+                'upcoming_under_1_minute': upcoming_time is not None and (
+                    timedelta(0) < upcoming_time - now < timedelta(minutes=1)
+                ),
+                'upcoming_in_next_day': upcoming_time is not None and (
+                    timedelta(0) < upcoming_time - now < timedelta(hours=24)
+                ),
             }
         )
 

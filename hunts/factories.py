@@ -93,7 +93,6 @@ class PuzzleFactory(factory.django.DjangoModelFactory):
     soln_runtime = Runtime.STATIC
     soln_content = factory.Faker('text')
 
-    start_date = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
     headstart_granted = factory.Faker('time_delta', end_datetime=timedelta(minutes=60))
 
     # This puzzle needs to be part of an episode & have at least one answer
