@@ -15,17 +15,23 @@
 {% render_bundle 'hunts_puzzle' 'js' attrs='defer' %}
 	<script>
 		"use strict"
-		var hints = { {% for hint in hints %}
-			'{{ hint.compact_id }}': {'time': '{{ hint.time }}', 'hint': '{{ hint.text|escapejs }}'}, {% endfor %}
-		}
+		var hints = new Map([{% for hint in hints %}[
+			'{{ hint.compact_id }}', {
+				'time': '{{ hint.time }}',
+				'hint': '{{ hint.text|escapejs }}',
+			}],
+		{% endfor %}])
 		var unlocks = new Map([{% for unlock in unlocks %}[
 			'{{ unlock.compact_id }}', {
 				'unlock': '{{ unlock.text|escapejs }}',
-				'guesses': [{% for g in unlock.guesses %}'{{ g|escapejs }}'{% if not forloop.last %}, {%endif %}{% endfor %}],
-				'hints': {{% for h in unlock.hints %}
-					'{{ h.compact_id }}': {'time': '{{ h.time }}', 'hint': '{{ h.text|escapejs }}'}{% if not forloop.last %}, {% endif %}{% endfor %}
-				}
-			}]{% if not forloop.last %}, {% endif %}{% endfor %}
+				'guesses': new Set([{% for g in unlock.guesses %}'{{ g|escapejs }}'{% if not forloop.last %}, {%endif %}{% endfor %}]),
+				'hints': new Map([{% for h in unlock.hints %}[
+					'{{ h.compact_id }}', {
+						'time': '{{ h.time }}',
+						'hint': '{{ h.text|escapejs }}'
+					}],
+				{% endfor %}])
+			}],{% endfor %}
 		])
 	</script>
 {% endblock %}
@@ -59,14 +65,7 @@
 		<span id="sound-permission-msg" class="small">You may need to enable autoplay audio to reliably hear sound notifications</span>
 	</div>
 </div>
-<h3>Clues</h3>
-{% if not hints and not unlocks %}
-	<i>None yet</i>
-{% endif %}
-<ul id="hints">
-</ul>
-<ul id="unlocks">
-</ul>
+<div id="clue-list" />
 </section>
 
 <section id="puzzle-answer">

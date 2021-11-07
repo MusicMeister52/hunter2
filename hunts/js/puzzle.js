@@ -1,18 +1,32 @@
+/*
+ * Copyright (C) 2021 The Hunter2 Contributors.
+ *
+ * This file is part of Hunter2.
+ *
+ * Hunter2 is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * Hunter2 is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 import $ from 'jquery'
 import 'bootstrap/js/dist/collapse'
-import { easeLinear, format, select } from 'd3'
+import {easeLinear, format, select} from 'd3'
 import durationFilters from './human-duration'
-import { Duration } from 'luxon'
+import {Duration} from 'luxon'
 import RobustWebSocket from 'robust-websocket'
-import { encode } from 'html-entities'
+import {encode} from 'html-entities'
+import Vue from 'vue'
 
 import 'hunter2/js/base'
 import 'hunter2/js/csrf.js'
 
 import '../scss/puzzle.scss'
-import { SocketHandler, setupNotifications} from './puzzleWebsocketHandlers'
-
-/* global unlocks, hints */
+import ClueList from './clue-list.vue'
+import {setupNotifications, SocketHandler} from './puzzleWebsocketHandlers'
 
 function incorrect_answer(guess, timeout_length, timeout) {
   var milliseconds = Date.parse(timeout) - Date.now()
@@ -227,170 +241,9 @@ function receivedSolvedMsg(content) {
   setTimeout(function () {window.location.href = content.redirect}, 3000)
 }
 
-function updateUnlocks() {
-  let entries = Array.from(unlocks.entries())
-  entries.sort(function(a, b) {
-    if (a[1].unlock < b[1].unlock) return -1
-    else if (a[1].unlock > b[1].unlock) return 1
-    return 0
-  })
-  let list = select('#unlocks')
-    .selectAll('#unlocks > li')
-    .data(entries)
-  let listEnter = list.enter()
-  let subList = listEnter.append('li')
-    .merge(list)
-    .html(function (d) {
-      return d[1].guesses.join('<br>')
-    })
-    .append('ul')
-    .attr('class', 'unlock-texts')
-    .classed('new-clue', function(d) {return d[1].new})
-    .each(function(d) {if (d[1].new) {intersectionObserver.observe(this)}})
-  subList.append('li')
-    .html(function(d) { return `<b>${d[1].unlock}</b>` })
-  list.exit()
-    .remove()
-
-  subList.selectAll('ul.unlock-texts')
-    .data(function(d) {
-      let hintEntries = Object.entries(d[1].hints)
-      hintEntries.sort(function(a, b) {
-        if (a[1].unlock < b[1].unlock) return -1
-        else if (a[1].unlock > b[1].unlock) return 1
-        return 0
-      })
-      return hintEntries
-    }).enter()
-    .append('li')
-    .attr('class', 'hint')
-    .html(function (d) {
-      return `${d[1].time}: <b>${d[1].hint}</b>`
-    })
-  entries.forEach((entry) => {
-    entry[1].new = false
-  })
-}
-
-function createBlankUnlock(uid) {
-  unlocks.set(uid, {'unlock': null, 'guesses': [], 'hints': {}, 'new': true})
-}
-
-function receivedNewUnlock(content) {
-  if (!(unlocks.has(content.unlock_uid))) {
-    createBlankUnlock(content.unlock_uid)
-  }
-  let unlockInfo = unlocks.get(content.unlock_uid)
-  unlockInfo.unlock = content.unlock
-  var guess = encode(content.guess)
-  if (!unlockInfo.guesses.includes(guess)) {
-    unlockInfo.guesses.push(guess)
-  }
-  unlockInfo.new = true
-  updateUnlocks()
-}
-
-function receivedChangeUnlock(content) {
-  if (!(unlocks.has(content.unlock_uid))) {
-    throw `WebSocket changed invalid unlock: ${content.unlock_uid}`
-  }
-  unlocks.get(content.unlock_uid).unlock = content.unlock
-  updateUnlocks()
-}
-
-function receivedDeleteUnlock(content) {
-  if (!(unlocks.has(content.unlock_uid))) {
-    throw `WebSocket deleted invalid unlock: ${content.unlock_uid}`
-  }
-  unlocks.delete(content.unlock_uid)
-  updateUnlocks()
-}
-
-function receivedDeleteUnlockGuess(content) {
-  if (!(unlocks.has(content.unlock_uid))) {
-    throw `WebSocket deleted guess for invalid unlock: ${content.unlock_uid}`
-  }
-  if (!(unlocks.get(content.unlock_uid).guesses.includes(content.guess))) {
-    throw `WebSocket deleted invalid guess (can happen if team made identical guesses): ${content.guess}`
-  }
-  var unlockguesses = unlocks.get(content.unlock_uid).guesses
-  var i = unlockguesses.indexOf(content.guess)
-  unlockguesses.splice(i, 1)
-  if (unlockguesses.length == 0) {
-    unlocks.delete(content.unlock_uid)
-  }
-  updateUnlocks()
-}
-
-function updateHints() {
-  var entries = Object.entries(hints)
-  entries.sort(function (a, b) {
-    if (a[1].time < b[1].time) return -1
-    else if(a[1].time > b[1].time) return 1
-    return 0
-  })
-  var list = select('#hints')
-    .selectAll('li')
-    .data(entries)
-  list.enter()
-    .append('li')
-    .merge(list)
-    .html(function (d) {
-      return `${d[1].time}: <b>${d[1].hint}</b>`
-    })
-    .classed('new-clue', function(d) {return d[1].new})
-    .each(function(d) {if (d[1].new) {intersectionObserver.observe(this)}})
-  list.exit()
-    .remove()
-  entries.forEach((e) => {
-    e[1].new = false
-  })
-}
-
-
-function receivedNewHint(content) {
-  if (content.depends_on_unlock_uid === null) {
-    hints[content.hint_uid] = {'time': content.time, 'hint': content.hint, 'new': true}
-    updateHints()
-  } else {
-    if (!(unlocks.has(content.depends_on_unlock_uid))) {
-      createBlankUnlock(content.depends_on_unlock_uid)
-    }
-    unlocks.get(content.depends_on_unlock_uid).hints[content.hint_uid] = {'time': content.time, 'hint': content.hint}
-    updateUnlocks()
-  }
-}
-
-function receivedDeleteHint(content) {
-  if (!(content.hint_uid in hints || (unlocks.has(content.depends_on_unlock_uid) &&
-         content.hint_uid in unlocks.get(content.depends_on_unlock_uid).hints))) {
-    throw `WebSocket deleted invalid hint: ${content.hint_uid}`
-  }
-  if (content.depends_on_unlock_uid === null) {
-    delete hints[content.hint_uid]
-    updateHints()
-  } else {
-    delete unlocks.get(content.depends_on_unlock_uid).hints[content.hint_uid]
-    updateUnlocks()
-  }
-}
-
 function receivedError(content) {
   throw content.error
 }
-
-function intersectionCallback(entries) {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('new-clue-fading')
-      entry.target.addEventListener('animationend', (e) => {
-        e.target.classList.remove('new-clue', 'new-clue-fading')
-      })
-      intersectionObserver.unobserve(entry.target)
-    }
-  })
-}
-const intersectionObserver = new IntersectionObserver(intersectionCallback)
 
 var lastUpdated
 
@@ -401,14 +254,14 @@ function openEventSocket() {
     'new_guesses': new SocketHandler(receivedNewAnswers),
     'old_guesses': new SocketHandler(receivedOldAnswers),
     'solved': new SocketHandler(receivedSolvedMsg, true, 'Puzzle solved'),
-    'new_unlock': new SocketHandler(receivedNewUnlock, true, 'New unlock'),
-    'old_unlock': new SocketHandler(receivedNewUnlock),
-    'change_unlock': new SocketHandler(receivedChangeUnlock, true, 'Updated unlock'),
-    'delete_unlock': new SocketHandler(receivedDeleteUnlock),
-    'delete_unlockguess': new SocketHandler(receivedDeleteUnlockGuess),
-    'new_hint': new SocketHandler(receivedNewHint, true, 'New hint'),
-    'old_hint': new SocketHandler(receivedNewHint),
-    'delete_hint': new SocketHandler(receivedDeleteHint),
+    'new_unlock': new SocketHandler(window.clueList.newUnlock, true, 'New unlock'),
+    'old_unlock': new SocketHandler(window.clueList.newUnlock),
+    'change_unlock': new SocketHandler(window.clueList.changeUnlock, true, 'Updated unlock'),
+    'delete_unlock': new SocketHandler(window.clueList.deleteUnlock),
+    'delete_unlockguess': new SocketHandler(window.clueList.deleteUnlockGuess),
+    'new_hint': new SocketHandler(window.clueList.newHint, true, 'New hint'),
+    'old_hint': new SocketHandler(window.clueList.newHint),
+    'delete_hint': new SocketHandler(window.clueList.deleteHint),
     'error': new SocketHandler(receivedError),
   }
 
@@ -470,10 +323,19 @@ function openEventSocket() {
   }
 }
 
-$(function() {
+window.addEventListener('DOMContentLoaded', function() {
   addSVG()
-  updateHints()
-  updateUnlocks()
+
+  window.clueList = new Vue({
+    ...ClueList,
+    data: {
+      hints: window.hints,
+      unlocks: window.unlocks,
+      hintRev: 1,
+      unlockRev: 1,
+    },
+    el: '#clue-list',
+  })
 
   let field = $('#answer-entry')
   let button = $('#answer-button')
