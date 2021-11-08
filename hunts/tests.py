@@ -2861,6 +2861,17 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['type'], 'new_hint')
         self.assertEqual(output['content']['hint'], hint.text)
         self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
+
+        # Delete the unlock and verify we get the delete unlock event
+        # In this case it doesn't _really_ matter if we get all the delete events as long as we get the unlock one
+        unlock.delete()
+        unlock_deleted = False
+        while not self.run_async(comm.receive_nothing)():
+            output = self.receive_json(comm, 'Websocket did not delete unlock')
+            if output['type'] == 'delete_unlock':
+                unlock_deleted = True
+        self.assertTrue(unlock_deleted, 'Delete unlock event not received from websocket')
+
         self.run_async(comm.disconnect)()
 
     def test_websocket_receives_hint_updates(self):
