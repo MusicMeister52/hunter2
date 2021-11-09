@@ -398,8 +398,8 @@ class UserPuzzleDataAdmin(admin.ModelAdmin):
 
 @admin.register(models.Announcement)
 class AnnoucementAdmin(ObjectPermissionsModelAdminMixin, admin.ModelAdmin):
-    ordering = ['event', 'puzzle__start_date', 'pk']
-    list_display = ('event', 'puzzle', 'type', 'title', 'message', 'posted')
+    ordering = ['puzzle__start_date', 'pk']
+    list_display = ('puzzle', 'type', 'title', 'message', 'posted')
     list_display_links = ('title', )
 
 

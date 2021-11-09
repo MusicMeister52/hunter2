@@ -1023,7 +1023,6 @@ class AnnouncementType(Enum):
 
 
 class Announcement(models.Model):
-    event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING, related_name='announcements')
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE, related_name='announcements', null=True, blank=True)
     title = models.CharField(max_length=255)
     posted = models.DateTimeField(default=timezone.now)

@@ -26,20 +26,15 @@ def announcements(request):
     has_puzzle = hasattr(request, 'puzzle') and request.puzzle is not None
 
     if has_puzzle:
-        current_announcements = models.Announcement.objects.filter(
-            (Q(event__isnull=True) | Q(event=request.tenant)) &
-            (Q(puzzle__isnull=True) | Q(puzzle=request.puzzle)))
+        current_announcements = models.Announcement.objects.filter(Q(puzzle__isnull=True) | Q(puzzle=request.puzzle))
     else:
-        current_announcements = models.Announcement.objects.filter(
-            (Q(event__isnull=True) | Q(event=request.tenant)) &
-            (Q(puzzle__isnull=True)))
+        current_announcements = models.Announcement.objects.filter(puzzle__isnull=True)
 
     if request.user.is_authenticated:
         account_href = reverse('edit_profile')
         if request.tenant.seat_assignments and request.user.info.attendance_at(request.tenant).seat == '':
             no_seat = models.Announcement(
-                id='no-seat-announcement',
-                event=request.tenant,
+                id='no_seat',
                 title='No Seat Set',
                 message="You don't have a seat set at this event. Set your seat on the account page.",
                 type=models.AnnouncementType.WARNING,
