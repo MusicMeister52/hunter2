@@ -15,17 +15,30 @@ import logging
 import os
 import random
 import tempfile
+import unittest
+from datetime import timedelta, datetime
+from datetime import timezone as dt_timezone
 from io import StringIO
 
 import builtins
 import sys
+from unittest import expectedFailure
+from unittest.mock import patch
+
+import freezegun
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.models import SocialAccount
 from django.contrib.sites.models import Site
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from faker import Faker
+from gdpr_assist.upgrading import check_migrate_gdpr_anonymised
 from xmlrunner.extra.djangotestrunner import XMLTestRunner
 
-from hunter2.management.commands import setupsite
+from teams.factories import TeamMemberFactory
+from hunter2.management.commands import setupsite, anonymise
+from events.test import EventTestCase
 from .utils import generate_secret_key, load_or_create_secret_key
 
 
@@ -99,6 +112,12 @@ class MigrationsTests(TestCase):
             )
         except SystemExit:
             self.fail("There are missing migrations:\n %s" % output.getvalue())
+
+    # We silence the check that gdpr_assist runs on startup, but still want the things that check asserts to be true
+    # for the app
+    @override_settings(SILENCED_SYSTEM_CHECKS=())
+    def test_gdpr_assist_check(self):
+        self.assertEqual(check_migrate_gdpr_anonymised(None), [])
 
 
 class SecretKeyGenerationTests(TestCase):
@@ -214,4 +233,152 @@ class SetupSiteManagementCommandTests(TestCase):
                 site_name=self.TEST_SITE_NAME,
                 site_domain=test_domain,
                 stdout=output
+            )
+
+
+class AnonymisationCommandTests(EventTestCase):
+    def setUp(self):
+        self.cutoff = timezone.now() - timedelta(days=1)
+        self.user_before = TeamMemberFactory(
+            user__username='person1',
+            user__email='someone@somewhere.com',
+            user__last_login=self.cutoff - timedelta(minutes=1),
+            user__picture='https://imagesite.com/an_image.jpg',
+            user__contact=True,
+        )
+        SocialAccount(user=self.user_before.user, uid=1).save()
+        EmailAddress(user=self.user_before.user, email=self.user_before.user.email).save()
+        self.before_pk = self.user_before.user.pk
+        self.user_after = TeamMemberFactory(user__last_login=self.cutoff + timedelta(minutes=1))
+        self.after_username = self.user_after.user.username
+        self.after_email = self.user_after.user.email
+        self.after_picture = self.user_after.user.picture
+        self.after_contact = self.user_after.user.contact
+        SocialAccount(user=self.user_after.user, uid=2).save()
+        EmailAddress(user=self.user_after.user, email=self.user_after.user.email).save()
+
+    def test_no_site_name_argument(self):
+        output = StringIO()
+        with self.assertRaisesMessage(CommandError, "Error: the following arguments are required"):
+            call_command('anonymise', interactive=False, stdout=output)
+
+    def test_no_cancels(self):
+        output = StringIO()
+        with patch('builtins.input') as mock_input:
+            mock_input.return_value = "no"
+            call_command('anonymise', self.cutoff.isoformat(), stdout=output)
+            mock_input.assert_called_once_with(
+                f'Anonymise 1 users who last logged in before {self.cutoff.isoformat(" ", "seconds")}? (yes/no) '
+            )
+        output = output.getvalue().strip()
+
+        self.assertIn('Aborting', output)
+
+        self.user_before.refresh_from_db()
+        self.user_after.refresh_from_db()
+
+        self.assertEqual(self.user_before.user.username, 'person1')
+        self.assertEqual(self.user_before.user.email, 'someone@somewhere.com')
+        self.assertEqual(self.user_before.user.picture, 'https://imagesite.com/an_image.jpg')
+        self.assertEqual(self.user_before.user.contact, True)
+
+        self.assertEqual(self.user_after.user.username, self.after_username)
+        self.assertEqual(self.user_after.user.email, self.after_email)
+        self.assertEqual(self.user_after.user.picture, self.after_picture)
+        self.assertEqual(self.user_after.user.contact, self.after_contact)
+
+    def test_usage(self):
+        output = StringIO()
+        call_command('anonymise', self.cutoff.isoformat(), yes=True, stdout=output)
+        output = output.getvalue().strip()
+
+        self.assertIn('1 users who last logged in before', output)
+        self.assertIn('Done', output)
+
+        self.usage_assertions()
+
+    def test_usage_interactive(self):
+        output = StringIO()
+        with patch('builtins.input') as mock_input:
+            mock_input.return_value = "yes"
+            call_command('anonymise', self.cutoff.isoformat(), stdout=output)
+            mock_input.assert_called_once_with(
+                f'Anonymise 1 users who last logged in before {self.cutoff.isoformat(" ", "seconds")}? (yes/no) '
+            )
+        output = output.getvalue().strip()
+
+        self.assertIn('Done', output)
+
+        self.usage_assertions()
+
+    def test_usage_relative(self):
+        output = StringIO()
+        call_command('anonymise', "1 day ago", yes=True, stdout=output)
+        output = output.getvalue().strip()
+
+        self.assertIn('1 users who last logged in before', output)
+        self.assertIn('Done', output)
+
+        self.usage_assertions()
+
+    def usage_assertions(self):
+        self.user_before.refresh_from_db()
+        self.user_after.refresh_from_db()
+
+        self.assertEqual(self.user_before.user.username, f'{self.before_pk}')
+        self.assertEqual(self.user_before.user.email, f'{self.before_pk}@anon.example.com')
+        self.assertEqual(self.user_before.user.picture, '')
+        self.assertEqual(self.user_before.user.contact, False)
+        self.assertEqual(SocialAccount.objects.filter(user=self.user_before.user).count(), 0)
+        self.assertEqual(EmailAddress.objects.filter(user=self.user_before.user).count(), 0)
+        self.assertEqual(self.user_after.user.username, self.after_username)
+        self.assertEqual(self.user_after.user.email, self.after_email)
+        self.assertEqual(self.user_after.user.picture, self.after_picture)
+        self.assertEqual(self.user_after.user.contact, self.after_contact)
+        self.assertEqual(SocialAccount.objects.filter(user=self.user_after.user).count(), 1)
+        self.assertEqual(EmailAddress.objects.filter(user=self.user_after.user).count(), 1)
+
+
+class AnonymisationMethodTests(EventTestCase):
+    def test_parse_date_parses_isodate(self):
+        self.assertEqual(
+            anonymise.Command.parse_date('2020-01-02T18:03:04+01:00'),
+            datetime(2020, 1, 2, 18, 3, 4, tzinfo=dt_timezone(timedelta(hours=1)))
+        )
+
+    def test_parse_date_parses_relative_date(self):
+        with freezegun.freeze_time(datetime(2020, 1, 2, tzinfo=dt_timezone(timedelta(hours=-1)))):
+            self.assertEqual(
+                anonymise.Command.parse_date('one year ago'),
+                datetime(2019, 1, 2, tzinfo=dt_timezone(timedelta(hours=-1)))
+            )
+
+    def test_parse_date_parses_ambiguous_date(self):
+        self.assertEqual(
+            anonymise.Command.parse_date('01/02/03'),
+            datetime(2003, 2, 1, tzinfo=dt_timezone(timedelta(hours=0)))
+        )
+
+    # TODO see https://github.com/scrapinghub/dateparser/issues/412
+    @expectedFailure
+    def test_parse_date_parses_ambiguous_date_year_first(self):
+        self.assertEqual(
+            anonymise.Command.parse_date('2001/02/03'),
+            datetime(2001, 2, 3, tzinfo=dt_timezone(timedelta(hours=0)))
+        )
+
+    def test_get_confirmation(self):
+        cmd = anonymise.Command()
+        with unittest.mock.patch.object(builtins, 'input') as mock_input:
+            mock_input.return_value = 'yes'
+            self.assertTrue(cmd.get_confirmation(False, range(5), datetime.fromisoformat('2020-01-02 00:00')))
+            mock_input.assert_called_once_with(
+                'Anonymise 5 users who last logged in before 2020-01-02 00:00:00? (yes/no) '
+            )
+
+        with unittest.mock.patch.object(builtins, 'input') as mock_input:
+            mock_input.return_value = 'no'
+            self.assertFalse(cmd.get_confirmation(False, range(3), datetime.fromisoformat('2020-01-04 00:00')))
+            mock_input.assert_called_once_with(
+                'Anonymise 3 users who last logged in before 2020-01-04 00:00:00? (yes/no) '
             )
