@@ -15,6 +15,7 @@ import datetime
 import random
 import string
 import time
+from os import path
 
 import factory
 import freezegun
@@ -1372,6 +1373,32 @@ class FileUploadTests(EventTestCase):
             )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, solutionfile.url_path)
+
+    def test_file_content_disposition(self):
+        puzzle = PuzzleFactory(content='content')
+        puzzle_file = PuzzleFileFactory(puzzle=puzzle)
+        solution_file = SolutionFileFactory(puzzle=puzzle)
+        episode_number = puzzle.episode.get_relative_id()
+        puzzle_number = puzzle.get_relative_id()
+        response = self.client.get(
+            reverse('puzzle_file', kwargs={'episode_number': episode_number, 'puzzle_number': puzzle_number, 'file_path': puzzle_file.url_path})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(
+            path.basename(puzzle_file.file.name),
+            response.headers['Content-Disposition'],
+            'PuzzleFile response should not include the real filename in Content-Disposition'
+        )
+        with freezegun.freeze_time(self.tenant.end_date + datetime.timedelta(seconds=1)):
+            response = self.client.get(
+                reverse('solution_file', kwargs={'episode_number': episode_number, 'puzzle_number': puzzle_number, 'file_path': solution_file.url_path})
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(
+            path.basename(solution_file.file.name),
+            response.headers['Content-Disposition'],
+            'SolutionFile response should not include the real filename in Content-Disposition'
+        )
 
 
 class AdminTeamTests(EventTestCase):

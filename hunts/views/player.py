@@ -292,7 +292,7 @@ class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
 class PuzzleFile(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number, file_path):
         puzzle_file = get_object_or_404(request.puzzle.puzzlefile_set, url_path=file_path)
-        return sendfile(request, puzzle_file.file.path)
+        return sendfile(request, puzzle_file.file.path, attachment_filename=False)
 
 
 class SolutionFile(View):
@@ -304,7 +304,7 @@ class SolutionFile(View):
             raise Http404
 
         solution_file = get_object_or_404(puzzle.solutionfile_set, url_path=file_path)
-        return sendfile(request, solution_file.file.path)
+        return sendfile(request, solution_file.file.path, attachment_filename=False)
 
 
 class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
