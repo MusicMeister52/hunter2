@@ -27,7 +27,5 @@ services:
     build: images/metrics
   postgres_exporter:
     build: images/postgres_exporter
-  redis_exporter:
-    build: images/redis_exporter
   web:
     build: images/web

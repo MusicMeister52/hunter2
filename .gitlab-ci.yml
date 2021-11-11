@@ -109,11 +109,6 @@ image:postgres_exporter:
   variables:
     SERVICE: postgres_exporter
 
-image:redis_exporter:
-  extends: .image_job
-  variables:
-    SERVICE: redis_exporter
-
 image:web:
   extends: .image_job
   needs: ["image:app"]
@@ -284,11 +279,6 @@ release:postgres_exporter:
   extends: .release_job
   variables:
     SERVICE: postgres_exporter
-
-release:redis_exporter:
-  extends: .release_job
-  variables:
-    SERVICE: redis_exporter
 
 release:web:
   extends: .release_job
