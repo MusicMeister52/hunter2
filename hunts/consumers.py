@@ -17,10 +17,11 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 from channels.layers import get_channel_layer
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
+from django.db import connections, transaction
 from django.db.models.signals import pre_save, post_save, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
+from django_tenants.utils import get_tenant_database_alias
 
 from events.consumers import EventMixin
 from teams.models import Team
@@ -124,12 +125,15 @@ class HuntWebsocket(EventMixin, TeamMixin, JsonWebsocketConsumer):
     def _saved_announcement(cls, old, sender, announcement, raw, *args, **kwargs):
         if raw:  # nocover
             return
-
-        cls.send_announcement_msg(announcement.event, announcement.puzzle, announcement)
+        # Announcement doesn't have a foreign key to the tenant, but the ID is required to build the channel layer keys
+        event = connections[get_tenant_database_alias()].tenant
+        cls.send_announcement_msg(event, announcement.puzzle, announcement)
 
     @classmethod
     def _deleted_announcement(cls, sender, instance, *args, **kwargs):
-        cls.send_delete_announcement_msg(instance.event, instance.puzzle, instance)
+        # Announcement doesn't have a foreign key to the tenant, but the ID is required to build the channel layer keys
+        event = connections[get_tenant_database_alias()].tenant
+        cls.send_delete_announcement_msg(event, instance.puzzle, instance)
 
 
 pre_save.connect(HuntWebsocket._saved_announcement, sender=models.Announcement)

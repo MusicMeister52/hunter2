@@ -322,7 +322,6 @@ class AnnouncementFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'hunts.Announcement'
 
-    event = factory.LazyFunction(Event.objects.get)
     puzzle = factory.SubFactory(PuzzleFactory)  # TODO: Generate without puzzle as well.
     title = factory.Faker('sentence')
     posted = factory.Faker('date_time_this_month', tzinfo=pytz.utc)

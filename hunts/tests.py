@@ -3048,7 +3048,7 @@ class ContextProcessorTests(AsyncEventTestCase):
         output = announcements(self.request)
 
         self.assertEqual(1, len(output['announcements']))
-        self.assertEqual('no-seat-announcement', output['announcements'][0].id)
+        self.assertEqual('no_seat', output['announcements'][0].id)
 
     def test_does_not_show_seat_announcement_if_enabled_and_user_has_seat(self):
         AttendanceFactory(user_info=self.user.info, event=self.tenant, seat='A1').save()
