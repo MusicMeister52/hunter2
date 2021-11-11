@@ -88,7 +88,7 @@ services:
       - redis
     environment:
       - REDIS_ADDR=redis://redis:6379
-    image: registry.gitlab.com/hunter2.app/hunter2/redis_exporter:${H2_IMAGE_VERSION:-latest}
+    image: oliver006/redis_exporter:v1.31.1
   web:
     depends_on:
       - app
