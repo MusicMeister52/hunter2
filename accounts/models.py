@@ -15,8 +15,14 @@ import uuid
 import warnings
 
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.urls import reverse
+
+
+class User(AbstractUser):
+    class Meta:
+        db_table = 'auth_user'
 
 
 class UserProfileManager(models.Manager):

@@ -111,6 +111,8 @@ AUTHENTICATION_BACKENDS = (
     'rules.permissions.ObjectPermissionBackend',
 )
 
+AUTH_USER_MODEL = 'accounts.User'
+
 DATABASES['default']['ATOMIC_REQUESTS'] = True
 
 DATABASE_ROUTERS = (
