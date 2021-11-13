@@ -1,0 +1,31 @@
+<!--
+  ~ Copyright (C) 2021 The Hunter2 Contributors.
+  ~
+  ~ This file is part of Hunter2.
+  ~
+  ~ Hunter2 is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free
+  ~ Software Foundation, either version 3 of the License, or (at your option) any later version.
+  ~
+  ~ Hunter2 is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+  ~ PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+<div>
+	<h3>Clues</h3>
+	<p v-if="none"><em>None yet</em></p>
+	<transition-group id="hints" name="highlight" tag="ul">
+		<li v-for="[id, time, hint] in sortedHints" v-bind:key="id">{{ time }}: <strong v-html="hint" /></li>
+	</transition-group>
+	<transition-group id="unlocks" name="highlight" tag="ul">
+		<li v-bind:key="id" v-for="[id, unlock, guesses, hints] in sortedUnlocks">
+			<span v-html="unlock" />
+			<transition-group v-bind:id="`unlock-${id}-guesses`" name="highlight" tag="ul">
+				<li v-for="ua in guesses" v-bind:key="ua"><strong>{{ ua }}</strong></li>
+			</transition-group>
+			<transition-group v-bind:id="`unlock-${id}-hints`" name="highlight" tag="ul">
+				<li v-for="[hintID, time, hint] in hints" v-bind:key="hintID">{{ time }}: <strong v-html="hint"></strong></li>
+			</transition-group>
+		</li>
+	</transition-group>
+</div>

@@ -11,15 +11,6 @@
 	color: #333;
 }
 
-#puzzle-clues ul {
-    list-style: none;
-    padding-left: 1em;
-}
-
-#puzzle-clues li {
-    margin-top: 3pt;
-}
-
 #answer-button {
 	width: 55px;
 	height: 55px;
@@ -62,17 +53,6 @@
     margin: auto 0 auto 1em;
 }
 
-#hints li, #unlocks li {
-    margin-left: 16pt;
-}
-
-#unlocks > li {
-    font-style: italic;
-    > * {
-        font-style: normal;
-    }
-}
-
 #guesses td, #guesses th {
     padding: 3pt 6pt;
 }
@@ -108,17 +88,4 @@ iframe#runtime {
 
 .popover label {
     margin-bottom: 0;
-}
-
-.new-clue {
-    background-color: yellow;
-}
-
-@keyframes new-clue-fading {
-    from {background-color: yellow;}
-    to {background-color: inherit;}
-}
-.new-clue-fading {
-    animation-duration: 5s;
-    animation-name: new-clue-fading;
 }
