@@ -80,7 +80,7 @@ services:
     volumes:
       - metrics:/prometheus
   redis:
-    image: redis:6.2.6-alpine3.14@sha256:c25fe8320d33eb2901911299d80b6f2dfad102770e21dad5d7356e38d92442c4
+    image: redis:6.2.6-alpine3.14@sha256:03a9b9de6caf6b2338f662b29a13ccd35910e494401d16881de086871c3f7a68
     volumes:
       - redis:/data
   redis_exporter:
