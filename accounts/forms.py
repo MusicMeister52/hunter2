@@ -12,7 +12,7 @@
 
 
 from django import forms
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.core.exceptions import SuspiciousOperation
 from django.forms.models import inlineformset_factory, modelform_factory
 from django.forms.widgets import RadioSelect
@@ -26,6 +26,8 @@ CONTACT_CHOICES = [
     (True, "Yes"),
     (False, "No"),
 ]
+
+User = get_user_model()
 
 UserForm = modelform_factory(User, fields=('email', ))
 
