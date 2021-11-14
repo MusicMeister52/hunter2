@@ -1,5 +1,6 @@
 const path = require('path')
 const BundleTracker = require('webpack-bundle-tracker')
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const VueLoaderPlugin = require('vue-loader/lib/plugin')
 
@@ -73,6 +74,10 @@ module.exports = {
   },
 
   optimization: {
+    minimizer: [
+      '...',
+      new CssMinimizerPlugin(),
+    ],
     splitChunks: {
       chunks: 'all',
     },
