@@ -1,5 +1,7 @@
 /* global $ */
 
+import * as path from 'path'
+
 import 'hunts/scss/admin/crud/puzzle.scss'
 
 var advanced_shown
@@ -74,6 +76,21 @@ function copyPermalinkClicked(e) {
   tmp.remove()
 }
 
+function fileInputChanged(e) {
+  let inputGroup = e.target.id.split('-file')[0]
+  let slugInput = document.getElementById(`${inputGroup}-slug`)
+  let urlInput = document.getElementById(`${inputGroup}-url_path`)
+
+  let filename = e.target.files[0].name
+
+  if (!slugInput.value) {
+    slugInput.value = path.parse(filename).name.replace(/\W/g, '')
+  }
+  if (!urlInput.value) {
+    urlInput.value = filename
+  }
+}
+
 $(function() {
   toggleAdvanced(undefined, false, 0)
   $(document).on('DOMNodeInserted', function(e) {
@@ -82,6 +99,12 @@ $(function() {
     if (!advanced_shown && advanced_fields.length) {
       toggleAdvanced(undefined, false, 0)
     }
+    e.target.querySelectorAll('input[type="file"]').forEach(el => {
+      el.addEventListener('change', fileInputChanged)
+    })
+  })
+  document.querySelectorAll('input[type="file"]').forEach(el => {
+    el.addEventListener('change', fileInputChanged)
   })
   $('#advanced_button').click(toggleAdvanced)
   $('.puzzlepermalink').click(copyPermalinkClicked)
