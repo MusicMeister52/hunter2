@@ -1,4 +1,4 @@
-image: registry.gitlab.com/rconan/docker-and-compose:1.29.2-22@sha256:b8f98c6f659b054e8d1a944fd98a12f9cbed62e307f45dd9eeba5964eafd5d97
+image: registry.gitlab.com/rconan/docker-and-compose:1.29.2-23@sha256:212c055d4e4d24cf098af1bd4d49e03608775fcd01870b67fbfdb0a129db26df
 
 variables:
   DOCKER_BUILDKIT: 1
