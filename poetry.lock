@@ -50,7 +50,7 @@ tests = ["pytest", "pytest-asyncio", "mypy (>=0.800)"]
 
 [[package]]
 name = "async-timeout"
-version = "4.0.0"
+version = "4.0.1"
 description = "Timeout context manager for asyncio programs"
 category = "main"
 optional = false
@@ -616,7 +616,7 @@ doc = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 
 [[package]]
 name = "faker"
-version = "9.8.0"
+version = "9.8.1"
 description = "Faker is a Python package that generates fake data for you."
 category = "main"
 optional = false
@@ -675,7 +675,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "imagesize"
-version = "1.2.0"
+version = "1.3.0"
 description = "Getting image size from png/jpeg/jpeg2000/gif file"
 category = "dev"
 optional = false
@@ -683,7 +683,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "importlib-metadata"
-version = "2.1.1"
+version = "2.1.2"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -764,7 +764,7 @@ testing = ["Django (<3.1)", "colorama", "docopt", "pytest (<6.0.0)"]
 
 [[package]]
 name = "jinja2"
-version = "3.0.2"
+version = "3.0.3"
 description = "A very fast and expressive template engine."
 category = "dev"
 optional = false
@@ -1362,7 +1362,7 @@ python-versions = "*"
 
 [[package]]
 name = "soupsieve"
-version = "2.3"
+version = "2.3.1"
 description = "A modern CSS selector implementation for Beautiful Soup."
 category = "main"
 optional = false
@@ -1572,11 +1572,11 @@ twisted = ["zope.interface (>=5.2.0)", "twisted (>=20.3.0)"]
 
 [[package]]
 name = "typing-extensions"
-version = "3.10.0.2"
-description = "Backported and Experimental Type Hints for Python 3.5+"
+version = "4.0.0"
+description = "Backported and Experimental Type Hints for Python 3.6+"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6"
 
 [[package]]
 name = "unittest-xml-reporting"
@@ -1690,8 +1690,8 @@ asgiref = [
     {file = "asgiref-3.4.1.tar.gz", hash = "sha256:4ef1ab46b484e3c706329cedeff284a5d40824200638503f5768edb6de7d58e9"},
 ]
 async-timeout = [
-    {file = "async-timeout-4.0.0.tar.gz", hash = "sha256:7d87a4e8adba8ededb52e579ce6bc8276985888913620c935094c2276fd83382"},
-    {file = "async_timeout-4.0.0-py3-none-any.whl", hash = "sha256:f3303dddf6cafa748a92747ab6c2ecf60e0aeca769aee4c151adfce243a05d9b"},
+    {file = "async-timeout-4.0.1.tar.gz", hash = "sha256:b930cb161a39042f9222f6efb7301399c87eeab394727ec5437924a36d6eef51"},
+    {file = "async_timeout-4.0.1-py3-none-any.whl", hash = "sha256:a22c0b311af23337eb05fcf05a8b51c3ea53729d46fb5460af62bee033cec690"},
 ]
 atomicwrites = [
     {file = "atomicwrites-1.4.0-py2.py3-none-any.whl", hash = "sha256:6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197"},
@@ -1974,8 +1974,8 @@ factory-boy = [
     {file = "factory_boy-3.2.1.tar.gz", hash = "sha256:a98d277b0c047c75eb6e4ab8508a7f81fb03d2cb21986f627913546ef7a2a55e"},
 ]
 faker = [
-    {file = "Faker-9.8.0-py3-none-any.whl", hash = "sha256:810182ef3597e0dfc4999a29f7cf17b99c70b361aae0f16743de6b926619ae21"},
-    {file = "Faker-9.8.0.tar.gz", hash = "sha256:22e53b8082890cca9b595ec22f9b01676b9d96c5f2f1890bcb49e4d612aa40a2"},
+    {file = "Faker-9.8.1-py3-none-any.whl", hash = "sha256:b9ea5970f43c1fa05443d1885fbed822aba816facefa053d3d20168bfef4ae84"},
+    {file = "Faker-9.8.1.tar.gz", hash = "sha256:cfe4eed0309cd5325c40817519f8fbb18281a3f43a9a23fe03e3e7f091a9775b"},
 ]
 freezegun = [
     {file = "freezegun-1.0.0-py2.py3-none-any.whl", hash = "sha256:02b35de52f4699a78f6ac4518e4cd3390dddc43b0aeb978335a8f270a2d9668b"},
@@ -2036,12 +2036,12 @@ idna = [
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
 ]
 imagesize = [
-    {file = "imagesize-1.2.0-py2.py3-none-any.whl", hash = "sha256:6965f19a6a2039c7d48bca7dba2473069ff854c36ae6f19d2cde309d998228a1"},
-    {file = "imagesize-1.2.0.tar.gz", hash = "sha256:b1f6b5a4eab1f73479a50fb79fcf729514a900c341d8503d62a62dbc4127a2b1"},
+    {file = "imagesize-1.3.0-py2.py3-none-any.whl", hash = "sha256:1db2f82529e53c3e929e8926a1fa9235aa82d0bd0c580359c67ec31b2fddaa8c"},
+    {file = "imagesize-1.3.0.tar.gz", hash = "sha256:cd1750d452385ca327479d45b64d9c7729ecf0b3969a58148298c77092261f9d"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-2.1.1-py2.py3-none-any.whl", hash = "sha256:c2d6341ff566f609e89a2acb2db190e5e1d23d5409d6cc8d2fe34d72443876d4"},
-    {file = "importlib_metadata-2.1.1.tar.gz", hash = "sha256:b8de9eff2b35fb037368f28a7df1df4e6436f578fa74423505b6c6a778d5b5dd"},
+    {file = "importlib_metadata-2.1.2-py2.py3-none-any.whl", hash = "sha256:cd6a92d78385dd145f5f233b3a6919acf5e8e43922aa9b9dbe78573e3540eb56"},
+    {file = "importlib_metadata-2.1.2.tar.gz", hash = "sha256:09db40742204610ef6826af16e49f0479d11d0d54687d0169ff7fddf8b3f557f"},
 ]
 incremental = [
     {file = "incremental-21.3.0-py2.py3-none-any.whl", hash = "sha256:92014aebc6a20b78a8084cdd5645eeaa7f74b8933f70fa3ada2cfbd1e3b54321"},
@@ -2060,8 +2060,8 @@ jedi = [
     {file = "jedi-0.18.0.tar.gz", hash = "sha256:92550a404bad8afed881a137ec9a461fed49eca661414be45059329614ed0707"},
 ]
 jinja2 = [
-    {file = "Jinja2-3.0.2-py3-none-any.whl", hash = "sha256:8569982d3f0889eed11dd620c706d39b60c36d6d25843961f33f77fb6bc6b20c"},
-    {file = "Jinja2-3.0.2.tar.gz", hash = "sha256:827a0e32839ab1600d4eb1c4c33ec5a8edfbc5cb42dafa13b81f182f97784b45"},
+    {file = "Jinja2-3.0.3-py3-none-any.whl", hash = "sha256:077ce6014f7b40d03b47d1f1ca4b0fc8328a692bd284016f806ed0eaca390ad8"},
+    {file = "Jinja2-3.0.3.tar.gz", hash = "sha256:611bb273cd68f3b993fabdc4064fc858c5b47a973cb5aa7999ec1ba405c87cd7"},
 ]
 lupa = [
     {file = "lupa-1.10-cp27-cp27m-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:254fe6ffd574d7b2459e39b1196ed4c2d108e77779bc948b75c9a25051cd9e02"},
@@ -2255,6 +2255,16 @@ prompt-toolkit = [
     {file = "prompt_toolkit-3.0.22.tar.gz", hash = "sha256:449f333dd120bd01f5d296a8ce1452114ba3a71fae7288d2f0ae2c918764fa72"},
 ]
 psycopg2 = [
+    {file = "psycopg2-2.9.2-cp310-cp310-win32.whl", hash = "sha256:6796ac614412ce374587147150e56d03b7845c9e031b88aacdcadc880e81bb38"},
+    {file = "psycopg2-2.9.2-cp310-cp310-win_amd64.whl", hash = "sha256:dfc32db6ce9ecc35a131320888b547199f79822b028934bb5b332f4169393e15"},
+    {file = "psycopg2-2.9.2-cp36-cp36m-win32.whl", hash = "sha256:77d09a79f9739b97099d2952bbbf18eaa4eaf825362387acbb9552ec1b3fa228"},
+    {file = "psycopg2-2.9.2-cp36-cp36m-win_amd64.whl", hash = "sha256:f65cba7924363e0d2f416041b48ff69d559548f2cb168ff972c54e09e1e64db8"},
+    {file = "psycopg2-2.9.2-cp37-cp37m-win32.whl", hash = "sha256:b8816c6410fa08d2a022e4e38d128bae97c1855e176a00493d6ec62ccd606d57"},
+    {file = "psycopg2-2.9.2-cp37-cp37m-win_amd64.whl", hash = "sha256:26322c3f114de1f60c1b0febf8fdd595c221b4f624524178f515d07350a71bd1"},
+    {file = "psycopg2-2.9.2-cp38-cp38-win32.whl", hash = "sha256:77b9105ef37bc005b8ffbcb1ed6d8685bb0e8ce84773738aa56421a007ec5a7a"},
+    {file = "psycopg2-2.9.2-cp38-cp38-win_amd64.whl", hash = "sha256:91c7fd0fe9e6c118e8ff5b665bc3445781d3615fa78e131d0b4f8c85e8ca9ec8"},
+    {file = "psycopg2-2.9.2-cp39-cp39-win32.whl", hash = "sha256:a761b60da0ecaf6a9866985bcde26327883ac3cdb90535ab68b8d784f02b05ef"},
+    {file = "psycopg2-2.9.2-cp39-cp39-win_amd64.whl", hash = "sha256:fd7ddab7d6afee4e21c03c648c8b667b197104713e57ec404d5b74097af21e31"},
     {file = "psycopg2-2.9.2.tar.gz", hash = "sha256:a84da9fa891848e0270e8e04dcca073bc9046441eeb47069f5c0e36783debbea"},
 ]
 ptpython = [
@@ -2434,8 +2444,8 @@ snowballstemmer = [
     {file = "snowballstemmer-2.1.0.tar.gz", hash = "sha256:e997baa4f2e9139951b6f4c631bad912dfd3c792467e2f03d7239464af90e914"},
 ]
 soupsieve = [
-    {file = "soupsieve-2.3-py3-none-any.whl", hash = "sha256:617ffc4d0dfd39c66f4d1413a6e165663a34eca86be9b54f97b91756300ff6df"},
-    {file = "soupsieve-2.3.tar.gz", hash = "sha256:e4860f889dfa88774c07da0b276b70c073b6470fa1a4a8350800bb7bce3dcc76"},
+    {file = "soupsieve-2.3.1-py3-none-any.whl", hash = "sha256:1a3cca2617c6b38c0343ed661b1fa5de5637f257d4fe22bd9f1338010a1efefb"},
+    {file = "soupsieve-2.3.1.tar.gz", hash = "sha256:b8d49b1cd4f037c7082a9683dfa1801aa2597fb11c3a1155b7a5b94829b4f1f9"},
 ]
 sphinx = [
     {file = "Sphinx-4.2.0-py3-none-any.whl", hash = "sha256:98a535c62a4fcfcc362528592f69b26f7caec587d32cd55688db580be0287ae0"},
@@ -2508,9 +2518,7 @@ txaio = [
     {file = "txaio-21.2.1.tar.gz", hash = "sha256:7d6f89745680233f1c4db9ddb748df5e88d2a7a37962be174c0fd04c8dba1dc8"},
 ]
 typing-extensions = [
-    {file = "typing_extensions-3.10.0.2-py2-none-any.whl", hash = "sha256:d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"},
-    {file = "typing_extensions-3.10.0.2-py3-none-any.whl", hash = "sha256:f1d25edafde516b146ecd0613dabcc61409817af4766fbbcfb8d1ad4ec441a34"},
-    {file = "typing_extensions-3.10.0.2.tar.gz", hash = "sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e"},
+    {file = "typing_extensions-4.0.0-py3-none-any.whl", hash = "sha256:829704698b22e13ec9eaf959122315eabb370b0884400e9818334d8b677023d9"},
 ]
 unittest-xml-reporting = [
     {file = "unittest-xml-reporting-3.0.4.tar.gz", hash = "sha256:984cebba69e889401bfe3adb9088ca376b3a1f923f0590d005126c1bffd1a695"},
