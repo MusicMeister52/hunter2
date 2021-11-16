@@ -40,8 +40,8 @@ visible here, though there are filters to help cut this down.
 
 Open the "Filters & Help" section at the top and have a look at the key on the right-hand side. Each combination of
 team and puzzle will have an icon resembling one in the key. While the team is working on the puzzle, the red pie-chart
-will fill up as they enter guesses and fade out if they stop guessing. When a team solves a puzzle, the icon changes
-to indicate this. Hovering the mouse over an icon gives some more information.
+will fill up as they spend time on the puzzle and fade out if they stop guessing. When a team solves a puzzle, the 
+icon changes to indicate this. Hovering the mouse over an icon gives some more information.
 
 ### Usage
 
