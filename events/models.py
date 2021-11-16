@@ -30,6 +30,7 @@ class Event(TenantMixin):
     auto_drop_schema = True
     name = models.CharField(max_length=255, unique=True)
     current = SingleTrueBooleanField()
+    index_text = models.TextField(help_text='Content for the event home page', blank=True)
     about_text = models.TextField(help_text='Content for the event about page', blank=True)
     rules_text = models.TextField(help_text='Content for the event rules page', blank=True)
     help_text = models.TextField(help_text='Content for the event help page', blank=True)

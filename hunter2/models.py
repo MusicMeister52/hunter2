@@ -44,7 +44,6 @@ class Icon(models.Model):
 
 
 class Configuration(SingletonModel):
-    index_content = models.TextField()
     privacy_policy = models.TextField(blank=True)
     script = models.TextField(blank=True)
     script_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')
