@@ -222,6 +222,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
                 'answered': correct_guess,
                 'admin': request.admin,
                 'ended': ended,
+                'episode_name': request.episode.name,
                 'episode_number': episode_number,
                 'hints': hints[None],
                 'puzzle_number': puzzle_number,

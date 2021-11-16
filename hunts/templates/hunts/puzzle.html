@@ -37,7 +37,8 @@
 {% endblock %}
 
 {% block page_header %}
-<h1>{{ title }}</h1>
+	<h1 class="h2"><a href="{% url 'episode_index' episode_number %}">{{ episode_name }}</a></h1>
+	<h2 class="h1">{{ title }}</h2>
 {% endblock %}
 
 {% block content %}
