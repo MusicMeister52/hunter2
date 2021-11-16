@@ -158,6 +158,7 @@ doc:graph:
     reports:
       junit: reports/TEST-*.xml
     when: always
+  coverage: /NO_COVERAGE_HACK/  # This regex shouldn't match
 
 test:app:0:
   extends: .test:app
