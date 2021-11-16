@@ -40,8 +40,7 @@ check:flake8:
   stage: test
   script:
     - install -d -m 777 reports
-    - docker-compose -f docker-compose.tools.yml run --rm flake8 --verbose --output-file reports/flake8.txt
-    - docker-compose -f docker-compose.tools.yml run --entrypoint flake8_junit --rm flake8 reports/flake8.txt reports/flake8.xml
+    - docker-compose -f docker-compose.tools.yml run --rm flake8 --verbose --format junit-xml --output-file reports/flake8.xml
   artifacts:
     reports:
       junit: reports/flake8.xml
