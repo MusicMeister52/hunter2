@@ -28,6 +28,9 @@ env = environ.Env()
 env.DB_SCHEMES['postgres'] = 'django_tenants.postgresql_backend'
 env.DB_SCHEMES['postgresql'] = 'django_tenants.postgresql_backend'
 
+
+
+
 # Default settings which should be overridden by environment variables
 DEBUG              = env.bool      ('H2_DEBUG',         default=False)
 BASE_DOMAIN        = env.str       ('H2_DOMAIN',        default='hunter2.localhost')
@@ -50,7 +53,7 @@ try:
         'default': env.db('H2_DATABASE_URL')
     }
 except environ.ImproperlyConfigured:
-    DATABASES = {
+    DATABASES={
         'default': {
             'ENGINE': 'django_tenants.postgresql_backend',
             'HOST': 'db',
