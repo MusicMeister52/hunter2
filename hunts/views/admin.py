@@ -454,6 +454,8 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
             num_guesses=Count('guesses'),
         ).filter(
             num_guesses__gt=0,
+        ).order_by(
+            'puzzle'
         ).select_related(
             'puzzle',
             'puzzle__episode',
