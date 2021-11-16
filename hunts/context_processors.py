@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2018-2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -43,7 +43,7 @@ def announcements(request):
             current_announcements = list(current_announcements) + [no_seat]
         if request.user.info.contact is None:
             no_contact = models.Announcement(
-                event=request.tenant,
+                id='no_contact',
                 title='Can we contact you?',
                 message="We'd like to contact you occasionally about this and future events. "
                         f"Please let us know whether we can on the <a href={account_href}>account page</a>",

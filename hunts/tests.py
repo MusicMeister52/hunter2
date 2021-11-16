@@ -28,7 +28,7 @@ from django.utils import timezone
 from parameterized import parameterized
 from channels.testing import WebsocketCommunicator
 
-from accounts.factories import UserProfileFactory, UserFactory
+from accounts.factories import UserFactory, UserInfoFactory, UserProfileFactory
 from events.factories import EventFileFactory, AttendanceFactory
 from events.models import Event
 from events.test import EventAwareTestCase, EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
@@ -3067,6 +3067,42 @@ class ContextProcessorTests(AsyncEventTestCase):
         output = announcements(self.request)
 
         self.assertEqual(0, len(output['announcements']))
+
+    def test_shows_contact_request_announcement_if_user_has_no_pref(self):
+        ui = UserInfoFactory(contact=None)
+        AttendanceFactory(user_info=ui, event=self.tenant)
+
+        request = self.rf.get('/')
+        request.user = ui.user
+        request.tenant = self.tenant
+
+        output = announcements(request)
+
+        self.assertIn('no_contact', [a.id for a in output['announcements']], 'Contact request announcement missing from context')
+
+    def test_does_not_show_contact_request_announcement_if_user_has_pref_true(self):
+        ui = UserInfoFactory(contact=True)
+        AttendanceFactory(user_info=ui, event=self.tenant)
+
+        request = self.rf.get('/')
+        request.user = ui.user
+        request.tenant = self.tenant
+
+        output = announcements(request)
+
+        self.assertNotIn('no_contact', [a.id for a in output['announcements']], 'Unexpected contact request announcement in context')
+
+    def test_does_not_show_contact_request_announcement_if_user_has_pref_false(self):
+        ui = UserInfoFactory(contact=False)
+        AttendanceFactory(user_info=ui, event=self.tenant)
+
+        request = self.rf.get('/')
+        request.user = ui.user
+        request.tenant = self.tenant
+
+        output = announcements(request)
+
+        self.assertNotIn('no_contact', [a.id for a in output['announcements']], 'Unexpected contact request announcement in context')
 
 
 class PlayerStatsViewTests(EventTestCase):
