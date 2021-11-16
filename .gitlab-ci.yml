@@ -40,8 +40,7 @@ check:flake8:
   stage: test
   script:
     - install -d -m 777 reports
-    - docker-compose -f docker-compose.tools.yml run --rm flake8 --verbose --output-file reports/flake8.txt
-    - docker-compose -f docker-compose.tools.yml run --entrypoint flake8_junit --rm flake8 reports/flake8.txt reports/flake8.xml
+    - docker-compose -f docker-compose.tools.yml run --rm flake8 --verbose --format junit-xml --output-file reports/flake8.xml
   artifacts:
     reports:
       junit: reports/flake8.xml
@@ -145,7 +144,7 @@ doc:graph:
     - install -d -m 777 coverage pytest_cache reports
     - echo "POSTGRES_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
     - docker-compose pull app db
-    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" -v "${PWD}/pytest_cache:/opt/hunter2/src/.pytest_cache" --entrypoint "/opt/hunter2/venv/bin/pytest" --rm -e COVERAGE_FILE="coverage/${SHARD}.data" app --tb=short --cov . --shard-id="${SHARD}" --num-shards=8
+    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" -v "${PWD}/pytest_cache:/opt/hunter2/src/.pytest_cache" --entrypoint "/opt/hunter2/venv/bin/pytest" --rm -e COVERAGE_FILE="coverage/${SHARD}.data" app --tb=short --cov . --junit-xml=reports/pytest.xml --shard-id="${SHARD}" --num-shards=8
   after_script:
     - docker-compose logs db > db.log
     - docker-compose logs redis > redis.log
@@ -156,8 +155,9 @@ doc:graph:
       - coverage/
       - "*.log"
     reports:
-      junit: reports/TEST-*.xml
+      junit: reports/pytest.xml
     when: always
+  coverage: /NO_COVERAGE_HACK/  # This regex shouldn't match
 
 test:app:0:
   extends: .test:app
