@@ -103,5 +103,8 @@ module.exports = {
       path.resolve('.'),
       path.resolve('./node_modules'),
     ],
+    fallback: {
+      'path': require.resolve('path-browserify'),
+    },
   },
 }
