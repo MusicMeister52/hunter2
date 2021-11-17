@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from faker import Faker
@@ -47,6 +47,7 @@ class SignupTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)  # Should redirect back to where you were after signup
+        User = get_user_model()
         self.assertIsNotNone(User.objects.get().info.contact)
 
     def test_signup_without_privacy(self):

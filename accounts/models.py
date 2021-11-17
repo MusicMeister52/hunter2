@@ -14,9 +14,15 @@
 import uuid
 import warnings
 
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.urls import reverse
+
+
+class User(AbstractUser):
+    class Meta:
+        db_table = 'auth_user'
 
 
 class UserProfileManager(models.Manager):
@@ -25,7 +31,7 @@ class UserProfileManager(models.Manager):
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     objects = UserProfileManager()
 
     def __init__(self, *args, **kwargs):
@@ -65,7 +71,7 @@ class UserInfo(models.Model):
             return super().get_queryset().select_related('user')
 
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='info')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='info')
     picture = models.URLField(blank=True, help_text='Paste a URL to an image for your profile picture')
     contact = models.BooleanField(
         null=True, help_text="We won't spam you, only important information about our events.", verbose_name='May we contact you?'
