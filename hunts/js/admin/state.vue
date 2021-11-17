@@ -36,7 +36,7 @@
                     stroke="#622"
                     stroke-opacity="0.5"
                     stroke-width="2px"
-                    :d="drawPie(state.guesses)"
+                    :d="drawPie(state.time_on)"
                 />
                 <text v-if="!state.hints_scheduled"
                     :x="size/2 - 6"
@@ -80,7 +80,7 @@ export default {
       if (amount != 0) {
         // proportion = 1-Math.exp(-amount/10)
         // proportion = 1-Math.pow(1.5, -Math.log(1+amount)/Math.log(15))
-        proportion = 1 - 1/(1.05+amount/100)
+        proportion = 1 - 1/(1+amount/3600)
         // proportion = Math.log2(amount)
       }
       var angle = (proportion * Math.PI * 2) - Math.PI / 2

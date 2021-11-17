@@ -62,26 +62,58 @@
 								<td><progress-state :state="{state: 'not_opened'}"/></td>
 							</tr>
 							<tr>
-								<td>Opened but not guessed</td>
-								<td<progress-state :state="{state: 'open', 'guesses': 0, hints_scheduled: true, latest_guess: null}"/></td>
+								<td>Opened just now, not guessed</td>
+								<td>
+									<progress-state :state="{
+											state: 'open',
+											guesses: 0,
+											time_on: 0,
+											hints_scheduled: true,
+											latest_guess: null
+										}"/>
+								</td>
 							</tr>
 							<tr>
-								<td>Guessed once just now</td>
-								<td><progress-state :state="{state: 'open', 'guesses': 1, hints_scheduled: true, latest_guess: Date.now()}"/></td>
+								<td>Open 5 mins, guessed just now</td>
+								<td>
+									<progress-state :state="{
+											state: 'open',
+											guesses: 1,
+											time_on: 60 * 5,
+											hints_scheduled: true,
+											latest_guess: Date.now()
+										}"/>
+								</td>
 							</tr>
 							<tr>
 								<td>
-									25 guesses,<br>
+									Open 1h,<br>
 									latest 30 minutes ago
 								</td>
-								<td><progress-state :state="{state: 'open', 'guesses': 10, hints_scheduled: true, latest_guess: this.now().minus({minutes: 30}).toISO()}"/></td>
+								<td>
+									<progress-state :state="{
+											state: 'open',
+											guesses: 10,
+											time_on: 60 * 60,
+											hints_scheduled: true,
+											latest_guess: this.now().minus({minutes: 30}).toISO()
+										}"/>
+								</td>
 							</tr>
 							<tr>
 								<td>
-									250; latest 10m ago;<br>
+									Open 3h; latest 10m ago;<br>
 									no more hints scheduled
 								</td>
-								<td><progress-state :state="{state: 'open', 'guesses': 250, hints_scheduled: false, latest_guess: this.now().minus({minutes: 10}).toISO()}"/></td>
+								<td>
+									<progress-state :state="{
+											state: 'open',
+											guesses: 250,
+											time_on: 60 * 60 * 3,
+											hints_scheduled: false,
+											latest_guess: this.now().minus({minutes: 10}).toISO()
+										}"/>
+								</td>
 							</tr>
 							<tr>
 								<td>Solved the puzzle</td>

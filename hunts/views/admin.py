@@ -340,6 +340,8 @@ class ProgressContent(EventAdminJSONMixin, View):
             latest_guess_time=Max('guesses__given'),
         ).filter(
             guess_count__gt=0
+        ).select_related(
+            'solved_by'
         ).prefetch_related(
             Prefetch(
                 'teamunlock_set',
@@ -353,20 +355,25 @@ class ProgressContent(EventAdminJSONMixin, View):
         for progress in all_puzzle_progress:
             puzzle_progress[progress.team_id][progress.puzzle_id] = progress
 
+        now = timezone.now()
+
         def team_puzzle_state(team, puzzle):
             hints_scheduled = None
             guesses = None
             latest_guess = None
             progress = puzzle_progress[team.id].get(puzzle.id)
+            time_on = None
 
             if not progress or not progress.start_time:
                 state = 'not_opened'
             elif progress.solved_by_id:
                 state = 'solved'
                 guesses = progress.guess_count
+                time_on = (progress.solved_by.given - progress.start_time).total_seconds()
             else:
                 state = 'open'
                 guesses = progress.guess_count
+                time_on = (now - progress.start_time).total_seconds()
                 latest_guess = progress.latest_guess_time
                 unlocked_unlocks = {
                     tu.unlockanswer.unlock_id: tu.unlocked_by.given
@@ -385,6 +392,7 @@ class ProgressContent(EventAdminJSONMixin, View):
                 'episode_number': puzzle.episode.get_relative_id(),
                 'state': state,
                 'guesses': guesses,
+                'time_on': time_on,
                 'latest_guess': latest_guess,
                 'hints_scheduled': hints_scheduled,
             }
