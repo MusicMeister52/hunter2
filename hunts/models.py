@@ -1001,7 +1001,11 @@ class Headstart(models.Model):
         ),
     )
 
+    def __str__(self):
+        return f'{self.episode.name}, {self.team.get_verbose_name()}: {self.headstart_adjustment}'
+
     class Meta:
+        ordering = ('episode', 'headstart_adjustment')
         unique_together = (
             ('episode', 'team'),
         )

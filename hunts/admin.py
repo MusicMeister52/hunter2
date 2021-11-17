@@ -406,7 +406,8 @@ class AnnoucementAdmin(ObjectPermissionsModelAdminMixin, admin.ModelAdmin):
 
 @admin.register(models.Headstart)
 class HeadstartAdmin(ObjectPermissionsModelAdmin):
-    pass
+    list_display = ('__str__', 'episode', 'team', 'headstart_adjustment')
+    list_editable = ('episode', 'team', 'headstart_adjustment')
 
 
 admin.site.register(models.TeamPuzzleData)
