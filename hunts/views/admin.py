@@ -128,7 +128,7 @@ class GuessesList(EventAdminJSONMixin, View):
             'correct_for__id', 'progress__start_time',
         ).annotate(
             byseat=Subquery(
-                Attendance.objects.filter(user_info__user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
+                Attendance.objects.filter(user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
             ),
             unlocked=Exists(models.TeamUnlock.objects.filter(unlocked_by=OuterRef('id')).only('id')),
         ).prefetch_related(

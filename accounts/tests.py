@@ -17,13 +17,10 @@ from django.urls import reverse
 from faker import Faker
 from hunter2.models import Configuration
 
-from accounts.factories import UserInfoFactory, UserProfileFactory, UserFactory
+from accounts.factories import UserProfileFactory, UserFactory
 
 
 class FactoryTests(TestCase):
-    def test_user_info_factory_default_construction(self):
-        UserInfoFactory.create()
-
     def test_user_profile_factory_default_construction(self):
         UserProfileFactory.create()
 
@@ -48,7 +45,7 @@ class SignupTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)  # Should redirect back to where you were after signup
         User = get_user_model()
-        self.assertIsNotNone(User.objects.get().info.contact)
+        self.assertIsNotNone(User.objects.get().contact)
 
     def test_signup_without_privacy(self):
         fake = Faker()

@@ -20,7 +20,6 @@ from django.utils.safestring import mark_safe
 
 from events.models import Attendance
 from hunter2.models import Configuration
-from . import models
 
 CONTACT_CHOICES = [
     (True, "Yes"),
@@ -29,21 +28,17 @@ CONTACT_CHOICES = [
 
 User = get_user_model()
 
-UserForm = modelform_factory(User, fields=('email', ))
-
-UserInfoFormset = inlineformset_factory(
-    User, models.UserInfo, fields=('picture', 'contact'), can_delete=False, widgets={'contact': RadioSelect(choices=CONTACT_CHOICES, attrs={"required": True})}
-)
+UserForm = modelform_factory(User, fields=('email', 'contact', 'picture'))
 
 
 def attendance_formset_factory(seat_assignments):
     fields = ('seat', ) if seat_assignments else ()
-    return inlineformset_factory(models.UserInfo, Attendance, fields=fields, extra=0, can_delete=False)
+    return inlineformset_factory(User, Attendance, fields=fields, extra=0, can_delete=False)
 
 
-class UserInfoForm(forms.ModelForm):
+class UserSignupForm(forms.ModelForm):
     class Meta:
-        model = models.UserInfo
+        model = User
         fields = ['contact']
         widgets = {
             'contact': RadioSelect(choices=CONTACT_CHOICES, attrs={"required": True}),
@@ -51,8 +46,6 @@ class UserInfoForm(forms.ModelForm):
 
     field_order = ['username', 'email', 'password1', 'password2', 'contact']
 
-
-class UserSignupForm(UserInfoForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if Configuration.get_solo().privacy_policy:
@@ -64,6 +57,5 @@ class UserSignupForm(UserInfoForm):
     def signup(self, request, user):
         if 'privacy' in self.fields and request.POST['privacy'] != "on":
             raise SuspiciousOperation("You must accept the privacy policy")
-        user.info = models.UserInfo(user=user, contact=request.POST['contact'])
-        user.info.save()
+        user.contact = request.POST['contact']
         user.save()

@@ -32,7 +32,7 @@ def announcements(request):
 
     if request.user.is_authenticated:
         account_href = reverse('edit_profile')
-        if request.tenant.seat_assignments and request.user.info.attendance_at(request.tenant).seat == '':
+        if request.tenant.seat_assignments and request.user.attendance_at(request.tenant).seat == '':
             no_seat = models.Announcement(
                 id='no_seat',
                 title='No Seat Set',
@@ -41,7 +41,7 @@ def announcements(request):
             )
             no_seat.special = True
             current_announcements = list(current_announcements) + [no_seat]
-        if request.user.info.contact is None:
+        if request.user.contact is None:
             no_contact = models.Announcement(
                 id='no_contact',
                 title='Can we contact you?',

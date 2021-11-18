@@ -15,11 +15,9 @@ from django.db.models import OuterRef, Subquery
 from events.models import Attendance
 
 
-def annotate_userinfo_queryset_with_seat(queryset, event):
-    # This involves an ugly double join until UserProfile deprecation is complete
-    return queryset.annotate(seat=Subquery(Attendance.objects.filter(user_info=OuterRef('pk'), event=event).values('seat')))
+def annotate_user_queryset_with_seat(queryset, event):
+    return queryset.annotate(seat=Subquery(Attendance.objects.filter(user=OuterRef('pk'), event=event).values('seat')))
 
 
 def annotate_userprofile_queryset_with_seat(queryset, event):
-    # This involves an ugly double join until UserProfile deprecation is complete
-    return queryset.annotate(seat=Subquery(Attendance.objects.filter(user_info__user=OuterRef('pk'), event=event).values('seat')))
+    return queryset.annotate(seat=Subquery(Attendance.objects.filter(user=OuterRef('pk'), event=event).values('seat')))
