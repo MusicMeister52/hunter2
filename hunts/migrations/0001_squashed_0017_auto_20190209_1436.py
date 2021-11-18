@@ -19,8 +19,6 @@ import uuid
 
 class Migration(migrations.Migration):
 
-    replaces = [('hunts', '0001_initial'), ('hunts', '0002_auto_20180514_2037'), ('hunts', '0002_auto_20180513_1909'), ('hunts', '0003_merge_20180603_1925'), ('hunts', '0004_auto_20180716_2132'), ('hunts', '0004_auto_20180702_0750'), ('hunts', '0005_merge_20180731_0156'), ('hunts', '0006_auto_20180807_0926'), ('hunts', '0007_auto_20180812_0934'), ('hunts', '0008_auto_20180815_2122'), ('hunts', '0009_episode_winning'), ('hunts', '0010_auto_20181226_1919'), ('hunts', '0010_auto_20181216_1734'), ('hunts', '0011_merge_20181228_1219'), ('hunts', '0012_auto_20190108_0840'), ('hunts', '0013_auto_20190108_0937'), ('hunts', '0011_auto_20181229_2011'), ('hunts', '0012_merge_20190101_1431'), ('hunts', '0014_merge_20190111_0921'), ('hunts', '0012_auto_20190110_2323'), ('hunts', '0013_merge_20190124_2043'), ('hunts', '0015_merge_20190126_1649'), ('hunts', '0016_auto_20190207_1537'), ('hunts', '0017_auto_20190209_1436')]
-
     initial = True
 
     dependencies = [
