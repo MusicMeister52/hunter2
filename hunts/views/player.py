@@ -34,17 +34,13 @@ from .mixins import EpisodeUnlockedMixin, EventMustBeOverMixin, PuzzleUnlockedMi
 from .. import models, utils
 from ..stats import __all__ as stats_generators
 
-import hunter2
-
 
 class Index(TemplateView):
     template_name = 'hunts/index.html'
 
     def get_context_data(self, **kwargs):
-        config = hunter2.models.Configuration.get_solo()
         return {
-            # TODO: Real content from DB
-            'content': config.index_content,
+            'content': self.request.tenant.index_text,
         }
 
 
