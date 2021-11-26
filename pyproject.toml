@@ -51,7 +51,7 @@ pytest-cov = "==3.0.0"
 pytest-shard = "0.1.2"
 [tool.poetry.dev-dependencies]
 django-silk = "==4.2.0"
-ipython = "==7.29.0"
+ipython = "==7.30.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
 Sphinx = "==4.2.0"
