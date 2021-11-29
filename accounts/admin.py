@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2018-2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -12,8 +12,25 @@
 
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
+from django.contrib.auth.forms import UserChangeForm as AuthUserChangeForm
 
 from . import models
+
+
+class UserChangeForm(AuthUserChangeForm):
+    class Meta(AuthUserChangeForm.Meta):
+        model = get_user_model()
+
+
+@admin.register(models.User)
+class UserAdmin(AuthUserAdmin):
+    form = UserChangeForm
+
+    fieldsets = AuthUserAdmin.fieldsets + (
+        # Left blank, but included for future fields
+    )
 
 
 @admin.register(models.UserProfile)
@@ -28,3 +45,6 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def email(self, profile):
         return profile.user.email
+
+
+admin.site.register(models.UserInfo)

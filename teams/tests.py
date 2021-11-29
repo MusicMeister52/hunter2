@@ -14,7 +14,10 @@
 import json
 import uuid
 
+from django.apps import apps
+from django.contrib import admin
 from django.core.exceptions import ValidationError
+from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock
 
@@ -36,6 +39,13 @@ class FactoryTests(EventTestCase):
 
     def test_team_member_factory_default_construction(self):
         TeamMemberFactory.create()
+
+
+class AdminRegistrationTests(TestCase):
+    def test_models_registered(self):
+        models = apps.get_app_config('teams').get_models()
+        for model in models:
+            self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
 
 
 class TeamMultiEventTests(EventAwareTestCase):

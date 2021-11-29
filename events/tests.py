@@ -14,10 +14,13 @@
 from io import StringIO
 from unittest.case import expectedFailure
 
+from django.apps import apps
+from django.contrib import admin
 from django.core.management import CommandError, call_command
+from django.test import TestCase
 
 from events.factories import AttendanceFactory, EventFactory, EventFileFactory
-from events.models import Event
+from events.models import Event, EventFile
 from hunter2.tests import MockTTY, mock_inputs
 from . import factories
 from .management.commands import createevent
@@ -35,6 +38,16 @@ class FactoryTests(EventTestCase):
     def test_event_factory_errors_in_testcase(self):
         with self.assertRaises(AssertionError):
             EventFactory.create()
+
+
+class AdminRegistrationTests(TestCase):
+    def test_models_registered(self):
+        models = apps.get_app_config('events').get_models()
+        # Models which don't need to be directly registered due to being managed by inlines
+        inline_models = (EventFile, )
+        for model in models:
+            if model not in inline_models:
+                self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
 
 
 class EventRulesTests(EventAwareTestCase):

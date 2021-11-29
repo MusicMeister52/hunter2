@@ -411,5 +411,6 @@ class HeadstartAdmin(ObjectPermissionsModelAdmin):
 
 
 admin.site.register(models.TeamPuzzleData)
+admin.site.register(models.TeamPuzzleProgress)
 admin.site.register(models.TeamData)
 admin.site.register(models.UserData)

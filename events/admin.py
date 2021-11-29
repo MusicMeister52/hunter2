@@ -39,4 +39,5 @@ class EventAdmin(ObjectPermissionsModelAdmin):
         return qs
 
 
+admin.site.register(models.Attendance)
 admin.site.register(models.Domain)
