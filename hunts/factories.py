@@ -270,7 +270,7 @@ class DataFactory(factory.django.DjangoModelFactory):
     data = factory.LazyFunction(lambda: json.dumps(Faker().pydict(
         10,
         True,
-        'str', 'str', 'str', 'str', 'float', 'int', 'int',
+        value_types=('str', 'str', 'str', 'str', 'float', 'int', 'int'),
     )))
 
 
