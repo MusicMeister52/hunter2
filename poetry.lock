@@ -558,11 +558,14 @@ sqlparse = "*"
 
 [[package]]
 name = "django-solo"
-version = "1.2.0"
+version = "2.0.0"
 description = "Django Solo helps working with singletons"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6"
+
+[package.dependencies]
+django = ">=2.2"
 
 [[package]]
 name = "django-sortedm2m"
@@ -1669,7 +1672,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "4788819d0e8e386c4ffd207b4be240b6e63feb5189f3234267aa11a3f3e9beac"
+content-hash = "13a604c10b10a0102848004f2aa23f15c5e6fee6570e8d87ac38e5f2aa0ec74a"
 
 [metadata.files]
 aioredis = [
@@ -1954,8 +1957,8 @@ django-silk = [
     {file = "django_silk-4.2.0-py3-none-any.whl", hash = "sha256:5e70b5351f04e3c4ea4fe6bc16c95bfee776006422dd5e7827e6e3db23dc41ec"},
 ]
 django-solo = [
-    {file = "django-solo-1.2.0.tar.gz", hash = "sha256:b42487d5b82b24232edc09b54a8cc3919e7a79bd684c1ac6346ecaf9942c4288"},
-    {file = "django_solo-1.2.0-py3-none-any.whl", hash = "sha256:ef63bce7b6d0225821de0b29fa00be17c3996d41ab340ca6c51d004129742c32"},
+    {file = "django-solo-2.0.0.tar.gz", hash = "sha256:7c6dbe04ae858a4645b580ec83a31a960a067ad4525d8227cca50b7fc5983a62"},
+    {file = "django_solo-2.0.0-py3-none-any.whl", hash = "sha256:9046eca738f2ed64dbef38c2107a02af1065a8899b4f9fabf61b06b8325de1b4"},
 ]
 django-sortedm2m = [
     {file = "django-sortedm2m-3.1.1.tar.gz", hash = "sha256:136f3d4e0820b351608a7141d88ac3ba7fafcd37a9b8361ad00ffe616a790be5"},
