@@ -447,7 +447,7 @@ django = "*"
 
 [[package]]
 name = "django-nested-admin"
-version = "3.3.3"
+version = "3.4.0"
 description = "Django admin classes that allow for nested inlines"
 category = "main"
 optional = false
@@ -1672,7 +1672,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "9eb2b3766504a7d3e9b2bc361a36dd40378a9cdc64508448faf3d36d54b25a0d"
+content-hash = "b867ff3aaf1f3ea100ae061b4589562bdf33544b0b0076d8fb1c4eae28dd688c"
 
 [metadata.files]
 aioredis = [
@@ -1933,8 +1933,8 @@ django-fullclean = [
     {file = "django_fullclean-0.0.5-py3-none-any.whl", hash = "sha256:4ae0271e6286d763e881679e6bdf45c8c6da414b96d6513a5c7ef911d44f717e"},
 ]
 django-nested-admin = [
-    {file = "django-nested-admin-3.3.3.tar.gz", hash = "sha256:f1773c4d1be0a19e4b7a510734e88b81f551f831ed7b0641f63ad13cef3ee08c"},
-    {file = "django_nested_admin-3.3.3-py2.py3-none-any.whl", hash = "sha256:440d06055d5c114b354c6bbd040ab878a1bfbea02692cb40ec8fd1e5a071e99b"},
+    {file = "django-nested-admin-3.4.0.tar.gz", hash = "sha256:fbcf20d75a73dcbcc6285793ff936eff8df4deba5b169e0c1ab765394c562805"},
+    {file = "django_nested_admin-3.4.0-py2.py3-none-any.whl", hash = "sha256:c6852c5ac632f4e698b6beda455006fd464c852459e5e858a6db832cdb23d9e1"},
 ]
 django-ordered-model = []
 django-postgresql-dag = [
