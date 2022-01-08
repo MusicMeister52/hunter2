@@ -13,6 +13,7 @@
  */
 
 import $ from 'jquery'
+import 'bootstrap/js/dist/button'
 import 'bootstrap/js/dist/collapse'
 import {easeLinear, format, select} from 'd3'
 import durationFilters from './human-duration'
@@ -58,18 +59,14 @@ function message(message, error) {
 }
 
 function evaluateButtonDisabledState(button) {
-  var onCooldown = button.data('cooldown')
-  var emptyAnswer = button.data('empty-answer')
-  if (onCooldown || emptyAnswer) {
-    button.attr('disabled', true)
-  } else {
-    button.removeAttr('disabled')
-  }
+  let onCooldown = button.dataset.cooldown
+  let emptyAnswer = button.dataset.emptyAnswer
+  button.disabled = onCooldown || emptyAnswer
 }
 
 function doCooldown(milliseconds) {
-  var btn = $('#answer-button')
-  btn.data('cooldown', true)
+  let btn = document.getElementById('answer-button')
+  btn.dataset.cooldown = true
   evaluateButtonDisabledState(btn)
 
   var button = select('#answer-button')
@@ -391,20 +388,20 @@ window.addEventListener('DOMContentLoaded', function() {
     })
   })
 
-  var soln_content = $('#soln-content')
-  var soln_button = $('#soln-button')
+  const solution_button = document.getElementById('solution-button')
+  const solution_content = document.getElementById('solution-content')
 
-  if (soln_content.length && soln_button.length) {
-    soln_content.on('show.bs.collapse', function() {
-      var url = soln_button.data('url')
-      soln_content.load(url)
-      $(this).unbind('show.bs.collapse')
+  if (solution_button != null && solution_content != null) {
+    solution_content.addEventListener('show.bs.collapse', function populateSolution(event) {
+      const url = solution_button.dataset.url
+      fetch(url).then(response => response.text()).then(text => { solution_content.innerHTML = text })
+      event.target.removeEventListener('show.bs.collapse', populateSolution)
     })
-    soln_content.on('shown.bs.collapse', function() {
-      soln_button.text('Hide Solution')
+    solution_content.addEventListener('shown.bs.collapse', function() {
+      solution_button.text = 'Hide Solution'
     })
-    soln_content.on('hidden.bs.collapse', function() {
-      soln_button.text('Show Solution')
+    solution_content.addEventListener('hidden.bs.collapse', function() {
+      solution_button.text = 'Show Solution'
     })
   }
 })

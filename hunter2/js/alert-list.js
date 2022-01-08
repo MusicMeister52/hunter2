@@ -1,9 +1,7 @@
-import {BAlert} from 'bootstrap-vue'
+import 'bootstrap/js/dist/alert'
+import 'bootstrap/js/dist/button'
 
 export default {
-  components: {
-    'b-alert': BAlert,
-  },
   data: function() {
     return {
       announcements: {},

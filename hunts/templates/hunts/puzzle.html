@@ -38,7 +38,7 @@
 
 {% block page_header %}
 	<h1 class="h2"><a href="{% url 'episode_index' episode_number %}">{{ episode_name }}</a></h1>
-	<h2 class="h1">{{ title }}</h2>
+	<h2 id="puzzle-title" class="h1">{{ title }}</h2>
 {% endblock %}
 
 {% block content %}
@@ -56,17 +56,30 @@
 </section>
 
 <section id="puzzle-clues">
-<a id="notification-button" class="btn btn-outline-light" title="Notifications" data-toggle="popover" tabindex="-1">🔕</a>
-<div id="notification-popover" class="d-none">
-	<div id="notification-popover-content">
-		<p>Notify on significant puzzle events with:</p>
-		<label><input type="checkbox" id="browser-notifications-cb"/> Browser Notifications</label><br>
-		<span id="notification-permission-msg" class="small">Permission must be granted in the browser!</span><br>
-		<label><input type="checkbox" id="sound-notifications-cb"/> Sound</label><br>
-		<span id="sound-permission-msg" class="small">You may need to enable autoplay audio to reliably hear sound notifications</span>
+	<button
+		type="button"
+		class="btn btn-outline-light"
+		data-bs-animation="false"
+		data-bs-container="#notification-popover-container"
+		data-bs-html="true"
+		data-bs-toggle="popover"
+		data-bs-placement="bottom"
+		title="Notification Settings"
+		data-content-id="notification-popover-content"
+		id="notification-button"
+		aria-pressed="false"
+		aria-label="Notification Settings"
+	>🔕</button>
+	<div id="notification-popover-container">
+		<div class="d-none" id="notification-popover-content" aria-labelledby="notification-button">
+			<p>Notify on significant puzzle events with:</p>
+			<label><input type="checkbox" id="browser-notifications-cb"/> Browser Notifications</label><br>
+			<span id="notification-permission-msg" class="small">Permission must be granted in the browser!</span><br>
+			<label><input type="checkbox" id="sound-notifications-cb"/> Sound</label><br>
+			<span id="sound-permission-msg" class="small">You may need to enable autoplay audio to reliably hear sound notifications</span>
+		</div>
 	</div>
-</div>
-<div id="clue-list" />
+	<div id="clue-list" />
 </section>
 
 <section id="puzzle-answer">
@@ -87,13 +100,21 @@
 <div id="connection-status"></div>
 {% endif %}
 {% if ended or admin %}
-<button id="soln-button" class="btn btn-primary" data-toggle="collapse" data-target="#soln-content" data-url="{% url 'solution_content' episode_number=episode_number puzzle_number=puzzle_number %}">Show Solution</button>
-<div id="soln-content" class="card card-body collapse">
+<button
+	id="solution-button"
+	class="btn btn-primary"
+	data-bs-toggle="collapse"
+	data-bs-target="#solution-content"
+	data-url="{% url 'solution_content' episode_number=episode_number puzzle_number=puzzle_number %}"
+	aria-expanded="false"
+	aria-controls="solution-content"
+>Show Solution</button>
+<div id="solution-content" class="card card-body collapse">
 </div>
 {% endif %}
 </section>
 <section>
-<h3>Guesses <button id="guesses-button" class="btn" data-toggle="collapse" data-target="#guesses-container" >Show</button></h3>
+<h3>Guesses <button id="guesses-button" class="btn" data-bs-toggle="collapse" data-bs-target="#guesses-container" aria-expanded="false" aria-controls="guesses-container">Show</button></h3>
 <div id="guesses-container" class="collapse">
 	<table id="guesses">
 		<tr class="guess-viewer-header">

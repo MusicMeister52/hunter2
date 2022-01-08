@@ -8,8 +8,6 @@ $hover-color: #eee;
     td {
         padding: 0;
         position: relative;
-        border-left-width: 1px;
-        border-right-width: 1px;
         vertical-align: middle;
         > a {
             display: block;
@@ -54,6 +52,7 @@ $hover-color: #eee;
         font-weight: bold;
         font-size: 200%;
         line-height: 75%;
+        vertical-align: top;
     }
 
     > button {
@@ -63,7 +62,7 @@ $hover-color: #eee;
         }
         &:not(.collapsed)::before {
             @extend .filters-expanded;
-            content: "-";
+            content: "\2212"; /* Minus Sign */
         }
     }
 }

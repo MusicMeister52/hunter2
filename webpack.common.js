@@ -15,7 +15,7 @@ module.exports = {
     hunts_admin_guesses: 'hunts/js/admin/guesses.js',
     hunts_admin_progress: 'hunts/js/admin/progress-entrypoint.js',
     hunts_admin_stats: 'hunts/js/admin/stats.js',
-    hunts_admin_team: 'hunts/js/team-admin-entrypoint.js',
+    hunts_admin_team: 'hunts/js/admin/team-entrypoint.js',
     hunts_admin_reset_progress: 'hunts/scss/admin/reset_progress.scss',
     hunts_about: 'hunts/scss/about.scss',
     hunts_event: 'hunts/js/event.js',

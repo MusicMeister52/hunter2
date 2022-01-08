@@ -1,5 +1,4 @@
 @import "~bootstrap/scss/bootstrap";
-@import "~bootstrap-vue/src/index.scss";
 
 @import url('https://fonts.googleapis.com/css?family=Lato:400,700,900');
 
@@ -121,6 +120,11 @@ a.puzzle-link {
 	color: White;
 	margin: auto;
 	font-size: x-large;
+    text-decoration: none;
+}
+
+a.puzzle-link:hover {
+    text-decoration: underline;
 }
 
 h1 {

@@ -5,12 +5,12 @@
 	</div>
 
 	<div class="card" id="admin-progress-filters-key">
-		<b-card-header id="admin-progress-filters-header">
-			<b-button block variant="light" v-b-toggle.filter-help-body>Filters &amp; Help...</b-button>
-		</b-card-header>
-		<b-collapse id="filter-help-body">
-			<b-card-body class="d-flex flex-row justify-content-between">
-				<b-card-text id="admin-progress-filters-container" class="p-2 flex-grow-1">
+		<div class="card-header d-grid gap-0" id="admin-progress-filters-header">
+			<button class="btn btn-light collapsed" data-bs-toggle="collapse" data-bs-target="#filter-help-body" aria-expanded="false" aria-controls="filter-help-body">Filters &amp; Help...</button>
+		</div>
+		<div class="collapse" id="filter-help-body">
+			<div class="card card-body d-flex flex-row justify-content-between">
+				<div id="admin-progress-filters-container" class="p-2 flex-grow-1">
 					<h4>Filters</h4>
 					<span class="glyphicon glyphicon-plus"/>
 					<p><a href="?" v-on:click.prevent="clearFilters">Reset</a></p>
@@ -46,14 +46,14 @@
 							range
 							:max="max_total_guesses"
 					></el-slider>
-				</b-card-text>
-				<b-card-text id="admin-progress-key-container" class="p-4">
+				</div>
+				<div id="admin-progress-key-container" class="p-4">
 					<h4>Key</h4>
-					<table class="card-body">
+					<table class="card-body table">
 						<thead>
 							<tr>
-								<th>Team has...</th>
-								<th>Indicated by...</th>
+								<th scope="col">Team has...</th>
+								<th scope="col">Indicated by...</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -121,18 +121,26 @@
 							</tr>
 						</tbody>
 					</table>
-				</b-card-text>
-			</b-card-body>
-		</b-collapse>
+				</div>
+			</div>
+		</div>
 	</div>
-	<b-table class="admin-progress-table" :fields="fields" :items="progress_data">
-		<template v-slot:cell(team)="team">
-			<a :href="team.value.url">{{ team.value.name }}</a>
-		</template>
-		<template class="progress-cell" v-slot:cell()="state">
-			<a :href="state.item.team.url + '#puzzle-' + state.unformatted.puzzle_id" :title="hover_info(state.unformatted)">
-				<progress-state :state="state.unformatted" :row="state.index" :col="state.field"/>
-			</a>
-		</template>
-	</b-table>
+	<table class="table admin-progress-table">
+		<thead>
+			<tr>
+				<th scope="col">Team</th>
+				<th scope="col" v-for="field in fields" :title="field.headerTitle">{{ field.label }}</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr v-for="(team, row) in progress_data">
+				<td><a :href="team.url">{{ team.name }}</a></td>
+				<td v-for="(state, col) in team.progress">
+					<a :href="`${team.url}#puzzle-${state.puzzle_id}`" :title="hover_info(state)">
+						<progress-state :state="state" :row="row" :col="col" />
+					</a>
+				</td>
+			</tr>
+		</tbody>
+	</table>
 </div>

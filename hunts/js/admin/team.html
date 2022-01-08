@@ -1,0 +1,90 @@
+<div class="team_puzzles_admin_widget">
+	<h3>Started Puzzles: {{ puzzles.length }}</h3>
+	<ul id="started-puzzles-widget">
+		<div :id="'puzzle-' + puzzle.id" v-for="puzzle in sortedPuzzles" class="card">
+			<div class="card-header">
+				<a v-if="puzzle.reset_url" :href="puzzle.reset_url" title="Reset progress on this puzzle" class="btn btn-danger header-link reset-button">↺</a>
+				<a class="header-link" :href="puzzle.edit_url">edit</a>
+				<a class="header-link" :href="puzzle.url">view</a>
+				<div
+					class="started-puzzle-header text-center collapsed"
+					role="button"
+					data-bs-toggle="collapse"
+					:data-bs-target="`#puzzle-${puzzle.id}-detail`"
+					aria-expanded="false"
+					:aria-controls="`puzzle-${puzzle.id}-detail`"
+				>
+					<h4>{{ puzzle.episode_name }}: {{ puzzle.title }}</h4>
+					<div>
+						<b>Total guesses:</b> {{ puzzle.num_guesses }} &emsp;
+						<b>Started puzzle:</b> <human-datetime v-bind:value="puzzle.time_started" /> &emsp;
+						<b>Latest guess:</b> <human-datetime v-bind:value="puzzle.guesses[0].given" /> &emsp;
+						<b>Unlocks received:</b> {{ puzzle.clues_visible.length }}&emsp;
+						<b>Hints scheduled:</b> {{ puzzle.hints_scheduled.length }}
+					</div>
+				</div>
+			</div>
+			<div :id="`puzzle-${puzzle.id}-detail`" class="card-body collapse">
+				<h5>Clues Visible</h5>
+				<table class="table table-sm table-striped">
+					<thead>
+						<tr>
+							<th scope="col">Type</th>
+							<th scope="col">Text</th>
+							<th scope="col">Received At</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="clue in puzzle.clues_visible">
+							<td>{{ clue.type }}</td>
+							<!-- This can be HTML but it'll be written to render in the context of the puzzle page,
+							 so it's better to just show the source than try to render it here -->
+							<td>{{ clue.text }}</td>
+							<td><human-datetime v-bind:value="clue.received_at" /></td>
+						</tr>
+					</tbody>
+				</table>
+				<template v-if="puzzle.hints_scheduled.length > 0">
+					<h5>Timed Hints Scheduled</h5>
+					<ol class="hints">
+						<li v-for="(hint, index) in puzzle.hints_scheduled">
+							<human-datetime v-bind:value="hint.time" v-bind:title="hint.text" />
+						</li>
+					</ol>
+				</template>
+				<template v-else>
+					<h5>No Timed Hints Scheduled</h5>
+				</template>
+				<h5>Recent Guesses <a class="header-link" :href="puzzle.guesses_url">more</a></h5>
+				<table class="table table-sm table-striped">
+					<thead>
+						<tr>
+							<th scope="col">User</th>
+							<th scope="col">Guess</th>
+							<th scope="col">Given</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="guess in puzzle.guesses">
+							<td>{{ guess.user }}</td>
+							<td>{{ guess.guess }}</td>
+							<td><human-datetime v-bind:value="guess.given" /></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</ul>
+	<h3>Solved Puzzles: {{ solved_puzzles.length }}</h3>
+	<ul class="d-flex flex-wrap">
+		<div :id="'puzzle-' + puzzle.id" v-for="puzzle in solved_puzzles" class="card solved-puzzle">
+			<h4 class="card-header">
+				{{ puzzle.title }}
+				<a v-if="puzzle.reset_url" :href="puzzle.reset_url" title="Reset progress on this puzzle" class="btn btn-danger reset-button">↺</a>
+			</h4>
+			<span class="card-body">
+				After <human-duration v-bind:value="puzzle.time_taken" /> with {{ puzzle.num_guesses }} guesses.
+			</span>
+		</div>
+	</ul>
+</div>

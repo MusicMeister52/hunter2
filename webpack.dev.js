@@ -20,6 +20,9 @@ module.exports = merge(common, {
     devMiddleware: {
       publicPath: PUBLIC_PATH,
     },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
     host: '0.0.0.0',
     port: DEV_SERVER_PORT,
   },
