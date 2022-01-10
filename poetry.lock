@@ -577,7 +577,7 @@ python-versions = "*"
 
 [[package]]
 name = "django-tenants"
-version = "3.4.0"
+version = "3.4.1"
 description = "Tenant support for Django using PostgreSQL schemas."
 category = "main"
 optional = false
@@ -1682,7 +1682,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "7532e3f82cf49d984266add2c19ac9a9ec4ca3029300385fdebbccc02cf70dfb"
+content-hash = "4acc4be841ee3ae3b95990c02e58908ff34a007169df5f35f62ed0830316826c"
 
 [metadata.files]
 aioredis = [
@@ -1974,7 +1974,7 @@ django-sortedm2m = [
     {file = "django_sortedm2m-3.1.1-py2.py3-none-any.whl", hash = "sha256:c67ae0757e8e60ded15a9ba04d0862fe39fba3d5b865899c2472166ff0050f2c"},
 ]
 django-tenants = [
-    {file = "django-tenants-3.4.0.tar.gz", hash = "sha256:396b46a197f1743253baf0f23216ac88816c3558cc56b609864d51ef49004515"},
+    {file = "django-tenants-3.4.1.tar.gz", hash = "sha256:e029d93da0d166fe80df7684e2f1acff330a94f8c7cf461c1d4a92e68f39dc1a"},
 ]
 django-webpack-loader = [
     {file = "django-webpack-loader-1.4.1.tar.gz", hash = "sha256:7e34085b7fc4d352e482ff9cf7d09ae4524e730675e25432ab1d25a2dd94e583"},
