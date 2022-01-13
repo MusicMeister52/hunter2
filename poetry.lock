@@ -467,7 +467,7 @@ resolved_reference = "8a2908472b7bfbedb530a845f6c18fc86da7b750"
 
 [[package]]
 name = "django-postgresql-dag"
-version = "0.3.1"
+version = "0.3.2"
 description = "Directed Acyclic Graph implementation for Django & Postgresql"
 category = "main"
 optional = false
@@ -1641,7 +1641,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "77098b66f7e237bbc6848ce75c3ada30220e34720be281a3aa39189b78ec312a"
+content-hash = "dcb48e9ca70938aafeb64e3f94cca215d0a32abcf2dbb487cc67fd2fe0eb9204"
 
 [metadata.files]
 aioredis = [
@@ -1906,8 +1906,8 @@ django-nested-admin = [
 ]
 django-ordered-model = []
 django-postgresql-dag = [
-    {file = "django-postgresql-dag-0.3.1.tar.gz", hash = "sha256:7f100b6da5feda675300934d815ed3e951574433d1e1b42fe19adb3d0d142bbb"},
-    {file = "django_postgresql_dag-0.3.1-py3-none-any.whl", hash = "sha256:e9d888d434856c1e7b4c4e81b821bc3d9e65ebde9e14ff63b9407de7bde8c4f9"},
+    {file = "django-postgresql-dag-0.3.2.tar.gz", hash = "sha256:768cf1ddf592c75f29a6f71ad9f0061c5f87c75ac937e8477ca5b0d962a9d979"},
+    {file = "django_postgresql_dag-0.3.2-py3-none-any.whl", hash = "sha256:5d29ec52a711639849350109a1b93fbe21e4069b5ce93716ed26fb4f5b8bfdd6"},
 ]
 django-prometheus = []
 django-redis-cache = [
