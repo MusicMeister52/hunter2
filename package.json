@@ -58,7 +58,7 @@
     "popper.js": "1.16.1",
     "path-browserify": "*",
     "robust-websocket": "1.0.0",
-    "sass": "1.47.0",
+    "sass": "1.48.0",
     "urijs": "1.19.7",
     "vue": "2.6.14",
     "vue-template-compiler": "2.6.14"
