@@ -25,12 +25,12 @@ services:
       - UWSGI_WORKERS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
     volumes:
-      - config:/config
-      - metrics_spool:/var/spool/django_prometheus
-      - uploads_events:/uploads/events
-      - uploads_puzzles:/uploads/puzzles
-      - uploads_site:/uploads/site
-      - uploads_solutions:/uploads/solutions
+      - config:/config:z
+      - metrics_spool:/var/spool/django_prometheus:z
+      - uploads_events:/uploads/events:z
+      - uploads_puzzles:/uploads/puzzles:z
+      - uploads_site:/uploads/site:z
+      - uploads_solutions:/uploads/solutions:z
   websocket:
     depends_on:
       - db
@@ -52,11 +52,11 @@ services:
       - ASGI_THREADS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
     volumes:
-      - config:/config
-      - uploads_events:/uploads/events
-      - uploads_puzzles:/uploads/puzzles
-      - uploads_site:/uploads/site
-      - uploads_solutions:/uploads/solutions
+      - config:/config:z
+      - uploads_events:/uploads/events:z
+      - uploads_puzzles:/uploads/puzzles:z
+      - uploads_site:/uploads/site:z
+      - uploads_solutions:/uploads/solutions:z
   db:
     environment:
       - H2_DATABASE_PASSWORD
@@ -64,7 +64,7 @@ services:
       - POSTGRES_PASSWORD
     image: registry.gitlab.com/hunter2.app/hunter2/db:${H2_IMAGE_VERSION:-latest}
     volumes:
-      - db14:/var/lib/postgresql/data
+      - db14:/var/lib/postgresql/data:Z
   db_exporter:
     depends_on:
       - db
@@ -78,11 +78,11 @@ services:
     ports:
       - 127.0.0.1:9090:9090
     volumes:
-      - metrics:/prometheus
+      - metrics:/prometheus:Z
   redis:
     image: redis:6.2.6-alpine3.14@sha256:50fc99c529b81432a592fa76354783d7fc3ba479a92fc810cbf669138c4138b7
     volumes:
-      - redis:/data
+      - redis:/data:Z
   redis_exporter:
     depends_on:
       - redis
@@ -98,10 +98,10 @@ services:
     ports:
       - "${H2_LISTEN:-8080}:8080"
     volumes:
-      - uploads_events:/media/events:ro
-      - uploads_puzzles:/media/puzzles:ro
-      - uploads_site:/media/site:ro
-      - uploads_solutions:/media/solutions:ro
+      - uploads_events:/media/events:ro,z
+      - uploads_puzzles:/media/puzzles:ro,z
+      - uploads_site:/media/site:ro,z
+      - uploads_solutions:/media/solutions:ro,z
 
 volumes:
   db14: {}

@@ -10,11 +10,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db14:/var/lib/postgresql/data
+      - db14:/var/lib/postgresql/data:Z
   redis:
     image: redis:6.2.6-alpine3.14@sha256:50fc99c529b81432a592fa76354783d7fc3ba479a92fc810cbf669138c4138b7
     volumes:
-      - redis:/data
+      - redis:/data:Z
   webpack:
     build: images/webpack
     environment:
@@ -26,9 +26,9 @@ services:
       - "${H2_WEBPACK_STATS_PORT:-8888}:${H2_WEBPACK_STATS_PORT:-8888}"
     volumes:
       - ${PWD:-.}:/opt/hunter2/src:delegated
-      - assets:/opt/hunter2/assets
-      - node_modules:/opt/hunter2/src/node_modules
-      - babel_cache:/var/cache/babel-loader
+      - assets:/opt/hunter2/assets:z
+      - node_modules:/opt/hunter2/src/node_modules:z
+      - babel_cache:/var/cache/babel-loader:z
   app:
     build:
        context: .
@@ -52,11 +52,11 @@ services:
       - "${H2_LISTEN:-127.0.0.1:8080}:8000"
     volumes:
       - ${PWD:-.}:/opt/hunter2/src:delegated
-      - config:/config
-      - uploads_events:/uploads/events
-      - uploads_puzzles:/uploads/puzzles
-      - uploads_site:/uploads/site
-      - uploads_solutions:/uploads/solutions
+      - config:/config:z
+      - uploads_events:/uploads/events:z
+      - uploads_puzzles:/uploads/puzzles:z
+      - uploads_site:/uploads/site:z
+      - uploads_solutions:/uploads/solutions:z
     tty: true
 
 volumes:
