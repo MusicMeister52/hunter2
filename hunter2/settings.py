@@ -16,6 +16,7 @@ import os
 import environ
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
 
 from .utils import load_or_create_secret_key
 
@@ -238,6 +239,7 @@ if SENTRY_DSN:  # nocover
         dsn=SENTRY_DSN.geturl(),
         integrations=(
             DjangoIntegration(),
+            RedisIntegration(),
         ),
     )
 
