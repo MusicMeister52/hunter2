@@ -227,7 +227,7 @@ function receivedOldAnswers(content) {
 function receivedSolvedMsg(content) {
   let message = $('#correct-answer-message')
   const time = durationFilters.filters.durationForHumans(Duration.fromMillis(content.time * 1000).toISO())
-  const html = `"${content.guess} by ${content.by} was correct! You spent ${time} on the puzzle. ` +
+  const html = `"${content.guess}" by ${content.by} was correct! You spent ${time} on the puzzle. ` +
     `Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
   if (message.length) {
     // The server already replied so we already put up a temporary message; just update it
