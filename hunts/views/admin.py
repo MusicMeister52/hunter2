@@ -471,6 +471,7 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
             'solved_by',
         ).only(
             'puzzle__title',
+            'puzzle__url_id',
             'puzzle__episode__name',
             'solved_by__given',
             'start_time',
@@ -580,6 +581,9 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
 
                 unsolved_puzzles.append({
                     **puzzle_info,
+                    'url': reverse('puzzle_permalink', kwargs={'puzzle_url_id': tp_progress.puzzle.url_id}),
+                    'edit_url': reverse('admin:hunts_puzzle_change', kwargs={'object_id': tp_progress.puzzle.pk}),
+                    'guesses_url': reverse('admin_guesses') + f'?team={tp_progress.team.pk}&puzzle={tp_progress.puzzle.pk}',
                     'episode_name': tp_progress.puzzle.episode.name,
                     'time_started': tp_progress.start_time,
                     'time_on': latest - tp_progress.start_time,
