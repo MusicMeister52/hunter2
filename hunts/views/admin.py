@@ -561,14 +561,16 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
 
                 # Hints which depend on not-unlocked unlocks are not included
                 unlocked_unlocks = {
-                    tu.unlockanswer.unlock.id: tu.unlocked_by.given
-                    for tu in tp_progress.teamunlock_set.all()
+                    tu['unlockanswer__unlock_id']: tu['min_given']
+                    for tu in tp_progress.teamunlock_set.all().values('unlockanswer__unlock_id').annotate(
+                        min_given=Min('unlocked_by__given')
+                    )
                 }
                 hints_scheduled = sorted(
                     [
                         {
                             'text': h.text,
-                            'time': h.unlocks_at(team, tp_progress)
+                            'time': h.unlocks_at(team, tp_progress, unlocked_unlocks=unlocked_unlocks)
                         }
                         for h in tp_progress.puzzle.hint_set.all()
                         if (
