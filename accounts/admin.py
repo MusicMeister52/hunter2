@@ -45,6 +45,3 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def email(self, profile):
         return profile.user.email
-
-
-admin.site.register(models.UserInfo)
