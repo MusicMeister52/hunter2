@@ -54,7 +54,7 @@ django-silk = "==4.2.0"
 ipython = "==7.31.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
-Sphinx = "==4.3.2"
+Sphinx = "==4.4.0"
 myst-parser = "==0.16.1"
 
 [build-system]
