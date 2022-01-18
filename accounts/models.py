@@ -24,7 +24,21 @@ class User(AbstractUser):
     class Meta:
         db_table = 'auth_user'
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, serialize=False, unique=True)
+    picture = models.URLField(blank=True, help_text='Paste a URL to an image for your profile picture')
+    contact = models.BooleanField(
+        null=True, help_text="We won't spam you, only important information about our events.", verbose_name='May we contact you?'
+    )
 
+    def attendance_at(self, event):
+        return self.attendance_set.get(event=event)
+
+    def get_absolute_url(self):
+        return reverse('profile', kwargs={'pk': self.uuid})
+
+
+# Note: UserProfile and its associated manager are slated for deletion. Any new references should be directly with the user model via
+# `django.conf.settings.AUTH_USER_MODEL` or `django.contrib.auth.get_user_model()`
 class UserProfileManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().select_related('user')
@@ -52,8 +66,8 @@ class UserProfile(models.Model):
         return self.teams.filter(at_event=event).exclude(name=None).exists()
 
     def attendance_at(self, event):
-        warnings.warn('Attendance has been moved to UserInfo model', DeprecationWarning)
-        return self.user.info.attendance_set.get(event=event)
+        warnings.warn('Attendance has been moved to User model', DeprecationWarning)
+        return self.user.attendance_set.get(event=event)
 
     def team_at(self, event):
         if event in self._team_at:
@@ -61,29 +75,3 @@ class UserProfile(models.Model):
         team = self.teams.get(at_event=event)
         self._team_at[event] = team
         return team
-
-
-# Today this is a new model because it needs an unenumerable key since it will be used in a URL.
-# Later we will migrate references to users to use this model too and deprecate UserProfile
-class UserInfo(models.Model):
-    class Manager(models.Manager):
-        def get_queryset(self):
-            return super().get_queryset().select_related('user')
-
-    id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='info')
-    picture = models.URLField(blank=True, help_text='Paste a URL to an image for your profile picture')
-    contact = models.BooleanField(
-        null=True, help_text="We won't spam you, only important information about our events.", verbose_name='May we contact you?'
-    )
-    objects = Manager()
-
-    @property
-    def username(self):
-        return self.user.username
-
-    def attendance_at(self, event):
-        return self.attendance_set.get(event=event)
-
-    def get_absolute_url(self):
-        return reverse('profile', kwargs={'pk': self.id})

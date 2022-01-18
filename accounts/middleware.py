@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
-from .models import UserInfo, UserProfile
+from .models import UserProfile
 
 
 class AccountMiddleware(object):
@@ -19,7 +19,6 @@ class AccountMiddleware(object):
 
     def __call__(self, request):
         if request.user.is_authenticated:
-            # Pre-fetch / create the UserInfo and UserProfile for the current user
-            request.user.info, _ = UserInfo.objects.get_or_create(user=request.user)
+            # Pre-fetch / create the UserProfile for the current user
             request.user.profile, _ = UserProfile.objects.get_or_create(user=request.user)
         return self.get_response(request)

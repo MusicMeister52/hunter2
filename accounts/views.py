@@ -43,7 +43,7 @@ class UserProfileAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetVi
 
 
 class ProfileView(DetailView):
-    model = models.UserInfo
+    model = models.User
     template_name = 'accounts/profile.html'
 
     def get_context_data(self, object):
@@ -54,7 +54,7 @@ class ProfileView(DetailView):
             event = attendance.event
             with tenant_context(event):
                 try:
-                    team = Team.objects.filter(members=object.user.profile).get()
+                    team = Team.objects.filter(members=object.profile).get()
                     attendance_info = {
                         "event": attendance.event.name,
                         "team": team.name,
@@ -73,14 +73,11 @@ class PasswordChangeView(allauth_views.PasswordChangeView):
 
 
 class EditProfileView(LoginRequiredMixin, View):
-    def _get_profile_formset(self, request):
-        return forms.UserInfoFormset(instance=request.user)
-
     def _get_attendance_formset(self, request):
         AttendanceFormset = forms.attendance_formset_factory(request.tenant.seat_assignments)
-        return AttendanceFormset(instance=request.user.info, queryset=request.user.info.attendance_set.filter(event=request.tenant))
+        return AttendanceFormset(instance=request.user, queryset=request.user.attendance_set.filter(event=request.tenant))
 
-    def _render(self, request, user_form, profile_formset, attendance_formset):
+    def _render(self, request, user_form, attendance_formset):
         password_form = ChangePasswordForm(user=request.user) if request.user.has_usable_password() else SetPasswordForm(user=request.user)
         steam_account = request.user.socialaccount_set.first()  # This condition breaks down if we support multiple social accounts.
         if steam_account:
@@ -88,7 +85,6 @@ class EditProfileView(LoginRequiredMixin, View):
         context = {
             'user_form': user_form,
             'password_form': password_form,
-            'profile_formset': profile_formset,
             'attendance_formset': attendance_formset,
             'steam_account': steam_account,
         }
@@ -100,28 +96,20 @@ class EditProfileView(LoginRequiredMixin, View):
 
     def get(self, request):
         user_form = forms.UserForm(instance=request.user)
-        profile_formset = self._get_profile_formset(request)
         attendance_formset = self._get_attendance_formset(request) if request.tenant else None
-        return self._render(request, user_form, profile_formset, attendance_formset)
+        return self._render(request, user_form, attendance_formset)
 
     def post(self, request):
         user_form = forms.UserForm(request.POST, instance=request.user)
-        profile_formset = None
         attendance_formset = None
         if user_form.is_valid():
             created_user = user_form.save(commit=False)
-            profile_formset = forms.UserInfoFormset(request.POST, instance=created_user)
-            if profile_formset.is_valid():
-                created_profile = profile_formset[0].save(commit=False)
-                AttendanceFormset = forms.attendance_formset_factory(request.tenant.seat_assignments)
-                attendance_formset = AttendanceFormset(request.POST, instance=created_profile)
-                if attendance_formset.is_valid():
-                    created_user.save()
-                    profile_formset.save()
-                    attendance_formset.save()
-                    return HttpResponseRedirect(reverse('edit_profile'))
-        if not profile_formset:
-            profile_formset = self._get_profile_formset(request)
+            AttendanceFormset = forms.attendance_formset_factory(request.tenant.seat_assignments)
+            attendance_formset = AttendanceFormset(request.POST, instance=created_user)
+            if attendance_formset.is_valid():
+                created_user.save()
+                attendance_formset.save()
+                return HttpResponseRedirect(reverse('edit_profile'))
         if not attendance_formset and request.tenant:
             attendance_formset = self._get_attendance_formset(request)
-        return self._render(request, user_form, profile_formset, attendance_formset)
+        return self._render(request, user_form, attendance_formset)

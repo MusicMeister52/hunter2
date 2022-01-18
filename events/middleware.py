@@ -32,7 +32,7 @@ class EventMiddleware(object):
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         if request.user.is_authenticated and request.tenant is not None:
-            request.user.info.attendance_set.get_or_create(
+            request.user.attendance_set.get_or_create(
                 event=request.tenant,
             )
         return

@@ -9,6 +9,7 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator
@@ -18,7 +19,6 @@ from django_tenants.utils import tenant_context
 
 from .fields import SingleTrueBooleanField
 
-import accounts.models
 import hunter2.models
 
 
@@ -95,7 +95,7 @@ class EventFile(models.Model):
 
 
 class Attendance(models.Model):
-    user_info = models.ForeignKey(accounts.models.UserInfo, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     seat = models.CharField(
         max_length=12,
@@ -105,4 +105,4 @@ class Attendance(models.Model):
     )
 
     class Meta:
-        unique_together = (('event', 'user_info'), )
+        unique_together = (('event', 'user'), )

@@ -28,7 +28,7 @@ from django.utils import timezone
 from parameterized import parameterized
 from channels.testing import WebsocketCommunicator
 
-from accounts.factories import UserFactory, UserInfoFactory, UserProfileFactory
+from accounts.factories import UserFactory, UserProfileFactory
 from events.factories import EventFileFactory, AttendanceFactory
 from events.models import Event
 from events.test import EventAwareTestCase, EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
@@ -3051,7 +3051,7 @@ class ContextProcessorTests(AsyncEventTestCase):
         self.request.tenant = self.tenant
 
     def test_shows_seat_announcement_if_enabled_and_user_has_no_seat(self):
-        AttendanceFactory(user_info=self.user.info, event=self.tenant, seat='').save()
+        AttendanceFactory(user=self.user, event=self.tenant, seat='').save()
 
         self.tenant.seat_assignments = True
 
@@ -3061,7 +3061,7 @@ class ContextProcessorTests(AsyncEventTestCase):
         self.assertEqual('no_seat', output['announcements'][0].id)
 
     def test_does_not_show_seat_announcement_if_enabled_and_user_has_seat(self):
-        AttendanceFactory(user_info=self.user.info, event=self.tenant, seat='A1').save()
+        AttendanceFactory(user=self.user, event=self.tenant, seat='A1').save()
 
         self.tenant.seat_assignments = True
 
@@ -3070,7 +3070,7 @@ class ContextProcessorTests(AsyncEventTestCase):
         self.assertEqual(0, len(output['announcements']))
 
     def test_does_not_show_seat_announcement_if_disabled(self):
-        AttendanceFactory(user_info=self.user.info, event=self.tenant, seat='').save()
+        AttendanceFactory(user=self.user, event=self.tenant, seat='').save()
 
         self.tenant.seat_assignments = False
 
@@ -3079,11 +3079,11 @@ class ContextProcessorTests(AsyncEventTestCase):
         self.assertEqual(0, len(output['announcements']))
 
     def test_shows_contact_request_announcement_if_user_has_no_pref(self):
-        ui = UserInfoFactory(contact=None)
-        AttendanceFactory(user_info=ui, event=self.tenant)
+        user = UserFactory(contact=None)
+        AttendanceFactory(user=user, event=self.tenant)
 
         request = self.rf.get('/')
-        request.user = ui.user
+        request.user = user
         request.tenant = self.tenant
 
         output = announcements(request)
@@ -3091,11 +3091,11 @@ class ContextProcessorTests(AsyncEventTestCase):
         self.assertIn('no_contact', [a.id for a in output['announcements']], 'Contact request announcement missing from context')
 
     def test_does_not_show_contact_request_announcement_if_user_has_pref_true(self):
-        ui = UserInfoFactory(contact=True)
-        AttendanceFactory(user_info=ui, event=self.tenant)
+        user = UserFactory(contact=True)
+        AttendanceFactory(user=user, event=self.tenant)
 
         request = self.rf.get('/')
-        request.user = ui.user
+        request.user = user
         request.tenant = self.tenant
 
         output = announcements(request)
@@ -3103,11 +3103,11 @@ class ContextProcessorTests(AsyncEventTestCase):
         self.assertNotIn('no_contact', [a.id for a in output['announcements']], 'Unexpected contact request announcement in context')
 
     def test_does_not_show_contact_request_announcement_if_user_has_pref_false(self):
-        ui = UserInfoFactory(contact=False)
-        AttendanceFactory(user_info=ui, event=self.tenant)
+        user = UserFactory(contact=False)
+        AttendanceFactory(user=user, event=self.tenant)
 
         request = self.rf.get('/')
-        request.user = ui.user
+        request.user = user
         request.tenant = self.tenant
 
         output = announcements(request)

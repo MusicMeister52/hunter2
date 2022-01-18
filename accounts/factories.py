@@ -19,17 +19,6 @@ import pytz
 from factory.django import DjangoModelFactory
 
 
-class UserInfoFactory(DjangoModelFactory):
-    class Meta:
-        model = 'accounts.UserInfo'
-
-    # We pass in profile=None to prevent UserFactory from creating another profile
-    # (this disables the RelatedFactory)
-    user = factory.SubFactory('accounts.factories.UserFactory', info=None)
-    picture = factory.Faker('url')
-    contact = factory.Faker('boolean')
-
-
 class UserProfileFactory(DjangoModelFactory):
     class Meta:
         model = 'accounts.UserProfile'
@@ -46,6 +35,8 @@ class UserFactory(DjangoModelFactory):
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
     password = factory.Faker('password')
+    picture = factory.Faker('url')
+    contact = factory.Faker('boolean')
     factory.PostGeneration(
         lambda user, create, extracted: user.set_password(user.password)
     )
@@ -64,8 +55,7 @@ class UserFactory(DjangoModelFactory):
     )
 
     # We pass in 'user' to link the generated Profile to our just-generated User
-    # This will call UserInfoFactory(user=our_new_user), thus skipping the SubFactory.
-    info = factory.RelatedFactory(UserInfoFactory, 'user')
+    # This will call UserProfileFactory(user=our_new_user), thus skipping the SubFactory.
     profile = factory.RelatedFactory(UserProfileFactory, 'user')
 
     @factory.lazy_attribute_sequence
