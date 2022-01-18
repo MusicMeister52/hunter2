@@ -7,6 +7,8 @@
 					:data-target="'.puzzle-' + puzzle.id + '-detail'"
 					aria-expanded="false">
 				<a v-if="puzzle.reset_url" :href="puzzle.reset_url" title="Reset progress on this puzzle" class="btn btn-danger reset-button" onclick="event.stopPropagation()">↺</a>
+				<a class="header-link" :href="puzzle.edit_url" onclick="event.stopPropagation()">edit</a>
+				<a class="header-link" :href="puzzle.url" onclick="event.stopPropagation()">view</a>
 				<h4>{{ puzzle.episode_name }}: {{ puzzle.title }}</h4>
 				<div >
 					<b>Total guesses:</b> {{ puzzle.num_guesses }} &emsp;
@@ -38,7 +40,7 @@
 				<template v-else>
 					<h5>No Timed Hints Scheduled</h5>
 				</template>
-				<h5>Recent Guesses</h5>
+				<h5>Recent Guesses <a class="header-link" :href="puzzle.guesses_url">more</a></h5>
 				<b-table v-bind:fields="guess_fields" v-bind:items="puzzle.guesses" small striped>
 					<template v-slot:given="row">
 						<human-datetime v-bind:value="row.value" />
