@@ -9,8 +9,8 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
-
-
+from django.apps import apps
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -26,6 +26,13 @@ class FactoryTests(TestCase):
 
     def test_user_factory_default_construction(self):
         UserFactory.create()
+
+
+class AdminRegistrationTests(TestCase):
+    def test_models_registered(self):
+        models = apps.get_app_config('accounts').get_models()
+        for model in models:
+            self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
 
 
 class SignupTests(TestCase):

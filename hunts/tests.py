@@ -19,10 +19,12 @@ from os import path
 
 import factory
 import freezegun
+from django.apps import apps
+from django.contrib import admin
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import transaction
-from django.test import RequestFactory, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from parameterized import parameterized
@@ -56,7 +58,9 @@ from .factories import (
     UserDataFactory,
     UserPuzzleDataFactory,
 )
-from .models import PuzzleData, TeamPuzzleData, UserPuzzleData, TeamPuzzleProgress, TeamUnlock, Answer, Guess
+from .models import EpisodePrequel, Hint, PuzzleData, PuzzleFile, SolutionFile, TeamPuzzleData, Unlock, UnlockAnswer, UserPuzzleData, TeamPuzzleProgress, \
+    TeamUnlock, Answer, \
+    Guess
 from .utils import encode_uuid
 from .runtimes import Runtime
 
@@ -140,6 +144,16 @@ class FactoryTests(EventTestCase):
     @staticmethod
     def test_announcement_factory_default_construction():
         AnnouncementFactory.create()
+
+
+class AdminRegistrationTests(TestCase):
+    def test_models_registered(self):
+        models = apps.get_app_config('hunts').get_models()
+        # Models which don't need to be directly registered due to being managed by inlines or being an M2M through model
+        inline_models = (EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamUnlock, Unlock, UnlockAnswer, )
+        for model in models:
+            if model not in inline_models:
+                self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
 
 
 class SiteSetupTest(EventAwareTestCase):
