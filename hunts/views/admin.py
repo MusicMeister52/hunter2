@@ -325,21 +325,31 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
             at_event=request.tenant,
             role=TeamRole.PLAYER,
         ).annotate(
-            num_solved_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False)),
-            num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False)),
+            # Django does not support multiple annotated aggregations, because they're implemented as joins and so
+            # interfere with one another. In the case of COUNTs though, `distinct` keeps them accurate.
+            num_solved_puzzles=Count(
+                'teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False), distinct=True
+            ),
+            num_started_puzzles=Count(
+                'teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False), distinct=True
+            ),
+            num_guesses=Count('guess', distinct=True),
             teampuzzleprogress_exists=Exists(models.TeamPuzzleProgress.objects.filter(team_id=OuterRef('id'))),
+            # Here we avoid an aggregation and instead manually write the subquery to avoid the same issue
+            most_recent_guess_time=Subquery(
+                models.Guess.objects.filter(by_team_id=OuterRef('id')).order_by('given').values('given')[:1]
+            ),
         ).filter(
             teampuzzleprogress_exists=True
-        ).order_by(
-            F('num_solved_puzzles') - F('num_started_puzzles'),
-            'num_solved_puzzles'
-        ).prefetch_related('members').seal()
+        ).order_by().prefetch_related('members').seal()  # ensure there is no default ordering (which will break the annotated aggregations)
 
         all_puzzle_progress = models.TeamPuzzleProgress.objects.filter(
             team__in=teams,
         ).annotate(
             guess_count=Count('guesses'),
             latest_guess_time=Max('guesses__given'),
+        ).filter(
+            start_time__isnull=False
         ).select_related(
             'solved_by'
         ).prefetch_related(
@@ -397,6 +407,35 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
                 'hints_scheduled': hints_scheduled,
             }
 
+        # Teams are sorted for display. The idea is that the higher up the list a team comes, the worse they
+        # are doing (because admins should help those teams first). The ordering is thus:
+        # 1. number of puzzles solved (first = fewest)
+        # 2. time on unsolved puzzles (first = highest) (capped: max 3 puzzles and max 3 hours counts per puzzle -
+        #    this prevents a team who opens all puzzles and then goes to bed from appearing ahead of every
+        #    other team at this point
+        # 3. most recent guess (first = most recent) rationale: amongst teams that are very stuck, teams who
+        #    have guessed recently are "active".
+        # 4. id (first = highest) rationale: final tie-breaker, lower-IDd teams are probably more keen.
+        time_spent_max_puzzles = 3
+        time_spent_cap = timedelta(hours=3)
+
+        def team_sort_key(t):
+            team_progress = sorted(
+                puzzle_progress[t.id].values(), key=lambda tp_progress: tp_progress.start_time
+            )
+            recently_opened_time_spent = timedelta()
+            for tp_progress in team_progress[-time_spent_max_puzzles:]:
+                recently_opened_time_spent += min(now - tp_progress.start_time, time_spent_cap)
+
+            last_guessed = t.most_recent_guess_time
+
+            return (
+                t.num_solved_puzzles,
+                -recently_opened_time_spent,
+                now - last_guessed if last_guessed else timedelta.max,
+                t.id
+            )
+
         data = {
             'puzzles': [{
                 'short_name': pz.abbr,
@@ -411,8 +450,9 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
                     team_puzzle_state(t, pz)
                     for pz in puzzles
                 ]
-            } for t in teams],
+            } for t in sorted(teams, key=team_sort_key)],
         }
+
         return JsonResponse(data)
 
 

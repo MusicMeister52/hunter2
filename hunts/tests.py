@@ -1965,6 +1965,118 @@ class AdminContentTests(EventTestCase):
         self.assertNotIn('the event is over', content)
 
 
+class ProgressOrderingTests(EventTestCase):
+    def setUp(self):
+        self.admin_user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
+        self.admin_team = self.admin_user.team_at(self.tenant)
+        self.puzzle1 = PuzzleFactory(start_date=None)
+        self.puzzle2 = PuzzleFactory(episode=self.puzzle1.episode, start_date=None)
+        self.player1 = TeamMemberFactory(team__name='1', team__at_event=self.tenant)
+        self.player2 = TeamMemberFactory(team__name='2', team__at_event=self.tenant)
+        self.player3 = TeamMemberFactory(team__name='3', team__at_event=self.tenant)
+        self.tpp1 = TeamPuzzleProgressFactory(team=self.player1.team_at(self.tenant), puzzle=self.puzzle1)
+        self.tpp2 = TeamPuzzleProgressFactory(team=self.player2.team_at(self.tenant), puzzle=self.puzzle1)
+        self.tpp3 = TeamPuzzleProgressFactory(team=self.player3.team_at(self.tenant), puzzle=self.puzzle1)
+        # 2 puzzles
+        # [solved 0] [solved 1] [solved 2]
+        # [stuck low time] [stuck high time] [stuck cap]
+        # [guessed recently] [guessed ages ago]
+
+    @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
+    def get_team_ordering(self):
+        self.client.force_login(self.admin_user)
+        url = reverse('admin_progress_content')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        return [int(p['name']) for p in response.json()['team_progress']]
+
+    def test_admin_progress_content_ordering_different_solved(self):
+        GuessFactory(by=self.player1, for_puzzle=self.puzzle1, correct=True)
+        GuessFactory(by=self.player1, for_puzzle=self.puzzle2, correct=True)
+        GuessFactory(by=self.player3, for_puzzle=self.puzzle1, correct=True)
+
+        GuessFactory(by=self.player2, for_puzzle=self.puzzle1)
+        TeamPuzzleProgressFactory(
+            team=self.player3.team_at(self.tenant),
+            puzzle=self.puzzle2,
+            start_time=self.tpp3.start_time - datetime.timedelta(hours=1)
+        )
+
+        self.assertEqual(self.get_team_ordering(), [2, 3, 1])
+
+    def test_admin_progress_content_ordering_different_time_stuck(self):
+        with freezegun.freeze_time():
+            self.tpp1.start_time = timezone.now() - datetime.timedelta(hours=5)
+            self.tpp2.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp3.start_time = timezone.now() - datetime.timedelta(hours=3)
+            self.tpp1.save()
+            self.tpp2.save()
+            self.tpp3.save()
+
+            self.assertEqual(self.get_team_ordering(), [1, 3, 2])
+
+    def test_admin_progress_content_ordering_time_stuck_cap(self):
+        with freezegun.freeze_time():
+            self.tpp1.start_time = timezone.now() - datetime.timedelta(hours=5)
+            self.tpp2.start_time = timezone.now() - datetime.timedelta(hours=4)
+            self.tpp3.start_time = timezone.now() - datetime.timedelta(hours=6)
+            self.tpp1.save()
+            self.tpp2.save()
+            self.tpp3.save()
+            GuessFactory(
+                by=self.player1,
+                for_puzzle=self.puzzle1,
+                given=timezone.now() - datetime.timedelta(minutes=3)
+            )
+            GuessFactory(
+                by=self.player2,
+                for_puzzle=self.puzzle1,
+                given=timezone.now() - datetime.timedelta(minutes=2)
+            )
+            GuessFactory(
+                by=self.player3,
+                for_puzzle=self.puzzle1,
+                given=timezone.now() - datetime.timedelta(minutes=1)
+            )
+            self.assertEqual(self.get_team_ordering(), [3, 2, 1])
+
+    def test_admin_progress_content_ordering_different_recent_guess(self):
+        with freezegun.freeze_time():
+            self.tpp1.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp2.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp3.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp1.save()
+            self.tpp2.save()
+            self.tpp3.save()
+            GuessFactory(
+                by=self.player1,
+                for_puzzle=self.puzzle1,
+                given=timezone.now() - datetime.timedelta(minutes=2)
+            )
+            GuessFactory(
+                by=self.player2,
+                for_puzzle=self.puzzle1,
+                given=timezone.now() - datetime.timedelta(minutes=1)
+            )
+            GuessFactory(
+                by=self.player3,
+                for_puzzle=self.puzzle1,
+                given=timezone.now() - datetime.timedelta(minutes=3)
+            )
+            self.assertEqual(self.get_team_ordering(), [2, 1, 3])
+
+    def test_admin_progress_content_ordering_by_id(self):
+        with freezegun.freeze_time():
+            self.tpp1.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp2.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp3.start_time = timezone.now() - datetime.timedelta(hours=1)
+            self.tpp1.save()
+            self.tpp2.save()
+            self.tpp3.save()
+
+            self.assertEqual(self.get_team_ordering(), [1, 2, 3])
+
+
 class StatsTests(EventTestCase):
     def setUp(self):
         self.admin_user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
