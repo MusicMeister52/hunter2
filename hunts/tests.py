@@ -1680,6 +1680,7 @@ class AdminContentTests(EventTestCase):
 
     @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
     def test_admin_progress_content(self):
+        pz2 = PuzzleFactory(episode=self.puzzle.episode)
         with freezegun.freeze_time() as frozen_datetime:
             team1 = self.guesses[0].by_team
             team2 = self.guesses[1].by_team
@@ -1689,24 +1690,30 @@ class AdminContentTests(EventTestCase):
             tpp2 = TeamPuzzleProgress.objects.get(team=team2, puzzle=self.puzzle)
             tpp2.start_time = timezone.now()
             tpp2.save()
-            # tpp1 = TeamPuzzleProgressFactory(team=team1, puzzle=self.puzzle)
-            frozen_datetime.tick(datetime.timedelta(minutes=1))
+            frozen_datetime.tick(datetime.timedelta(seconds=30))
+            # Add a team which hasn't guessed at all
+            tpp3 = TeamPuzzleProgressFactory(puzzle=self.puzzle)
+            tpp3.start_time = timezone.now()
+            tpp3.save()
+            team3 = tpp3.team
+            # Add a team which hasn't even opened a puzzle page
+            team4 = TeamFactory()
+            frozen_datetime.tick(datetime.timedelta(seconds=30))
 
             # Add a guess by an admin to confirm they don't appear
             GuessFactory(by=self.admin_user, by_team=self.admin_team, for_puzzle=self.puzzle)
             GuessFactory(by=team2.members.all()[0], for_puzzle=self.puzzle, correct=True)
-            # Add a team which has done nothing and therefore will not show up
-            team3 = TeamPuzzleProgressFactory(puzzle=self.puzzle).team
 
             self.client.force_login(self.admin_user.user)
             url = reverse('admin_progress_content')
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             content = response.json()
-            self.assertEqual(len(content['puzzles']), 1)
+            self.assertEqual(len(content['puzzles']), 2)
             self.assertEqual(content['puzzles'][0]['title'], self.puzzle.title)
+            self.assertEqual(content['puzzles'][1]['title'], pz2.title)
 
-            self.assertEqual(len(content['team_progress']), 5)
+            self.assertEqual(len(content['team_progress']), 6)
 
             # team1 has opened the puzzle and made an incorrect guess
             team1_data = self._check_team_get_progress(response, team1)
@@ -1719,6 +1726,8 @@ class AdminContentTests(EventTestCase):
             latest_guess = datetime.datetime.fromisoformat(team1_data[0]['latest_guess'].replace('Z', '+00:00'))
             diff = abs(latest_guess - self.guesses[0].given).total_seconds()
             self.assertTrue(diff < 0.001)
+            self.assertEqual(team1_data[1]['puzzle_id'], pz2.id)
+            self.assertEqual(team1_data[1]['state'], 'not_opened')
 
             # team2 has opened the puzzle and made a correct guess
             # move time forwards to verify that time_on is the solve time
@@ -1729,9 +1738,21 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(team2_data[0]['guesses'], 2)
             self.assertEqual(team2_data[0]['time_on'], 60)
             self.assertIsNone(team2_data[0]['latest_guess'])
+            self.assertEqual(team2_data[1]['puzzle_id'], pz2.id)
+            self.assertEqual(team2_data[1]['state'], 'not_opened')
 
             # team3 has opened the puzzle and made no guesses
-            self.assertFalse(any([True for x in response.json()['team_progress'] if x['id'] == team3.id]))
+            team3_data = self._check_team_get_progress(response, team3)
+            self.assertEqual(team3_data[0]['puzzle_id'], self.puzzle.id)
+            self.assertEqual(team3_data[0]['state'], 'open')
+            self.assertEqual(team3_data[0]['guesses'], 0)
+            self.assertEqual(team3_data[0]['time_on'], 30)
+            self.assertIsNone(team3_data[0]['latest_guess'])
+            self.assertEqual(team3_data[1]['puzzle_id'], pz2.id)
+            self.assertEqual(team3_data[1]['state'], 'not_opened')
+
+            # team4 does not appear
+            self.assertFalse(any([True for x in response.json()['team_progress'] if x['id'] == team4.id]))
 
     @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
     def test_admin_progress_content_hints(self):

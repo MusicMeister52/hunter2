@@ -325,9 +325,9 @@ class ProgressContent(EventAdminJSONMixin, View):
         ).annotate(
             num_solved_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__solved_by__isnull=False)),
             num_started_puzzles=Count('teampuzzleprogress', filter=Q(teampuzzleprogress__start_time__isnull=False)),
-            guess_exists=Exists(models.Guess.objects.filter(by_team_id=OuterRef('id'))),
+            teampuzzleprogress_exists=Exists(models.TeamPuzzleProgress.objects.filter(team_id=OuterRef('id'))),
         ).filter(
-            guess_exists=True
+            teampuzzleprogress_exists=True
         ).order_by(
             F('num_solved_puzzles') - F('num_started_puzzles'),
             'num_solved_puzzles'
@@ -338,8 +338,6 @@ class ProgressContent(EventAdminJSONMixin, View):
         ).annotate(
             guess_count=Count('guesses'),
             latest_guess_time=Max('guesses__given'),
-        ).filter(
-            guess_count__gt=0
         ).select_related(
             'solved_by'
         ).prefetch_related(
