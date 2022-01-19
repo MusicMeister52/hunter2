@@ -543,13 +543,21 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                 })
             else:
                 # Collate visible hints and unlocks
+                unlocked_unlocks = {
+                    tu['unlockanswer__unlock_id']: tu
+                    for tu in tp_progress.teamunlock_set.all().values(
+                        'unlockanswer__unlock_id', 'unlockanswer__unlock__text'
+                    ).annotate(
+                        min_given=Min('unlocked_by__given')
+                    )
+                }
                 clues_visible = [
                     {
                         'type': 'Unlock',
-                        'text': tu.unlockanswer.unlock.text,
-                        'received_at': tu.unlocked_by.given
+                        'text': tu['unlockanswer__unlock__text'],
+                        'received_at': tu['min_given']
                     }
-                    for tu in tp_progress.teamunlock_set.all()
+                    for tu in unlocked_unlocks.values()
                 ] + [
                     {
                         'type': 'Hint',
@@ -559,21 +567,21 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                     for h in itertools.chain(*tp_progress.hints().values())
                 ]
 
-                # Hints which depend on not-unlocked unlocks are not included
-                unlocked_unlocks = {
-                    tu.unlockanswer.unlock.id: tu.unlocked_by.given
-                    for tu in tp_progress.teamunlock_set.all()
+                unlocked_unlock_times = {
+                    k: tu['min_given']
+                    for k, tu in unlocked_unlocks.items()
                 }
+                # Hints which depend on not-unlocked unlocks are not included
                 hints_scheduled = sorted(
                     [
                         {
                             'text': h.text,
-                            'time': h.unlocks_at(team, tp_progress)
+                            'time': h.unlocks_at(team, tp_progress, unlocked_unlocks=unlocked_unlock_times)
                         }
                         for h in tp_progress.puzzle.hint_set.all()
                         if (
-                            h.unlocks_at(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlocks)
-                            and not h.unlocked_by(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlocks)
+                            h.unlocks_at(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlock_times)
+                            and not h.unlocked_by(team, tp_progress, possible_guesses=tp_progress.guesses.all(), unlocked_unlocks=unlocked_unlock_times)
                         )
                     ],
                     key=lambda x: x['time'],

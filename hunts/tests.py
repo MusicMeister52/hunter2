@@ -1630,6 +1630,7 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 0)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
 
+            # Add a guess which unlocks the unlock, the hint should now again be scheduled
             GuessFactory(for_puzzle=self.puzzle, by=member, guess=unlock.unlockanswer_set.all()[0].guess)
 
             response = self.client.get(url)
@@ -1639,6 +1640,20 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 1)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 1)
             self.assertEqual(response_json['puzzles'][0]['hints_scheduled'][0]['text'], hint.text)
+
+            # Advance time again, the hint should now be visible, alongside the unlock
+            frozen_datetime.tick(datetime.timedelta(minutes=11))
+            # Add another guess to ensure this doesn't throw off the timings
+            GuessFactory(for_puzzle=self.puzzle, by=member, guess=unlock.unlockanswer_set.all()[0].guess)
+
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            response_json = response.json()
+
+            # TODO disambiguate?
+            self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 2)
+            self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
 
     def test_can_view_admin_progress(self):
         self.client.force_login(self.admin_user.user)
