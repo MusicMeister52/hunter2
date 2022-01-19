@@ -1651,9 +1651,9 @@ class AdminContentTests(EventTestCase):
             response_json = response.json()
 
             # TODO disambiguate?
-            self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 3)
+            self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 2)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
-            self.assertEqual(response_json['puzzles'][0]['clues_visible'][2]['text'], hint.text)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
 
     def test_can_view_admin_progress(self):
         self.client.force_login(self.admin_user.user)
