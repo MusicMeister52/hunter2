@@ -34,7 +34,7 @@ DEBUG              = env.bool      ('H2_DEBUG',         default=False)
 BASE_DOMAIN        = env.str       ('H2_DOMAIN',        default='hunter2.localhost')
 DEFAULT_URL_SCHEME = env.str       ('H2_SCHEME',        default='http')
 LOG_LEVEL          = env.str       ('H2_LOG_LEVEL',     default='WARNING')
-LANGUAGE_CODE      = env.str       ('H2_LANGUAGE_CODE', default='en-gb')
+LANGUAGE_CODE      = env.str       ('H2_LANGUAGE_CODE', default='en-GB')
 MATOMO_DOMAIN_PATH = env.str       ('H2_MATOMO_HOST',   default=env.str('H2_PIWIK_HOST', default=None))
 MATOMO_SITE_ID     = env.str       ('H2_MATOMO_SITE',   default=env.str('H2_PIWIK_SITE', default='1'))
 TIME_ZONE          = env.str       ('H2_TIME_ZONE',     default='Europe/London')
@@ -134,6 +134,8 @@ FULLCLEAN_WHITELIST = [
 ]
 
 SHARED_APPS = (
+    # gdpr_assist needs to be loaded before our models are, in order to do process PrivacyMeta
+    'gdpr_assist',
     # Our apps first to allow us to override third party templates
     # These are in dependency order
     'accounts',
@@ -355,3 +357,7 @@ if USE_SILK:  # nocover
     SILKY_PYTHON_PROFILER_RESULT_PATH = '/uploads/events/'
 
 PROMETHEUS_EXPORT_MIGRATIONS = False
+
+SILENCED_SYSTEM_CHECKS = (
+    'gdpr_assist.E001',  # prevents gdpr_assist from requiring the database when apps are loaded
+)

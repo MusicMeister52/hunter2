@@ -1,4 +1,4 @@
-# Copyright (C) 2018 The Hunter2 Contributors.
+# Copyright (C) 2021 The Hunter2 Contributors.
 #
 # This file is part of Hunter2.
 #
@@ -10,13 +10,14 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
+from django.dispatch import receiver
 
-from django.apps import AppConfig
+from gdpr_assist.signals import pre_anonymise
+
+from accounts.models import User
 
 
-class Hunter2Config(AppConfig):
-    name = 'hunter2'
-
-    def ready(self):
-        super(Hunter2Config, self).ready()
-        from . import privacy  # noqa
+@receiver(pre_anonymise, sender=User)
+def anonymise_allauth_models(sender, instance, **kwargs):
+    instance.socialaccount_set.all().delete()
+    instance.emailaddress_set.all().delete()

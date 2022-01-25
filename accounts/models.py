@@ -24,6 +24,12 @@ class User(AbstractUser):
     class Meta:
         db_table = 'auth_user'
 
+    class PrivacyMeta:
+        fields = ['username', 'email', 'picture', 'contact']
+
+        def anonymise_contact(self, instance):
+            instance.contact = False
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, serialize=False, unique=True)
     picture = models.URLField(blank=True, help_text='Paste a URL to an image for your profile picture')
     contact = models.BooleanField(
