@@ -23,10 +23,10 @@ class TeamMiddleware(object):
 
         if request.user.is_authenticated and request.tenant is not None:
             try:
-                request.team = request.user.profile.teams.get(at_event=request.tenant)
+                request.team = request.user.teams.get(at_event=request.tenant)
             except Team.DoesNotExist:
                 request.team = Team(at_event=request.tenant)
                 request.team.save()
-                request.team.members.add(request.user.profile)
+                request.team.members.add(request.user)
 
         return self.get_response(request)

@@ -33,7 +33,7 @@ def is_admin_for_event(user, event):
     if event is None:
         return is_admin_for_schema_event.test(user, event)
     try:
-        return user.profile.team_at(event).is_admin
+        return user.team_at(event).is_admin
     except (Team.DoesNotExist, AttributeError):
         return False
 

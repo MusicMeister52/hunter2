@@ -10,12 +10,12 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
+from django.contrib.auth import get_user_model
 from django.db.models.signals import pre_save, post_save, pre_delete, m2m_changed
 from django.db.models import Q
 from django.dispatch import receiver
 
 from teams.models import Team
-from accounts.models import UserProfile
 from .. import models
 
 
@@ -167,7 +167,8 @@ def saved_unlockanswer(sender, instance, raw, *args, **kwargs):
 # Invalidate the cache of a guess's team when the team members change.
 @receiver(m2m_changed, sender=Team.members.through)
 def members_changed(sender, instance, action, pk_set, **kwargs):
+    User = get_user_model()
     if action == 'post_add':
-        users = UserProfile.objects.filter(pk__in=pk_set)
+        users = User.objects.filter(pk__in=pk_set)
         guesses = models.Guess.objects.filter(by__in=users)
         guesses.update(by_team=instance, correct_current=False)

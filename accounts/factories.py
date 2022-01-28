@@ -19,15 +19,6 @@ import pytz
 from factory.django import DjangoModelFactory
 
 
-class UserProfileFactory(DjangoModelFactory):
-    class Meta:
-        model = 'accounts.UserProfile'
-
-    # We pass in profile=None to prevent UserFactory from creating another profile
-    # (this disables the RelatedFactory)
-    user = factory.SubFactory('accounts.factories.UserFactory', profile=None)
-
-
 class UserFactory(DjangoModelFactory):
     class Meta:
         model = 'accounts.User'
@@ -53,10 +44,6 @@ class UserFactory(DjangoModelFactory):
             datetime_start=o.date_joined, tzinfo=pytz.utc
         ).isoformat()
     )
-
-    # We pass in 'user' to link the generated Profile to our just-generated User
-    # This will call UserProfileFactory(user=our_new_user), thus skipping the SubFactory.
-    profile = factory.RelatedFactory(UserProfileFactory, 'user')
 
     @factory.lazy_attribute_sequence
     def username(self, n):

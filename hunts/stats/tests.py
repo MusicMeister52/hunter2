@@ -17,7 +17,7 @@ from django.utils import timezone
 from faker import Faker
 from schema import Schema
 
-from accounts.factories import UserProfileFactory
+from accounts.factories import UserFactory
 from events.models import Event
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
@@ -158,9 +158,9 @@ class TopGuessesTests(EventTestCase):
         puzzle = PuzzleFactory()
         players = (  # Not using create_batch because we want some of the middle ones to not be on teams
             TeamMemberFactory(team__role=TeamRole.PLAYER),
-            UserProfileFactory(),
+            UserFactory(),
             TeamMemberFactory(team__role=TeamRole.PLAYER),
-            UserProfileFactory(),
+            UserFactory(),
             TeamMemberFactory(team__role=TeamRole.PLAYER),
         )
         team2 = TeamFactory(members=(players[1], players[3]))
@@ -206,7 +206,7 @@ class TopGuessesTests(EventTestCase):
 
     def test_top_guesses_not_enough_players(self):
         puzzle = PuzzleFactory()
-        players = UserProfileFactory.create_batch(2)
+        players = UserFactory.create_batch(2)
         team = TeamFactory(members=players, role=TeamRole.PLAYER)
         for i, player in enumerate(players):
             GuessFactory.create_batch(2 - i, by=player, for_puzzle=puzzle)
@@ -246,7 +246,7 @@ class TopGuessesTests(EventTestCase):
     def test_render_extra_data(self):
         team = TeamFactory.build(name='Team 4')
         team.id = 4
-        user = UserProfileFactory.build(user__username='User 4')
+        user = UserFactory.build(username='User 4')
         user.id = 4
         data = {
             'by_team': {
@@ -281,7 +281,7 @@ class TopGuessesTests(EventTestCase):
     def test_render_no_duplicate(self):
         team = TeamFactory.build(name='Team 3')
         team.id = 3
-        user = UserProfileFactory.build(user__username='User 3')
+        user = UserFactory.build(username='User 3')
         user.id = 3
 
         data = {
@@ -319,7 +319,7 @@ class TotalsTests(EventTestCase):
     def test_event_totals(self):
         puzzle = PuzzleFactory()
         players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
-        players += UserProfileFactory.create_batch(2)
+        players += UserFactory.create_batch(2)
         TeamFactory(members=(players[3], players[4]))
         for i, player in enumerate(players[1:]):  # Player 0 is not active
             GuessFactory(by=player, for_puzzle=puzzle, correct=False)

@@ -14,6 +14,7 @@
 from allauth.account import views as allauth_views
 from allauth.account.forms import ChangePasswordForm, SetPasswordForm
 from dal import autocomplete
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.http import HttpResponseRedirect
@@ -24,26 +25,32 @@ from django.views.generic.detail import DetailView
 from django_tenants.utils import tenant_context
 
 from teams.models import Team
-from . import forms, models
+from . import forms
 
 
-class UserProfileAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
+User = get_user_model()
+
+
+class UserAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
     raise_exception = True
 
+    def get_result_value(self, result):
+        return str(result.uuid)
+
     def get_queryset(self):
-        qs = models.UserProfile.objects.exclude(pk=self.request.user.profile.pk).order_by('user__username')
+        qs = User.objects.exclude(pk=self.request.user.pk).order_by('username')
 
         if self.q:
             qs = qs.filter(
-                Q(user__username__istartswith=self.q) |
-                Q(user__email__istartswith=self.q)
+                Q(username__istartswith=self.q) |
+                Q(email__istartswith=self.q)
             )
 
         return qs
 
 
 class ProfileView(DetailView):
-    model = models.User
+    model = User
     template_name = 'accounts/profile.html'
 
     def get_context_data(self, object):
@@ -54,7 +61,7 @@ class ProfileView(DetailView):
             event = attendance.event
             with tenant_context(event):
                 try:
-                    team = Team.objects.filter(members=object.profile).get()
+                    team = Team.objects.filter(members=object).get()
                     attendance_info = {
                         "event": attendance.event.name,
                         "team": team.name,

@@ -15,6 +15,7 @@ import uuid
 from collections import defaultdict
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -28,7 +29,6 @@ from ordered_model.models import OrderedModel
 from seal.models import SealableModel
 from seal.query import SealableQuerySet
 
-import accounts
 import events
 import teams
 from teams.models import TeamRole
@@ -724,7 +724,7 @@ class Relationship(models.ForeignObject):
 class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     for_puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
-    by = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
+    by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     by_team = models.ForeignKey(teams.models.Team, on_delete=models.SET_NULL, null=True, blank=True)
     guess = models.TextField(max_length=512)
     given = models.DateTimeField(default=timezone.now)
@@ -800,7 +800,7 @@ class TeamData(models.Model):
 
 class UserData(models.Model):
     event = models.ForeignKey(events.models.Event, on_delete=models.DO_NOTHING)
-    user = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     data = models.JSONField(blank=True, null=True)
 
     class Meta:
@@ -947,7 +947,7 @@ class TeamUnlock(SealableModel):
 
 class UserPuzzleData(models.Model):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
-    user = models.ForeignKey(accounts.models.UserProfile, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.UUIDField(default=uuid.uuid4, editable=False)
     data = models.JSONField(blank=True, null=True)
 

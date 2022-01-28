@@ -240,22 +240,22 @@ class AnonymisationCommandTests(EventTestCase):
     def setUp(self):
         self.cutoff = timezone.now() - timedelta(days=1)
         self.user_before = TeamMemberFactory(
-            user__username='person1',
-            user__email='someone@somewhere.com',
-            user__last_login=self.cutoff - timedelta(minutes=1),
-            user__picture='https://imagesite.com/an_image.jpg',
-            user__contact=True,
+            username='person1',
+            email='someone@somewhere.com',
+            last_login=self.cutoff - timedelta(minutes=1),
+            picture='https://imagesite.com/an_image.jpg',
+            contact=True,
         )
-        SocialAccount(user=self.user_before.user, uid=1).save()
-        EmailAddress(user=self.user_before.user, email=self.user_before.user.email).save()
-        self.before_pk = self.user_before.user.pk
-        self.user_after = TeamMemberFactory(user__last_login=self.cutoff + timedelta(minutes=1))
-        self.after_username = self.user_after.user.username
-        self.after_email = self.user_after.user.email
-        self.after_picture = self.user_after.user.picture
-        self.after_contact = self.user_after.user.contact
-        SocialAccount(user=self.user_after.user, uid=2).save()
-        EmailAddress(user=self.user_after.user, email=self.user_after.user.email).save()
+        SocialAccount(user=self.user_before, uid=1).save()
+        EmailAddress(user=self.user_before, email=self.user_before.email).save()
+        self.before_pk = self.user_before.pk
+        self.user_after = TeamMemberFactory(last_login=self.cutoff + timedelta(minutes=1))
+        self.after_username = self.user_after.username
+        self.after_email = self.user_after.email
+        self.after_picture = self.user_after.picture
+        self.after_contact = self.user_after.contact
+        SocialAccount(user=self.user_after, uid=2).save()
+        EmailAddress(user=self.user_after, email=self.user_after.email).save()
 
     def test_no_site_name_argument(self):
         output = StringIO()
@@ -277,15 +277,15 @@ class AnonymisationCommandTests(EventTestCase):
         self.user_before.refresh_from_db()
         self.user_after.refresh_from_db()
 
-        self.assertEqual(self.user_before.user.username, 'person1')
-        self.assertEqual(self.user_before.user.email, 'someone@somewhere.com')
-        self.assertEqual(self.user_before.user.picture, 'https://imagesite.com/an_image.jpg')
-        self.assertEqual(self.user_before.user.contact, True)
+        self.assertEqual(self.user_before.username, 'person1')
+        self.assertEqual(self.user_before.email, 'someone@somewhere.com')
+        self.assertEqual(self.user_before.picture, 'https://imagesite.com/an_image.jpg')
+        self.assertEqual(self.user_before.contact, True)
 
-        self.assertEqual(self.user_after.user.username, self.after_username)
-        self.assertEqual(self.user_after.user.email, self.after_email)
-        self.assertEqual(self.user_after.user.picture, self.after_picture)
-        self.assertEqual(self.user_after.user.contact, self.after_contact)
+        self.assertEqual(self.user_after.username, self.after_username)
+        self.assertEqual(self.user_after.email, self.after_email)
+        self.assertEqual(self.user_after.picture, self.after_picture)
+        self.assertEqual(self.user_after.contact, self.after_contact)
 
     def test_usage(self):
         output = StringIO()
@@ -325,18 +325,18 @@ class AnonymisationCommandTests(EventTestCase):
         self.user_before.refresh_from_db()
         self.user_after.refresh_from_db()
 
-        self.assertEqual(self.user_before.user.username, f'{self.before_pk}')
-        self.assertEqual(self.user_before.user.email, f'{self.before_pk}@anon.example.com')
-        self.assertEqual(self.user_before.user.picture, '')
-        self.assertEqual(self.user_before.user.contact, False)
-        self.assertEqual(SocialAccount.objects.filter(user=self.user_before.user).count(), 0)
-        self.assertEqual(EmailAddress.objects.filter(user=self.user_before.user).count(), 0)
-        self.assertEqual(self.user_after.user.username, self.after_username)
-        self.assertEqual(self.user_after.user.email, self.after_email)
-        self.assertEqual(self.user_after.user.picture, self.after_picture)
-        self.assertEqual(self.user_after.user.contact, self.after_contact)
-        self.assertEqual(SocialAccount.objects.filter(user=self.user_after.user).count(), 1)
-        self.assertEqual(EmailAddress.objects.filter(user=self.user_after.user).count(), 1)
+        self.assertEqual(self.user_before.username, f'{self.before_pk}')
+        self.assertEqual(self.user_before.email, f'{self.before_pk}@anon.example.com')
+        self.assertEqual(self.user_before.picture, '')
+        self.assertEqual(self.user_before.contact, False)
+        self.assertEqual(SocialAccount.objects.filter(user=self.user_before).count(), 0)
+        self.assertEqual(EmailAddress.objects.filter(user=self.user_before).count(), 0)
+        self.assertEqual(self.user_after.username, self.after_username)
+        self.assertEqual(self.user_after.email, self.after_email)
+        self.assertEqual(self.user_after.picture, self.after_picture)
+        self.assertEqual(self.user_after.contact, self.after_contact)
+        self.assertEqual(SocialAccount.objects.filter(user=self.user_after).count(), 1)
+        self.assertEqual(EmailAddress.objects.filter(user=self.user_after).count(), 1)
 
 
 class AnonymisationMethodTests(EventTestCase):

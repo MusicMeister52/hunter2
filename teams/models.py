@@ -12,13 +12,13 @@
 
 import uuid
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from enumfields import Enum, EnumField
 from seal.models import SealableModel
 
-import accounts
 import events
 
 
@@ -37,9 +37,9 @@ class Team(SealableModel):
         TeamRole, max_length=1, default=TeamRole.PLAYER,
         help_text='Role of the team. Admins can edit the event and see admin views, authors are credited on the about page'
     )
-    members = models.ManyToManyField(accounts.models.UserProfile, blank=True, related_name='teams')
-    invites = models.ManyToManyField(accounts.models.UserProfile, blank=True, related_name='team_invites')
-    requests = models.ManyToManyField(accounts.models.UserProfile, blank=True, related_name='team_requests')
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='teams')
+    invites = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='team_invites')
+    requests = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='team_requests')
     token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
