@@ -6,17 +6,16 @@ from django.db import migrations, models
 
 
 def populate_user_fields(apps, schema_editor):
-    UserInfo = apps.get_model('accounts', 'UserInfo')
-    # We iterate UserInfo not User since there's a small chance we have
-    # User objects without a related UserInfo, but not vice-versa
-    for user_info in UserInfo.objects.all():
+    User = apps.get_model('accounts', 'User')
+    for user in User.objects.all():
         # This makes a new UUID which means profile URLs will change.
         # Unfortunately this is necessary since we can't make the events migration which
         # migrates the Attendance reference to User run in the same transaction
-        user_info.user.uuid = uuid.uuid4()
-        user_info.user.contact = user_info.contact
-        user_info.user.picture = user_info.picture
-        user_info.user.save()
+        user.uuid = uuid.uuid4()
+        if user.info:
+            user.contact = user.info.contact
+            user.picture = user.info.picture
+        user.save()
 
 
 class Migration(migrations.Migration):
