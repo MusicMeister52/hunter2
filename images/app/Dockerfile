@@ -2,6 +2,8 @@
 FROM python:3.8.11-alpine3.14@sha256:b12462dab319994e6a4be09eee3be7a29b6b7abf6202fb8030f45af4d39d7e24 AS runtime_base
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
+    libxml2 \
+    libxslt \
     lua5.2 \
     postgresql-client \
     postgresql-libs \
@@ -21,6 +23,8 @@ RUN --mount=type=cache,target=/var/cache/apk apk add \
     gcc \
     git \
     libffi-dev \
+    libxml2-dev \
+    libxslt-dev \
     linux-headers \
     lua5.2-dev \
     musl-dev \
