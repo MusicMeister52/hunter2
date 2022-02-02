@@ -13,7 +13,6 @@
 					<form  action="" method="post">
 						{% csrf_token %}
 						{% bootstrap_form user_form layout='horizontal' %}
-						{% bootstrap_formset profile_formset layout='horizontal' %}
 						<h3>Details for {{ request.tenant }}</h3>
 						{% if attendance_formset %}
 							{% bootstrap_formset attendance_formset layout='horizontal' %}
