@@ -43,7 +43,10 @@ class User(AbstractUser):
         return self.username
 
     def attendance_at(self, event):
-        return self.attendance_set.get(event=event)
+        # This should exist due to the event middleware, but in the case of the login view the middleware
+        # won't have done anything because at time of execution request.user was AnonymousUser
+        attendance, _ = self.attendance_set.get_or_create(event=event)
+        return attendance
 
     def get_absolute_url(self):
         return reverse('profile', kwargs={'pk': self.uuid})
