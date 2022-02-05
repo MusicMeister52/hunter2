@@ -139,7 +139,8 @@ export default {
       if (state.state != 'open') {
         return ''
       }
-      let latest = state.latest_guess === null ? '' : `\nlatest guess: ${state.latest_guess}`
+      let display_format = { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short', hour: 'numeric', minute: 'numeric' }
+      let latest = state.latest_guess === null ? '' : `\nlatest guess: ${DateTime.fromISO(state.latest_guess).toLocaleString(display_format)}`
       return `guesses: ${state.guesses}` + latest
     },
     updateData: function(force) {
