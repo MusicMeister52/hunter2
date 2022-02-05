@@ -21,7 +21,9 @@
 		<template v-slot:cell(user)="row">
 			<a v-bind:href="`?user=${row.value.id}`" v-on:click.prevent="addFilter('user', row.value.id)">{{ row.value.name }}</a>
 			<span v-if="row.item.team.name" class="team">
-				(<a v-bind:href="`?team=${row.item.team.id}`" v-on:click.prevent="addFilter('team', row.item.team.id)">{{ row.item.team.name }}</a>)
+				(<a v-bind:href="`?team=${row.item.team.id}`" v-on:click.prevent="addFilter('team', row.item.team.id)">{{ row.item.team.name }}</a>
+					<a class="team-admin-view" v-bind:href="row.item.team_admin_view"><img src="../../../hunter2/img/eye.svg"></a>
+				)
 			</span>
 		</template>
 		<template v-slot:cell(seat)="row">

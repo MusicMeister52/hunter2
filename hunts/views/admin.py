@@ -179,6 +179,7 @@ class GuessesList(EventAdminJSONMixin, View):
                     'id': g.by_team.id,
                     'name': g.by_team.name,
                 },
+                'team_admin_view': f'{reverse("admin_team_detail", kwargs={"team_id": g.by_team.id})}#puzzle-{g.for_puzzle.id}',
                 'time_on_puzzle': g.time_on_puzzle(),
                 'user': {
                     'id': g.by.id,
