@@ -1,5 +1,6 @@
 {% extends "teams/base.html" %}
 {% load render_bundle from webpack_loader %}
+{% load tz %}
 
 {% block style %}
 {{ block.super }}
@@ -11,6 +12,14 @@
 {% endblock %}
 
 {% block content %}
+
+<section id="event-metadata">
+	<p><em>This event will end on
+		<span class="localtime" data-utc="{{ end_date|utc|date:"c" }}" data-format="DATETIME_FULL">
+			{{ end_date|time:"H:i:s O" }}
+		</span>
+	</em></p>
+</section>
 
 {% if authors %}
 <section id="authors">
