@@ -11,6 +11,8 @@
 {% endblock %}
 
 {% block content %}
+
+{% if authors %}
 <section id="authors">
 <h2>Admins</h2>
 <p>{{ event_name }} {{ author_verb }} run by:</p>
@@ -30,7 +32,10 @@
 {% endfor %}
 </div>
 </section>
+{% endif %}
+
 <section id="about">
 {{ content | safe }}
 </section>
+
 {% endblock %}
