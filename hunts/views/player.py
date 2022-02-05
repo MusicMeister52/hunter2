@@ -28,7 +28,7 @@ from django.views.generic import TemplateView, RedirectView
 from django_sendfile import sendfile
 
 from events.utils import annotate_user_queryset_with_seat
-from teams.models import TeamRole
+from teams.models import Team, TeamRole
 from teams.permissions import is_admin_for_event
 from .mixins import EpisodeUnlockedMixin, EventMustBeOverMixin, PuzzleUnlockedMixin
 from .. import models, utils
@@ -417,15 +417,20 @@ class AboutView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        author_team = self.request.tenant.teams.get(role=TeamRole.AUTHOR)
+        author_team = None
+        try:
+            author_team = self.request.tenant.teams.get(role=TeamRole.AUTHOR)
+        except Team.DoesNotExist:
+            pass
 
         files = self.request.tenant.files_map(self.request)
         content = Template(self.request.tenant.about_text).safe_substitute(**files)
 
-        User = get_user_model()
-
-        author_members = User.objects.filter(profile__in=author_team.members.all())
-        author_members = annotate_user_queryset_with_seat(author_members, self.request.tenant)
+        author_members = []
+        if author_team is not None:
+            User = get_user_model()
+            author_members = User.objects.filter(profile__in=author_team.members.all())
+            author_members = annotate_user_queryset_with_seat(author_members, self.request.tenant)
 
         author_verb = 'was' if self.request.tenant.end_date < timezone.now() else 'is'
 

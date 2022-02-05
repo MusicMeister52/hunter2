@@ -18,6 +18,7 @@ from django.apps import apps
 from django.contrib import admin
 from django.core.management import CommandError, call_command
 from django.test import TestCase
+from django.urls import reverse
 
 from events.factories import AttendanceFactory, EventFactory, EventFileFactory
 from events.models import Event, EventFile
@@ -196,3 +197,13 @@ class CreateEventManagementCommandTests(EventAwareTestCase):
 
         self.assertGreater(Event.objects.all().count(), 1)
         self.assertEqual(Event.objects.filter(current=True).count(), 1, "More than a single event with current set as True")
+
+
+class EventContentTests(EventTestCase):
+    def test_can_load_about(self):
+        self.tenant.about_text = '__test__'
+        self.tenant.save()
+        url = reverse('about')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '__test__')
