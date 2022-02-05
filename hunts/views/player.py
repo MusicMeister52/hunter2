@@ -438,6 +438,7 @@ class AboutView(TemplateView):
             'authors': author_members,
             'author_verb': author_verb,
             'content': content,
+            'end_date': self.request.tenant.end_date,
             'event_name': self.request.tenant.name,
         })
         return context
