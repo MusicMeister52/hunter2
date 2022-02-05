@@ -28,11 +28,11 @@ ln -s docker-compose.dev.yml docker-compose.yml
 ```
 This environment maps the local repo into the container and will dynamically reload code changes.
 
-You will need to configure some hosts file entries, as the app uses DNS information to route to different events:
+If your OS doesn't resolve localhost domains automatically you may need to configure some hosts file entries, as the app uses DNS information to route to different events:
 ```shell
-echo 127.0.0.1 hunter2.local www.hunter2.local dev.hunter2.local >> /etc/hosts
+echo 127.0.0.1 hunter2.localhost www.hunter2.localhost dev.hunter2.localhost | sudo tee -a /etc/hosts
 ```
-`dev.hunter2.local` is the default event subdomain. If you are working with more events, add more names here.
+`dev.hunter2.localhost` is the default event subdomain. If you are working with more events, add more names here.
 
 The quickest way to build and launch is:
 
