@@ -16,7 +16,7 @@ from collections.abc import Iterable
 import factory
 from faker import Faker
 
-from accounts.factories import UserProfileFactory
+from accounts.factories import UserFactory
 from events.models import Event
 
 from .models import TeamRole
@@ -40,7 +40,7 @@ class TeamFactory(factory.django.DjangoModelFactory):
                 self.members.add(member)
 
 
-class TeamMemberFactory(UserProfileFactory):
+class TeamMemberFactory(UserFactory):
     class Meta:
         exclude = ('team',)
 

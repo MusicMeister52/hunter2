@@ -15,15 +15,14 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from faker import Faker
+
+from accounts.models import UserProfile
 from hunter2.models import Configuration
 
-from accounts.factories import UserProfileFactory, UserFactory
+from accounts.factories import UserFactory
 
 
 class FactoryTests(TestCase):
-    def test_user_profile_factory_default_construction(self):
-        UserProfileFactory.create()
-
     def test_user_factory_default_construction(self):
         UserFactory.create()
 
@@ -31,8 +30,11 @@ class FactoryTests(TestCase):
 class AdminRegistrationTests(TestCase):
     def test_models_registered(self):
         models = apps.get_app_config('accounts').get_models()
+        # Models which don't need to be registered due to being deprecated and retained only for old data migration
+        exclude_models = (UserProfile, )
         for model in models:
-            self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
+            if model not in exclude_models:
+                self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
 
 
 class SignupTests(TestCase):

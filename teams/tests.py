@@ -21,8 +21,7 @@ from django.test import TestCase
 from django.urls import reverse
 from unittest.mock import Mock
 
-from accounts.factories import UserFactory, UserProfileFactory
-from accounts.models import UserProfile
+from accounts.factories import UserFactory
 from events.factories import EventFactory, EventFileFactory
 from events.test import EventAwareTestCase, EventTestCase
 from hunter2.models import APIToken
@@ -76,7 +75,7 @@ class TeamRulesTests(EventTestCase):
 
         # Add 3 users to a team when that max is less than that.
         self.assertLess(event.max_team_size, 3)
-        users = UserProfileFactory.create_batch(3)
+        users = UserFactory.create_batch(3)
 
         with self.assertRaises(ValidationError):
             for user in users:
@@ -85,7 +84,7 @@ class TeamRulesTests(EventTestCase):
     def test_one_team_per_member_per_event(self):
         event = self.tenant
         teams = TeamFactory.create_batch(2, at_event=event)
-        user = UserProfileFactory()
+        user = UserFactory()
 
         with self.assertRaises(ValidationError):
             teams[0].members.add(user)
@@ -94,10 +93,10 @@ class TeamRulesTests(EventTestCase):
 
 class TeamCreateTests(EventTestCase):
     def test_team_create(self):
-        creator = UserProfileFactory()
+        creator = UserFactory()
         team_template = TeamFactory.build()
 
-        self.client.force_login(creator.user)
+        self.client.force_login(creator)
         response = self.client.post(
             reverse('create_team'),
             {
@@ -114,38 +113,60 @@ class TeamCreateTests(EventTestCase):
         request.user = UserFactory()
         # Apply the middleware (ignore the result; we only care about what it does in the db)
         TeamMiddleware(Mock())(request)
-        profile = UserProfile.objects.get(user=request.user)
-        Team.objects.get(members=profile)
+        Team.objects.get(members=request.user)
 
     def test_automatic_creation(self):
         user = UserFactory()
         self.client.force_login(user)
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        profile = UserProfile.objects.get(user=user)
-        Team.objects.get(members=profile)
+        Team.objects.get(members=user)
 
 
 class InviteTests(EventTestCase):
     def setUp(self):
         self.event = self.tenant
-        self.team_admin = UserProfileFactory()
-        self.invitee = UserProfileFactory()
+        self.team_admin = UserFactory()
+        self.invitee = UserFactory()
         self.team = TeamFactory(at_event=self.event, members={self.team_admin})
 
         # Create an invite for the "invitee" user using the "team_admin" account.
-        self.client.force_login(self.team_admin.user)
+        self.client.force_login(self.team_admin)
         response = self.client.post(
             reverse('invite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.invitee.id
+                'user': str(self.invitee.uuid),
             }),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 200)
 
+    def test_invite_invalid_uuid(self):
+        # Send an invalid UUID request
+        response = self.client.post(
+            reverse('invite', kwargs={'team_id': self.team.id}),
+            json.dumps({
+                'user': '123',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['message'], 'Invalid User UUID')
+
+    def test_invite_non_existent_uuid(self):
+        # Send an valid UUID that doesn't exist
+        response = self.client.post(
+            reverse('invite', kwargs={'team_id': self.team.id}),
+            json.dumps({
+                'user': '01234567-89ab-cdef-0123-456789abcdef',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['message'], 'User does not exist')
+
     def test_invite_accept(self):
-        self.client.force_login(self.invitee.user)
+        self.client.force_login(self.invitee)
         response = self.client.post(
             reverse('acceptinvite', kwargs={'team_id': self.team.id}),
             json.dumps({}),
@@ -158,12 +179,12 @@ class InviteTests(EventTestCase):
         # Now try to invite to a full team
         self.event.max_team_size = 2
         self.event.save()
-        invitee2 = UserProfileFactory()
-        self.client.force_login(self.invitee.user)
+        invitee2 = UserFactory()
+        self.client.force_login(self.invitee)
         response = self.client.post(
             reverse('invite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': invitee2.id
+                'user': str(invitee2.uuid),
             }),
             content_type='application/json',
         )
@@ -174,7 +195,7 @@ class InviteTests(EventTestCase):
         # Now bypass the invitation mechanism to add an invite anyway and
         # check it can't be accepted
         self.team.invites.add(invitee2)
-        self.client.force_login(invitee2.user)
+        self.client.force_login(invitee2)
         response = self.client.post(
             reverse('acceptinvite', kwargs={'team_id': self.team.id}),
             json.dumps({}),
@@ -186,10 +207,20 @@ class InviteTests(EventTestCase):
         self.assertFalse(invitee2 in self.team.invites.all())
 
     def test_invite_cancel(self):
+        # Send an invalid UUID request
         response = self.client.post(
             reverse('cancelinvite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.invitee.id
+                'user': '123',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        response = self.client.post(
+            reverse('cancelinvite', kwargs={'team_id': self.team.id}),
+            json.dumps({
+                'user': str(self.invitee.uuid),
             }),
             content_type='application/json',
         )
@@ -198,7 +229,7 @@ class InviteTests(EventTestCase):
         self.assertFalse(self.invitee in self.team.invites.all())
 
     def test_invite_deny(self):
-        self.client.force_login(self.invitee.user)
+        self.client.force_login(self.invitee)
         response = self.client.post(
             reverse('denyinvite', kwargs={'team_id': self.team.id}),
             json.dumps({}),
@@ -213,7 +244,7 @@ class InviteTests(EventTestCase):
         response = self.client.post(
             reverse('invite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -221,7 +252,7 @@ class InviteTests(EventTestCase):
         response = self.client.post(
             reverse('cancelinvite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -229,7 +260,7 @@ class InviteTests(EventTestCase):
         response = self.client.post(
             reverse('acceptinvite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -237,7 +268,7 @@ class InviteTests(EventTestCase):
         response = self.client.post(
             reverse('denyinvite', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -247,12 +278,12 @@ class InviteTests(EventTestCase):
 class RequestTests(EventTestCase):
     def setUp(self):
         self.event = self.tenant
-        self.team_admin = UserProfileFactory()
-        self.applicant = UserProfileFactory()
+        self.team_admin = UserFactory()
+        self.applicant = UserFactory()
         self.team = TeamFactory(at_event=self.event, members={self.team_admin})
 
         # The "applicant" is requesting a place on "team".
-        self.client.force_login(self.applicant.user)
+        self.client.force_login(self.applicant)
         response = self.client.post(
             reverse('request', kwargs={'team_id': self.team.id}),
             json.dumps({}),
@@ -261,11 +292,34 @@ class RequestTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_request_accept(self):
-        self.client.force_login(self.team_admin.user)
+        self.client.force_login(self.team_admin)
+
+        # Send an invalid UUID request
         response = self.client.post(
             reverse('acceptrequest', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.applicant.id
+                'user': '123',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['message'], 'Invalid User UUID')
+
+        # Send a valid UUID that doesn't exist
+        response = self.client.post(
+            reverse('acceptrequest', kwargs={'team_id': self.team.id}),
+            json.dumps({
+                'user': '01234567-89ab-cdef-0123-456789abcdef',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['message'], 'User does not exist')
+
+        response = self.client.post(
+            reverse('acceptrequest', kwargs={'team_id': self.team.id}),
+            json.dumps({
+                'user': str(self.applicant.uuid),
             }),
             content_type='application/json',
         )
@@ -276,8 +330,8 @@ class RequestTests(EventTestCase):
         # Now try to send a request to the full team
         self.event.max_team_size = 2
         self.event.save()
-        applicant2 = UserProfileFactory()
-        self.client.force_login(applicant2.user)
+        applicant2 = UserFactory()
+        self.client.force_login(applicant2)
         response = self.client.post(
             reverse('request', kwargs={'team_id': self.team.id}),
             json.dumps({}),
@@ -290,11 +344,11 @@ class RequestTests(EventTestCase):
         # Now bypass the request mechanism to add a request anyway and
         # check it can't be accepted
         self.team.requests.add(applicant2)
-        self.client.force_login(self.team_admin.user)
+        self.client.force_login(self.team_admin)
         response = self.client.post(
             reverse('acceptrequest', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': applicant2.id
+                'user': str(applicant2.uuid),
             }),
             content_type='application/json',
         )
@@ -314,11 +368,21 @@ class RequestTests(EventTestCase):
         self.assertFalse(self.applicant in self.team.requests.all())
 
     def test_request_deny(self):
-        self.client.force_login(self.team_admin.user)
+        # Send an invalid UUID request
         response = self.client.post(
             reverse('denyrequest', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.applicant.id
+                'user': '123',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+        self.client.force_login(self.team_admin)
+        response = self.client.post(
+            reverse('denyrequest', kwargs={'team_id': self.team.id}),
+            json.dumps({
+                'user': str(self.applicant.uuid),
             }),
             content_type='application/json',
         )
@@ -331,7 +395,7 @@ class RequestTests(EventTestCase):
         response = self.client.post(
             reverse('request', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -339,7 +403,7 @@ class RequestTests(EventTestCase):
         response = self.client.post(
             reverse('cancelrequest', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -347,7 +411,7 @@ class RequestTests(EventTestCase):
         response = self.client.post(
             reverse('acceptrequest', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -355,7 +419,7 @@ class RequestTests(EventTestCase):
         response = self.client.post(
             reverse('denyrequest', kwargs={'team_id': self.team.id}),
             json.dumps({
-                'user': self.team_admin.id
+                'user': str(self.team_admin.uuid),
             }),
             content_type='application/json',
         )
@@ -364,36 +428,32 @@ class RequestTests(EventTestCase):
 
 class RulesTests(EventTestCase):
     def test_is_admin_for_event_true(self):
-        profile = TeamMemberFactory(team__role=TeamRole.ADMIN)
-        self.assertTrue(permissions.is_admin_for_event.test(profile.user, None))
-        self.assertTrue(permissions.is_admin_for_event.test(profile.user, self.tenant))
+        user = TeamMemberFactory(team__role=TeamRole.ADMIN)
+        self.assertTrue(permissions.is_admin_for_event.test(user, None))
+        self.assertTrue(permissions.is_admin_for_event.test(user, self.tenant))
 
     def test_is_admin_for_event_false(self):
-        profile = TeamMemberFactory(team__role=TeamRole.PLAYER)
-        self.assertFalse(permissions.is_admin_for_event.test(profile.user, None))
-        self.assertFalse(permissions.is_admin_for_event.test(profile.user, self.tenant))
-
-    def test_is_admin_for_event_with_no_profile(self):
-        user = UserFactory()
+        user = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        self.assertFalse(permissions.is_admin_for_event.test(user, None))
         self.assertFalse(permissions.is_admin_for_event.test(user, self.tenant))
 
     def test_is_admin_for_event_with_no_team(self):
-        profile = UserProfileFactory()
-        self.assertFalse(permissions.is_admin_for_event.test(profile.user, self.tenant))
+        user = UserFactory()
+        self.assertFalse(permissions.is_admin_for_event.test(user, self.tenant))
 
     def test_is_admin_for_event_child_true(self):
-        profile = TeamMemberFactory(team__role=TeamRole.ADMIN)
+        user = TeamMemberFactory(team__role=TeamRole.ADMIN)
         child = EventFileFactory()
-        self.assertTrue(permissions.is_admin_for_event_child.test(profile.user, None))
-        self.assertTrue(permissions.is_admin_for_event_child.test(profile.user, self.tenant))
-        self.assertTrue(permissions.is_admin_for_event_child.test(profile.user, child))
+        self.assertTrue(permissions.is_admin_for_event_child.test(user, None))
+        self.assertTrue(permissions.is_admin_for_event_child.test(user, self.tenant))
+        self.assertTrue(permissions.is_admin_for_event_child.test(user, child))
 
     def test_is_admin_for_event_child_false(self):
-        profile = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        user = TeamMemberFactory(team__role=TeamRole.PLAYER)
         child = EventFileFactory()
-        self.assertFalse(permissions.is_admin_for_event_child.test(profile.user, None))
-        self.assertFalse(permissions.is_admin_for_event_child.test(profile.user, self.tenant))
-        self.assertFalse(permissions.is_admin_for_event_child.test(profile.user, child))
+        self.assertFalse(permissions.is_admin_for_event_child.test(user, None))
+        self.assertFalse(permissions.is_admin_for_event_child.test(user, self.tenant))
+        self.assertFalse(permissions.is_admin_for_event_child.test(user, child))
 
     def test_is_admin_for_event_child_type_error(self):
         user = UserFactory()
@@ -401,21 +461,21 @@ class RulesTests(EventTestCase):
             permissions.is_admin_for_event_child(user, "A string is not an event child")
 
     def test_is_admin_for_schema_event_true(self):
-        profile = TeamMemberFactory(team__role=TeamRole.ADMIN)
-        self.assertTrue(permissions.is_admin_for_schema_event(profile.user, None))
+        user = TeamMemberFactory(team__role=TeamRole.ADMIN)
+        self.assertTrue(permissions.is_admin_for_schema_event(user, None))
 
     def test_is_admin_for_schema_event_false(self):
-        profile = TeamMemberFactory(team__role=TeamRole.PLAYER)
-        self.assertFalse(permissions.is_admin_for_schema_event(profile.user, None))
+        user = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        self.assertFalse(permissions.is_admin_for_schema_event(user, None))
 
 
 class NoSchemaRulesTests(EventAwareTestCase):
     def test_is_admin_for_schema_event_no_event(self):
         event = EventFactory()
         event.activate()
-        profile = TeamMemberFactory(team__at_event=event, team__role=TeamRole.ADMIN)
+        user = TeamMemberFactory(team__at_event=event, team__role=TeamRole.ADMIN)
         event.deactivate()
-        self.assertFalse(permissions.is_admin_for_schema_event(profile.user, None))
+        self.assertFalse(permissions.is_admin_for_schema_event(user, None))
 
 
 class TeamInfoTests(EventTestCase):

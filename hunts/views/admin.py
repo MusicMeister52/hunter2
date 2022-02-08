@@ -33,7 +33,7 @@ from django.views.decorators import cache
 from django.views.generic.edit import FormView
 
 from events.models import Attendance
-from events.utils import annotate_userprofile_queryset_with_seat
+from events.utils import annotate_user_queryset_with_seat
 from teams.models import Team, TeamRole
 from .mixins import PuzzleAdminMixin, EventAdminMixin, EventAdminJSONMixin
 from ..forms import BulkUploadForm, ResetProgressForm
@@ -117,18 +117,18 @@ class GuessesList(EventAdminJSONMixin, View):
         ).order_by(
             '-given'
         ).select_related(
-            'for_puzzle', 'for_puzzle__episode', 'by_team', 'by__user', 'correct_for', 'progress',
+            'for_puzzle', 'for_puzzle__episode', 'by_team', 'by', 'correct_for', 'progress',
         ).only(
             'given', 'guess', 'correct_current',
             'for_puzzle__id', 'for_puzzle__title',
             'for_puzzle__episode__id', 'for_puzzle__episode__name',
             'for_puzzle__episode__event__id',
             'by_team__id', 'by_team__name',
-            'by__user__id', 'by__user__username',
+            'by__id', 'by__username',
             'correct_for__id', 'progress__start_time',
         ).annotate(
             byseat=Subquery(
-                Attendance.objects.filter(user__profile=OuterRef('by'), event=self.request.tenant).values('seat')
+                Attendance.objects.filter(user=OuterRef('by'), event=self.request.tenant).values('seat')
             ),
             unlocked=Exists(models.TeamUnlock.objects.filter(unlocked_by=OuterRef('id')).only('id')),
         ).prefetch_related(
@@ -226,7 +226,7 @@ class StatsContent(EventAdminJSONMixin, View):
             at_event=request.tenant,
             role=TeamRole.PLAYER,
             num_members__gte=1,
-        ).select_related('at_event').prefetch_related('members', 'members__user').seal()
+        ).select_related('at_event').prefetch_related('members').seal()
 
         now = timezone.now()
         puzzle_progresses = models.TeamPuzzleProgress.objects.filter(
@@ -431,7 +431,7 @@ class TeamAdmin(EventAdminMixin, View):
 class TeamAdminDetail(EventAdminMixin, View):
     def get(self, request, team_id):
         team = get_object_or_404(Team, pk=team_id)
-        members = annotate_userprofile_queryset_with_seat(team.members, request.tenant)
+        members = annotate_user_queryset_with_seat(team.members, request.tenant)
 
         context = {
             'team': team,
@@ -495,9 +495,9 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                 queryset=models.Guess.objects.order_by(
                     '-given',
                 ).select_related(
-                    'by', 'by__user',
+                    'by',
                 ).only(
-                    'by__user__username',
+                    'by__username',
                     'by_team_id',
                     'for_puzzle_id',
                     'given',

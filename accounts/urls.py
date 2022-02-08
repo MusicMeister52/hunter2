@@ -19,5 +19,5 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('profile/<uuid:pk>', views.ProfileView.as_view(), name='profile'),
     path('profile/edit', views.EditProfileView.as_view(), name='edit_profile'),
-    path('userprofile_autocomplete/', views.UserProfileAutoComplete.as_view(), name='userprofile_autocomplete'),
+    path('user_autocomplete/', views.UserAutoComplete.as_view(), name='user_autocomplete'),
 ]

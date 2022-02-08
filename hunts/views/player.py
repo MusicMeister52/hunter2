@@ -13,7 +13,6 @@
 from string import Template
 
 from datetime import timedelta
-from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Prefetch
@@ -154,7 +153,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number):
         puzzle = request.puzzle
 
-        data = models.PuzzleData(puzzle, request.team, request.user.profile)
+        data = models.PuzzleData(puzzle, request.team, request.user)
 
         progress, _ = request.puzzle.teampuzzleprogress_set.select_related(
             'solved_by',
@@ -259,7 +258,7 @@ class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         if request.tenant.end_date > timezone.now() and not admin:
             raise PermissionDenied
 
-        data = models.PuzzleData(request.puzzle, request.team, request.user.profile)
+        data = models.PuzzleData(request.puzzle, request.team, request.user)
 
         puzzle_files = puzzle.files_map(request)
         solution_files = {f.slug: reverse(
@@ -314,7 +313,7 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         minimum_time = timedelta(seconds=5)
         if models.Guess.objects.filter(
             for_puzzle=request.puzzle,
-            by=request.user.profile,
+            by=request.user,
             given__gt=now - minimum_time
         ).exists():
             return JsonResponse({'error': 'too fast'}, status=429)
@@ -333,7 +332,7 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         guess = models.Guess(
             guess=given_answer,
             for_puzzle=request.puzzle,
-            by=request.user.profile
+            by=request.user
         )
         guess.save()
 
@@ -365,7 +364,7 @@ class Callback(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         if request.tenant.end_date < timezone.now():
             return JsonResponse({'error': 'event is over'}, status=400)
 
-        data = models.PuzzleData(request.puzzle, request.team, request.user.profile)
+        data = models.PuzzleData(request.puzzle, request.team, request.user)
 
         response = HttpResponse(
             request.puzzle.cb_runtime.create(request.puzzle.cb_options).evaluate(
@@ -428,9 +427,7 @@ class AboutView(TemplateView):
 
         author_members = []
         if author_team is not None:
-            User = get_user_model()
-            author_members = User.objects.filter(profile__in=author_team.members.all())
-            author_members = annotate_user_queryset_with_seat(author_members, self.request.tenant)
+            author_members = annotate_user_queryset_with_seat(author_team.members.all(), self.request.tenant)
 
         author_verb = 'was' if self.request.tenant.end_date < timezone.now() else 'is'
 
@@ -499,9 +496,9 @@ class StatsView(EventMustBeOverMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         generators = [Generator(event=self.request.tenant) for Generator in stats_generators]
 
-        profile = self.request.user.profile if self.request.user.is_authenticated else None
+        user = self.request.user if self.request.user.is_authenticated else None
         renders = {
-            g.id: g.render(self.request.team, user=profile)
+            g.id: g.render(self.request.team, user=user)
             for g in generators
         }
 

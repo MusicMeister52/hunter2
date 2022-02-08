@@ -13,17 +13,20 @@
 
 from dal import autocomplete
 from django import forms
+from django.contrib.auth import get_user_model
 
-from accounts.models import UserProfile
 from . import models
+
+
+User = get_user_model()
 
 
 class InviteForm(forms.Form):
     user = forms.ModelChoiceField(
         label='Search for a user:',
-        queryset=UserProfile.objects.all(),
+        queryset=User.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url='userprofile_autocomplete',
+            url='user_autocomplete',
             attrs={
                 'data-minimum-input-length': 1,
             },
@@ -64,15 +67,15 @@ class TeamForm(forms.ModelForm):
         fields = ('name', 'role', 'at_event', 'members', 'move_user', 'invites', 'requests')
         widgets = {
             'members': autocomplete.ModelSelect2Multiple(
-                url='userprofile_autocomplete',
+                url='user_autocomplete',
                 attrs={'data-minimum-input-length': 1}
             ),
             'invites': autocomplete.ModelSelect2Multiple(
-                url='userprofile_autocomplete',
+                url='user_autocomplete',
                 attrs={'data-minimum-input-length': 1}
             ),
             'requests': autocomplete.ModelSelect2Multiple(
-                url='userprofile_autocomplete',
+                url='user_autocomplete',
                 attrs={'data-minimum-input-length': 1}
             ),
         }

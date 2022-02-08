@@ -12,10 +12,10 @@
 
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from schema import And, Schema
 
-from accounts.models import UserProfile
 from teams.models import Team, TeamRole
 from .abstract import AbstractGenerator
 
@@ -60,12 +60,13 @@ class TopGuessesGenerator(AbstractGenerator):
         self._number = number
 
     def generate(self):
+        User = get_user_model()
         if self.episode is not None:
             guesses_filter = Q(guess__for_puzzle__episode=self.episode)
         else:
             guesses_filter = Q()
         teams = Team.objects.filter(role=TeamRole.PLAYER).annotate(guess_count=Count('guess', filter=guesses_filter)).order_by('-guess_count')
-        users = UserProfile.objects.filter(teams__role=TeamRole.PLAYER).annotate(guess_count=Count('guess', filter=guesses_filter)).order_by('-guess_count')
+        users = User.objects.filter(teams__role=TeamRole.PLAYER).annotate(guess_count=Count('guess', filter=guesses_filter)).order_by('-guess_count')
         return {
             'by_team': {
                 team.id: {

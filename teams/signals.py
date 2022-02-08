@@ -11,20 +11,22 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
-from accounts.models import UserProfile
 from .models import Team
 
 
 @receiver(m2m_changed, sender=Team.members.through)
 def members_changed(sender, instance, action, pk_set, **kwargs):
+    User = get_user_model()
+
     if action == 'pre_add':
         if instance.is_full():
             raise ValidationError('Teams can have at most %d members' % instance.at_event.max_team_size)
         for user_id in pk_set:
-            user = UserProfile.objects.get(pk=user_id)
+            user = User.objects.get(pk=user_id)
             if Team.objects.exclude(pk=instance.pk).filter(at_event=instance.at_event).filter(members=user).count() > 0:
                 pk_set.remove(user_id)
                 raise ValidationError('User can only join one team per same event')

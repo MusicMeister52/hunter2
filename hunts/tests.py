@@ -30,7 +30,7 @@ from django.utils import timezone
 from parameterized import parameterized
 from channels.testing import WebsocketCommunicator
 
-from accounts.factories import UserFactory, UserProfileFactory
+from accounts.factories import UserFactory
 from events.factories import EventFileFactory, AttendanceFactory
 from events.models import Event
 from events.test import EventAwareTestCase, EventTestCase, AsyncEventTestCase, ScopeOverrideCommunicator
@@ -287,7 +287,7 @@ class AnswerSubmissionTests(EventTestCase):
             'episode_number': self.episode.get_relative_id(),
             'puzzle_number': self.puzzle.get_relative_id()
         },)
-        self.client.force_login(self.user.user)
+        self.client.force_login(self.user)
 
     def test_answer_correct(self):
         response = self.client.post(self.url, {
@@ -344,7 +344,7 @@ class AnswerSubmissionTests(EventTestCase):
             self.assertEqual(response.status_code, 200)
 
     def test_answer_after_end(self):
-        self.client.force_login(self.user.user)
+        self.client.force_login(self.user)
         with freezegun.freeze_time() as frozen_datetime:
             self.event.end_date = timezone.now() + datetime.timedelta(seconds=5)
             self.event.save()
@@ -368,7 +368,7 @@ class PuzzleStartTimeTests(EventTestCase):
         self.event = self.episode.event
         self.user = TeamMemberFactory(team__at_event=self.event)
 
-        self.client.force_login(self.user.user)
+        self.client.force_login(self.user)
 
         response = self.client.get(self.puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
@@ -385,8 +385,8 @@ class PuzzleStartTimeTests(EventTestCase):
 
 class AdminCreatePageLoadTests(EventTestCase):
     def setUp(self):
-        self.user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN, user__is_staff=True)
-        self.client.force_login(self.user.user)
+        self.user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN, is_staff=True)
+        self.client.force_login(self.user)
 
     def test_load_announcement_add_page(self):
         response = self.client.get(reverse('admin:hunts_announcement_add'))
@@ -435,8 +435,8 @@ class AdminCreatePageLoadTests(EventTestCase):
 
 class AdminPuzzleFormPopupTests(EventTestCase):
     def setUp(self):
-        self.user = TeamMemberFactory(user__is_staff=True, team__at_event=self.tenant, team__role=TeamRole.ADMIN)
-        self.client.force_login(self.user.user)
+        self.user = TeamMemberFactory(is_staff=True, team__at_event=self.tenant, team__role=TeamRole.ADMIN)
+        self.client.force_login(self.user)
         self.puzzle = PuzzleFactory(episode__event=self.tenant)
 
     def test_admin_load_answer_form(self):
@@ -464,7 +464,7 @@ class AdminPuzzleFormPopupTests(EventTestCase):
 class AdminPuzzleAccessTests(EventTestCase):
     def setUp(self):
         self.user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
-        self.client.force_login(self.user.user)
+        self.client.force_login(self.user)
 
     def test_admin_overrides_episode_start_time(self):
         now = timezone.now()  # We need the non-naive version of the frozen time for object creation
@@ -501,7 +501,7 @@ class PuzzleAccessTests(EventTestCase):
         self.user = TeamMemberFactory(team__at_event=self.tenant)
 
     def test_puzzle_view_authorisation(self):
-        self.client.force_login(self.user.user)
+        self.client.force_login(self.user)
 
         def _check_load_callback_answer(puzzle, expected_response):
             kwargs = {
@@ -647,7 +647,7 @@ class EpisodeBehaviourTests(EventTestCase):
     def test_linear_episodes_are_linear(self):
         linear_episode = EpisodeFactory(parallel=False)
         PuzzleFactory.create_batch(10, episode=linear_episode)
-        user = UserProfileFactory()
+        user = UserFactory()
         team = TeamFactory(at_event=linear_episode.event, members=user)
 
         # TODO: Scramble puzzle order before starting (so they are not in the order they were created).
@@ -705,21 +705,21 @@ class EpisodeBehaviourTests(EventTestCase):
             GuessFactory(by=user3, by_team=team3, for_puzzle=puzzle, correct=True)
 
         url = reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()})
-        self.client.force_login(user1.user)
+        self.client.force_login(user1)
         unlocked1 = self.client.get(url).context['puzzles']
         self.assertEqual(3, len(unlocked1))
         for puzzle in unlocked1[:2]:
             self.assertTrue(puzzle.solved)
         self.assertFalse(unlocked1[2].solved)
 
-        self.client.force_login(user2.user)
+        self.client.force_login(user2)
         unlocked2 = self.client.get(url).context['puzzles']
         self.assertEqual(4, len(unlocked2))
         for puzzle in unlocked2[:3]:
             self.assertTrue(puzzle.solved)
         self.assertFalse(unlocked2[3].solved)
 
-        self.client.force_login(user3.user)
+        self.client.force_login(user3)
         unlocked3 = self.client.get(url).context['puzzles']
         self.assertEqual(5, len(unlocked3))
         for puzzle in unlocked3:
@@ -730,7 +730,7 @@ class EpisodeBehaviourTests(EventTestCase):
         num_puzzles = 10
         PuzzleFactory.create_batch(num_puzzles, episode=linear_episode)
         user = TeamMemberFactory(team__at_event=linear_episode.event)
-        self.client.force_login(user.user)
+        self.client.force_login(user)
         url = reverse('episode_content', kwargs={'episode_number': linear_episode.get_relative_id()})
 
         with freezegun.freeze_time() as frozen_datetime:
@@ -747,7 +747,7 @@ class EpisodeBehaviourTests(EventTestCase):
         with freezegun.freeze_time():
             tz_time = timezone.now()
             user = TeamMemberFactory()
-            self.client.force_login(user.user)
+            self.client.force_login(user)
 
             started_parallel_episode = EpisodeFactory(start_date=tz_time - datetime.timedelta(minutes=1), parallel=True)
 
@@ -837,7 +837,7 @@ class EpisodeBehaviourTests(EventTestCase):
         episode1 = EpisodeFactory()
         episode2 = EpisodeFactory(event=episode1.event, headstart_from=episode1)
         PuzzleFactory.create_batch(10, episode=episode1)
-        user = UserProfileFactory()
+        user = UserFactory()
         team = TeamFactory(at_event=episode1.event, members=user)
 
         def headstart_from(episode, team):
@@ -886,7 +886,7 @@ class EpisodeBehaviourTests(EventTestCase):
         episode1 = EpisodeFactory()
         episode2 = EpisodeFactory(event=episode1.event, headstart_from=episode1)
         puzzle = PuzzleFactory(episode=episode1)
-        user = UserProfileFactory()
+        user = UserFactory()
         team = TeamFactory(at_event=episode1.event, members=user)
         GuessFactory(for_puzzle=puzzle, by=user, correct=True)
         headstart = HeadstartFactory(episode=episode2, team=team)
@@ -896,7 +896,7 @@ class EpisodeBehaviourTests(EventTestCase):
     def test_next_linear_puzzle(self):
         linear_episode = EpisodeFactory(parallel=False)
         PuzzleFactory.create_batch(10, episode=linear_episode)
-        user = UserProfileFactory()
+        user = UserFactory()
         team = TeamFactory(at_event=linear_episode.event, members=user)
 
         # TODO: Scramble puzzle order before starting (so they are not in the order they were created).
@@ -916,7 +916,7 @@ class EpisodeBehaviourTests(EventTestCase):
     def test_next_parallel_puzzle(self):
         parallel_episode = EpisodeFactory(parallel=True)
         PuzzleFactory.create_batch(10, episode=parallel_episode)
-        user = UserProfileFactory()
+        user = UserFactory()
         team = TeamFactory(at_event=parallel_episode.event, members=user)
 
         # TODO: Scramble puzzle order before starting (so they are not in the order they were created).
@@ -959,7 +959,7 @@ class EpisodeBehaviourTests(EventTestCase):
                 start_date=factory.Iterator([timezone.now() + datetime.timedelta(seconds=i + 1) for i in range(num_puzzles)])
             )
             user = TeamMemberFactory(team__at_event=episode.event)
-            self.client.force_login(user.user)
+            self.client.force_login(user)
             url = reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()})
 
             upcoming_time = self.client.get(url).context['upcoming_time']
@@ -1037,7 +1037,7 @@ class EpisodeBehaviourTests(EventTestCase):
                 start_date=factory.Iterator([now + datetime.timedelta(seconds=i+0.9) for i in range(num_puzzles)])
             )
             user = TeamMemberFactory(team__at_event=episode.event)
-            self.client.force_login(user.user)
+            self.client.force_login(user)
             url = reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()})
 
             upcoming_time = self.client.get(url).context['upcoming_time']
@@ -1145,7 +1145,7 @@ class EpisodeSequenceTests(EventTestCase):
     def test_episode_unlocking(self):
         puzzle = PuzzleFactory(episode=self.episode1)
 
-        self.client.force_login(self.user.user)
+        self.client.force_login(self.user)
 
         # Can load first episode
 
@@ -1201,7 +1201,7 @@ class EpisodeSequenceTests(EventTestCase):
 class ClueDisplayTests(EventTestCase):
     def setUp(self):
         self.episode = EpisodeFactory()
-        self.user = UserProfileFactory()
+        self.user = UserFactory()
         self.puzzle = PuzzleFactory(episode=self.episode)
         self.team = TeamFactory(at_event=self.episode.event, members={self.user})
         self.progress = TeamPuzzleProgressFactory(puzzle=self.puzzle, team=self.team)
@@ -1290,8 +1290,8 @@ class ClueDisplayTests(EventTestCase):
 class FileUploadTests(EventTestCase):
     def setUp(self):
         self.eventfile = EventFileFactory()
-        self.user = UserProfileFactory()
-        self.client.force_login(self.user.user)
+        self.user = UserFactory()
+        self.client.force_login(self.user)
 
     def test_load_episode_content_with_eventfile(self):
         episode = EpisodeFactory(flavour=f'${{{self.eventfile.slug}}}')
@@ -1419,23 +1419,23 @@ class AdminTeamTests(EventTestCase):
     def setUp(self):
         self.event = self.tenant
         self.episode = EpisodeFactory(event=self.event)
-        self.admin_user = UserProfileFactory()
+        self.admin_user = UserFactory()
         self.admin_team = TeamFactory(at_event=self.event, role=TeamRole.ADMIN, members={self.admin_user})
 
     def test_can_view_episode(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(
             reverse('episode_content', kwargs={'episode_number': self.episode.get_relative_id()}),
         )
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_guesses(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(reverse('admin_guesses'))
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_stats(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(reverse('admin_guesses'))
         self.assertEqual(response.status_code, 200)
 
@@ -1450,13 +1450,13 @@ class AdminContentTests(EventTestCase):
         self.guesses_url = reverse('admin_guesses_list')
 
     def test_can_view_guesses(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(self.guesses_url)
         self.assertEqual(response.status_code, 200)
 
     def test_non_admin_cannot_view_guesses(self):
         player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player.user)
+        self.client.force_login(player)
         response = self.client.get(reverse('admin_guesses'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_guesses_list'))
@@ -1464,44 +1464,44 @@ class AdminContentTests(EventTestCase):
 
     def test_can_view_guesses_by_team(self):
         team_id = self.guesses[0].by_team.id
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(f'{self.guesses_url}?team={team_id}')
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_guesses_by_puzzle(self):
         puzzle_id = self.guesses[0].for_puzzle.id
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(f'{self.guesses_url}?puzzle={puzzle_id}')
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_guesses_by_episode(self):
         episode_id = self.guesses[0].for_puzzle.episode.id
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(f'{self.guesses_url}?episode={episode_id}')
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_stats(self):
         stats_url = reverse('admin_stats')
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_stats_content(self):
         stats_url = reverse('admin_stats_content')
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 200)
 
     def test_can_view_stats_content_by_episode(self):
         episode_id = self.guesses[0].for_puzzle.episode.id
         stats_url = reverse('admin_stats_content', kwargs={'episode_id': episode_id})
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 200)
 
     def test_non_admin_cannot_view_stats(self):
         player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player.user)
+        self.client.force_login(player)
         response = self.client.get(reverse('admin_stats'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_stats_content'))
@@ -1509,7 +1509,7 @@ class AdminContentTests(EventTestCase):
 
     def test_non_admin_cannot_view_admin_team(self):
         player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player.user)
+        self.client.force_login(player)
         response = self.client.get(reverse('admin_team'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_team_detail', kwargs={'team_id': self.admin_team.id}))
@@ -1518,21 +1518,21 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_admin_team_detail_not_found(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(reverse('admin_team_detail', kwargs={'team_id': 0}))
         self.assertEqual(response.status_code, 404)
         response = self.client.get(reverse('admin_team_detail_content', kwargs={'team_id': 0}))
         self.assertEqual(response.status_code, 404)
 
     def test_can_view_admin_team(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('admin_team')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.admin_team.get_verbose_name())
 
     def test_can_view_admin_team_detail(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('admin_team_detail', kwargs={'team_id': self.admin_team.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -1543,7 +1543,7 @@ class AdminContentTests(EventTestCase):
         puzzle2 = PuzzleFactory()
         GuessFactory(by=team.members.all()[0], for_puzzle=puzzle2, correct=True)
 
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -1572,7 +1572,7 @@ class AdminContentTests(EventTestCase):
             guess.given = now - datetime.timedelta(minutes=i)
             guess.save()
 
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -1590,7 +1590,7 @@ class AdminContentTests(EventTestCase):
     def test_admin_team_detail_content_hints(self):
         team = self.guesses[0].by_team
         member = self.guesses[0].by
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
 
         with freezegun.freeze_time() as frozen_datetime:
@@ -1656,14 +1656,14 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
 
     def test_can_view_admin_progress(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('admin_progress')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_non_admin_cannot_view_admin_progress(self):
         player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player.user)
+        self.client.force_login(player)
         response = self.client.get(reverse('admin_progress'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_progress_content'))
@@ -1704,7 +1704,7 @@ class AdminContentTests(EventTestCase):
             GuessFactory(by=self.admin_user, by_team=self.admin_team, for_puzzle=self.puzzle)
             GuessFactory(by=team2.members.all()[0], for_puzzle=self.puzzle, correct=True)
 
-            self.client.force_login(self.admin_user.user)
+            self.client.force_login(self.admin_user)
             url = reverse('admin_progress_content')
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
@@ -1758,7 +1758,7 @@ class AdminContentTests(EventTestCase):
     def test_admin_progress_content_hints(self):
         team = self.guesses[0].by_team
         member = self.guesses[0].by
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
 
         url = reverse('admin_progress_content')
 
@@ -1801,7 +1801,7 @@ class AdminContentTests(EventTestCase):
 
     def test_non_admin_cant_reset_progress(self):
         player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player.user)
+        self.client.force_login(player)
 
         url = reverse('reset_progress') + f'?team={player.team_at(self.tenant).id}'
         response = self.client.get(url)
@@ -1810,7 +1810,7 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_admin_can_reset_progress(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
 
         url = reverse('reset_progress') + f'?team={self.admin_team.id}'
         response = self.client.get(url)
@@ -1848,7 +1848,7 @@ class AdminContentTests(EventTestCase):
         TeamPuzzleDataFactory(team=team, puzzle=tpp_player.puzzle)
         UserPuzzleDataFactory(user=player, puzzle=tpp_player.puzzle)
 
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         url = reverse('reset_progress') + f'?team={self.admin_team.id}&puzzle={tpp_1.puzzle.id}'
         response = self.client.post(
             url,
@@ -1887,7 +1887,7 @@ class AdminContentTests(EventTestCase):
         self.assertGreater(UserPuzzleData.objects.filter(user__in=team.members.all()).count(), 0)
 
     def test_reset_progress_warnings(self):
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         player_team = TeamFactory(role=TeamRole.PLAYER)
 
         self.episode.start_date = timezone.now() + datetime.timedelta(days=1)
@@ -1938,7 +1938,7 @@ class StatsTests(EventTestCase):
 
     def test_no_episodes(self):
         stats_url = reverse('admin_stats_content')
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 404)
 
@@ -1946,7 +1946,7 @@ class StatsTests(EventTestCase):
         episode = EpisodeFactory(event=self.tenant)
         # The next sequantial ID ought to not exist
         stats_url = reverse('admin_stats_content', kwargs={'episode_id': episode.id + 1})
-        self.client.force_login(self.admin_user.user)
+        self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 404)
 
@@ -1955,8 +1955,8 @@ class ProgressionTests(EventTestCase):
     def setUp(self):
         self.episode = EpisodeFactory()
         self.event = self.episode.event
-        self.user1 = UserProfileFactory()
-        self.user2 = UserProfileFactory()
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
         self.team1 = TeamFactory(at_event=self.event, members={self.user1})
         self.team2 = TeamFactory(at_event=self.event, members={self.user2})
 
@@ -2229,8 +2229,8 @@ class EventWinningTests(EventTestCase):
     def setUp(self):
         self.ep1 = EpisodeFactory(winning=True)
         self.ep2 = EpisodeFactory(winning=False)
-        self.user1 = UserProfileFactory()
-        self.user2 = UserProfileFactory()
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
         self.team1 = TeamFactory(members=self.user1)
         self.team2 = TeamFactory(members=self.user2)
 
@@ -2308,8 +2308,8 @@ class CorrectnessCacheTests(EventTestCase):
     def setUp(self):
         self.episode = EpisodeFactory()
         self.event = self.episode.event
-        self.user1 = UserProfileFactory()
-        self.user2 = UserProfileFactory()
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
         self.team1 = TeamFactory(at_event=self.event, members={self.user1})
         self.team2 = TeamFactory(at_event=self.event, members={self.user2})
         self.puzzle1 = PuzzleFactory(episode=self.episode)
@@ -2363,8 +2363,8 @@ class CorrectnessCacheTests(EventTestCase):
 class GuessTeamDenormalisationTests(EventTestCase):
     def setUp(self):
         self.episode = EpisodeFactory()
-        self.user1 = UserProfileFactory()
-        self.user2 = UserProfileFactory()
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
         self.team1 = TeamFactory(at_event=self.episode.event, members={self.user1})
         self.team2 = TeamFactory(at_event=self.episode.event, members={self.user2})
         self.puzzle1 = PuzzleFactory(episode=self.episode)
@@ -2414,8 +2414,8 @@ class AnnouncementWebsocketTests(AsyncEventTestCase):
         self.url = 'ws/hunt/'
 
     def test_receive_announcement(self):
-        profile = TeamMemberFactory()
-        comm = self.get_communicator(websocket_app, self.url, {'user': profile.user})
+        user = TeamMemberFactory()
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, _ = self.run_async(comm.connect)()
 
         self.assertTrue(connected)
@@ -2443,10 +2443,10 @@ class AnnouncementWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.disconnect)()
 
     def test_receive_delete_announcement(self):
-        profile = TeamMemberFactory()
+        user = TeamMemberFactory()
         announcement = AnnouncementFactory(puzzle=None)
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': profile.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, _ = self.run_async(comm.connect)()
 
         self.assertTrue(connected)
@@ -2462,8 +2462,8 @@ class AnnouncementWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.disconnect)()
 
     def test_dont_receive_puzzle_specific_announcements(self):
-        profile = TeamMemberFactory()
-        comm = self.get_communicator(websocket_app, self.url, {'user': profile.user})
+        user = TeamMemberFactory()
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, _ = self.run_async(comm.connect)()
 
         self.assertTrue(connected)
@@ -2497,14 +2497,14 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         user = TeamMemberFactory()
         headers = dict(self.headers)
         headers[b'host'] = b'__BAD__.hunter2.local'
-        comm = ScopeOverrideCommunicator(websocket_app, self.url, {'user': user.user}, headers=tuple(headers.items()))
+        comm = ScopeOverrideCommunicator(websocket_app, self.url, {'user': user}, headers=tuple(headers.items()))
         connected, _ = self.run_async(comm.connect)()
 
         self.assertFalse(connected)
 
     def test_bad_requests(self):
         user = TeamMemberFactory()
-        comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
 
@@ -2527,16 +2527,16 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz)
         UnlockAnswerFactory(unlock__puzzle=self.pz, guess=ua1.guess + '_different')
         h1 = HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
-        profile = TeamMemberFactory()
-        TeamPuzzleProgressFactory(puzzle=self.pz, team=profile.team_at(self.tenant), start_time=timezone.now())
-        g1 = GuessFactory(for_puzzle=self.pz, by=profile)
+        user = TeamMemberFactory()
+        TeamPuzzleProgressFactory(puzzle=self.pz, team=user.team_at(self.tenant), start_time=timezone.now())
+        g1 = GuessFactory(for_puzzle=self.pz, by=user)
         g1.given = timezone.now() - datetime.timedelta(days=1)
         g1.save()
-        g2 = GuessFactory(for_puzzle=self.pz, guess=ua1.guess, by=profile)
+        g2 = GuessFactory(for_puzzle=self.pz, guess=ua1.guess, by=user)
         g2.given = timezone.now()
         g2.save()
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': profile.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
         self.run_async(comm.send_json_to)({'type': 'guesses-plz', 'from': 'all'})
@@ -2545,9 +2545,9 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['type'], 'old_guesses')
         self.assertEqual(len(output['content']), 2, 'Websocket did not send the correct number of old guesses')
         self.assertEqual(output['content'][0]['guess'], g1.guess)
-        self.assertEqual(output['content'][0]['by'], profile.user.username)
+        self.assertEqual(output['content'][0]['by'], user.username)
         self.assertEqual(output['content'][1]['guess'], g2.guess)
-        self.assertEqual(output['content'][1]['by'], profile.user.username)
+        self.assertEqual(output['content'][1]['by'], user.username)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # Use utcnow() because the JS uses Date.now() which uses UTC - hence the consumer code also uses UTC.
@@ -2560,7 +2560,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['type'], 'new_guesses')
         self.assertEqual(len(output['content']), 1, 'Websocket did not send the correct number of old guesses')
         self.assertEqual(output['content'][0]['guess'], g2.guess)
-        self.assertEqual(output['content'][0]['by'], profile.user.username)
+        self.assertEqual(output['content'][0]['by'], user.username)
 
         self.run_async(comm.send_json_to)({'type': 'unlocks-plz'})
         output = self.receive_json(comm, 'Websocket did nothing in response to request for unlocks')
@@ -2581,14 +2581,14 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
     def test_same_team_sees_guesses(self):
         team = TeamFactory()
-        u1 = UserProfileFactory()
-        u2 = UserProfileFactory()
+        u1 = UserFactory()
+        u2 = UserFactory()
         team.members.add(u1)
         team.members.add(u2)
         team.save()
 
-        comm1 = self.get_communicator(websocket_app, self.url, {'user': u1.user})
-        comm2 = self.get_communicator(websocket_app, self.url, {'user': u2.user})
+        comm1 = self.get_communicator(websocket_app, self.url, {'user': u1})
+        comm2 = self.get_communicator(websocket_app, self.url, {'user': u2})
 
         connected, _ = self.run_async(comm1.connect)()
         self.assertTrue(connected)
@@ -2605,7 +2605,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(len(output['content']), 1)
         self.assertEqual(output['content'][0]['guess'], g.guess)
         self.assertEqual(output['content'][0]['correct'], False)
-        self.assertEqual(output['content'][0]['by'], u1.user.username)
+        self.assertEqual(output['content'][0]['by'], u1.username)
 
         output = self.receive_json(comm2, 'Websocket did nothing in response to a submitted guess')
         self.assertTrue(self.run_async(comm2.receive_nothing)())
@@ -2614,7 +2614,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(len(output['content']), 1)
         self.assertEqual(output['content'][0]['guess'], g.guess)
         self.assertEqual(output['content'][0]['correct'], False)
-        self.assertEqual(output['content'][0]['by'], u1.user.username)
+        self.assertEqual(output['content'][0]['by'], u1.username)
 
         self.run_async(comm1.disconnect)()
         self.run_async(comm2.disconnect)()
@@ -2623,8 +2623,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         u1 = TeamMemberFactory()
         u2 = TeamMemberFactory()
 
-        comm1 = self.get_communicator(websocket_app, self.url, {'user': u1.user})
-        comm2 = self.get_communicator(websocket_app, self.url, {'user': u2.user})
+        comm1 = self.get_communicator(websocket_app, self.url, {'user': u1})
+        comm2 = self.get_communicator(websocket_app, self.url, {'user': u2})
 
         connected, _ = self.run_async(comm1.connect)()
         self.assertTrue(connected)
@@ -2641,7 +2641,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
     def test_correct_answer_forwards(self):
         user = TeamMemberFactory()
         g = GuessFactory(for_puzzle=self.pz, correct=False, by=user)
-        comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
 
@@ -2654,7 +2654,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         # we are now done with that episode and should be redirected back to the episode.
         self.assertEqual(output['type'], 'solved')
         self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['by'], user.user.username)
+        self.assertEqual(output['content']['by'], user.username)
         self.assertLessEqual(output['content']['time'], 1)
         self.assertEqual(output['content']['redirect'], self.ep.get_absolute_url(), 'Websocket did not redirect to the episode after completing that episode')
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
@@ -2666,7 +2666,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(len(output['content']), 1)
         self.assertEqual(output['content'][0]['guess'], g.guess)
         self.assertEqual(output['content'][0]['correct'], True)
-        self.assertEqual(output['content'][0]['by'], user.user.username)
+        self.assertEqual(output['content'][0]['by'], user.username)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # Request guesses again (as if we had reconnected) and check we get the forwarding message
@@ -2674,11 +2674,11 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did not send notification of having solved the puzzle while disconnected')
         self.assertEqual(output['type'], 'solved')
         self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['by'], user.user.username)
+        self.assertEqual(output['content']['by'], user.username)
         output = self.receive_json(comm, 'Websocket did nothing in response to requesting guesses again')
         self.assertEqual(output['type'], 'new_guesses')
         self.assertEqual(output['content'][0]['guess'], g.guess)
-        self.assertEqual(output['content'][0]['by'], user.user.username)
+        self.assertEqual(output['content'][0]['by'], user.username)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         # Now add another puzzle. We should be redirected to that puzzle, since it is the
@@ -2690,7 +2690,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
         self.assertEqual(output['type'], 'solved')
         self.assertEqual(output['content']['guess'], g.guess)
-        self.assertEqual(output['content']['by'], user.user.username)
+        self.assertEqual(output['content']['by'], user.username)
         self.assertLessEqual(output['content']['time'], 1)
         self.assertEqual(output['content']['redirect'], pz2.get_absolute_url(),
                          'Websocket did not redirect to the next available puzzle when completing'
@@ -2704,7 +2704,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         received = output['content'][0]
         self.assertEqual(received['guess'], g.guess)
         self.assertEqual(received['correct'], True)
-        self.assertEqual(received['by'], user.user.username)
+        self.assertEqual(received['by'], user.username)
 
         self.run_async(comm.disconnect)()
 
@@ -2714,7 +2714,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_1', guess='unlock_guess_1')
         ua2 = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_2', guess='unlock_guess_2')
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': user1.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user1})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
         self.assertTrue(self.run_async(comm.receive_nothing)())
@@ -2739,8 +2739,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         user = TeamMemberFactory()
         eve = TeamMemberFactory()
         ua = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='unlock_text', guess='unlock_guess')
-        comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
-        comm_eve = self.get_communicator(websocket_app, self.url, {'user': eve.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
+        comm_eve = self.get_communicator(websocket_app, self.url, {'user': eve})
 
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
@@ -2851,7 +2851,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         data.save()
         hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay))
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
 
@@ -2884,7 +2884,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         unlockanswer = unlock.unlockanswer_set.get()
         hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay), start_after=unlock)
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
 
@@ -2960,7 +2960,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             frozen_datetime.tick(delta=datetime.timedelta(seconds=2))
             self.assertTrue(hint.unlocked_by(team, progress))
 
-            comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
+            comm = self.get_communicator(websocket_app, self.url, {'user': user})
             connected, subprotocol = self.run_async(comm.connect)()
             self.assertTrue(connected)
             self.assertTrue(self.run_async(comm.receive_nothing)())
@@ -3003,8 +3003,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             self.run_async(comm.disconnect)()
 
     def test_receive_global_announcement(self):
-        profile = TeamMemberFactory()
-        comm = self.get_communicator(websocket_app, self.url, {'user': profile.user})
+        user = TeamMemberFactory()
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, _ = self.run_async(comm.connect)()
 
         self.assertTrue(connected)
@@ -3034,7 +3034,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
     def test_receives_puzzle_announcements(self):
         user = TeamMemberFactory()
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': user.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, subprotocol = self.run_async(comm.connect)()
         self.assertTrue(connected)
 
@@ -3069,10 +3069,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.disconnect)()
 
     def test_receives_delete_announcement(self):
-        profile = TeamMemberFactory()
+        user = TeamMemberFactory()
         announcement = AnnouncementFactory(puzzle=self.pz)
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': profile.user})
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
         connected, _ = self.run_async(comm.connect)()
 
         self.assertTrue(connected)
@@ -3183,10 +3183,10 @@ class PlayerStatsViewTests(EventTestCase):
             self.tenant.save()
             response = self.client.get(self.url)
             self.assertEqual(response.status_code, 404)
-            self.client.force_login(admin.user)
+            self.client.force_login(admin)
             response = self.client.get(self.url)
             self.assertEqual(response.status_code, 404)
-            self.client.force_login(users[-1].user)
+            self.client.force_login(users[-1])
             response = self.client.get(self.url)
             self.assertEqual(response.status_code, 404)
             frozen_datetime.tick(datetime.timedelta(minutes=2))
@@ -3198,7 +3198,7 @@ class PlayerStatsViewTests(EventTestCase):
 
     def test_no_winning_episode(self):
         EpisodeFactory(event=self.tenant, winning=False)
-        user = TeamMemberFactory().user
+        user = TeamMemberFactory()
         self.client.force_login(user)
         self.tenant.end_date = timezone.now()
         self.tenant.save()

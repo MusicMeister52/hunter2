@@ -27,12 +27,12 @@ class TeamAdmin(admin.ModelAdmin):
     list_display = ('the_name', 'at_event', 'role', 'member_count')
     list_display_links = ('the_name', )
     list_filter = (('role', EnumFieldListFilter),)
-    search_fields = ('name', 'members__user__username')
+    search_fields = ('name', 'members__username')
     readonly_fields = ('token', )
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.prefetch_related('members', 'members__user')
+        return qs.prefetch_related('members', 'members')
 
     def member_count(self, team):
         return team.members.all().count()

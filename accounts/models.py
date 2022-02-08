@@ -12,7 +12,6 @@
 
 
 import uuid
-import warnings
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -36,44 +35,24 @@ class User(AbstractUser):
         null=True, help_text="We won't spam you, only important information about our events.", verbose_name='May we contact you?'
     )
 
-    def attendance_at(self, event):
-        return self.attendance_set.get(event=event)
-
-    def get_absolute_url(self):
-        return reverse('profile', kwargs={'pk': self.uuid})
-
-
-# Note: UserProfile and its associated manager are slated for deletion. Any new references should be directly with the user model via
-# `django.conf.settings.AUTH_USER_MODEL` or `django.contrib.auth.get_user_model()`
-class UserProfileManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().select_related('user')
-
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
-    objects = UserProfileManager()
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._team_at = {}
 
-    @property
-    def username(self):
-        return self.user.username
-
     def get_display_name(self):
-        return self.user.username
+        return self.username
 
-    def __str__(self):
-        return f'{self.username}'
+    def attendance_at(self, event):
+        # This should exist due to the event middleware, but in the case of the login view the middleware
+        # won't have done anything because at time of execution request.user was AnonymousUser
+        attendance, _ = self.attendance_set.get_or_create(event=event)
+        return attendance
+
+    def get_absolute_url(self):
+        return reverse('profile', kwargs={'pk': self.uuid})
 
     def is_on_explicit_team(self, event):
         return self.teams.filter(at_event=event).exclude(name=None).exists()
-
-    def attendance_at(self, event):
-        warnings.warn('Attendance has been moved to User model', DeprecationWarning)
-        return self.user.attendance_set.get(event=event)
 
     def team_at(self, event):
         if event in self._team_at:
@@ -81,3 +60,8 @@ class UserProfile(models.Model):
         team = self.teams.get(at_event=event)
         self._team_at[event] = team
         return team
+
+
+# UserProfile exists only to allow for migration of foreign keys in schemas to the custom User model. It should not be used for anything.
+class UserProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')

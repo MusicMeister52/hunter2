@@ -11,10 +11,10 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from schema import Schema
 
-from accounts.models import UserProfile
 from hunts.models import Guess, TeamPuzzleProgress
 from teams.models import Team, TeamRole
 from .abstract import AbstractGenerator
@@ -43,6 +43,8 @@ class TotalsGenerator(AbstractGenerator):
     })
 
     def generate(self):
+        User = get_user_model()
+
         if self.episode is not None:
             guesses_filter = Q(for_puzzle__episode=self.episode)
             team_guesses_filter = Q(guess__for_puzzle__episode=self.episode)
@@ -57,7 +59,7 @@ class TotalsGenerator(AbstractGenerator):
         )
         active_teams = teams.filter(guesses__gt=0)
         correct_teams = active_teams.filter(correct_guesses__gt=0)
-        active_players = UserProfile.objects.filter(teams__in=active_teams)
+        active_players = User.objects.filter(teams__in=active_teams)
         puzzles_solved = TeamPuzzleProgress.objects.filter(
             team_puzzle_progress_filter,
             team__role=TeamRole.PLAYER,

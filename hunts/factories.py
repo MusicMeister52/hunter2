@@ -22,7 +22,7 @@ import pytz
 from django.utils import timezone
 from faker import Faker
 
-from accounts.factories import UserProfileFactory
+from accounts.factories import UserFactory
 from events.models import Event
 from teams.factories import TeamFactory, TeamMemberFactory
 from .models import AnnouncementType
@@ -244,7 +244,7 @@ class GuessFactory(factory.django.DjangoModelFactory):
 
     # A Guess can only be made by a User who is on a Team at an Event.
     # We need to ensure that there is this consistency:
-    # UserProfile(by) <-> Team <-> Event <-> Episode <-> Puzzle(for_puzzle)
+    # User(by) <-> Team <-> Event <-> Episode <-> Puzzle(for_puzzle)
     for_puzzle = factory.SubFactory(PuzzleFactory)
     event = factory.LazyAttribute(lambda o: o.for_puzzle.episode.event)
     by = factory.LazyAttribute(lambda o: TeamMemberFactory(team__at_event=o.event))
@@ -287,7 +287,7 @@ class UserDataFactory(DataFactory):
         django_get_or_create = ('event', 'user')
 
     event = factory.LazyFunction(Event.objects.get)
-    user = factory.SubFactory(UserProfileFactory)
+    user = factory.SubFactory(UserFactory)
 
 
 class TeamPuzzleDataFactory(DataFactory):
@@ -305,7 +305,7 @@ class UserPuzzleDataFactory(DataFactory):
         django_get_or_create = ('puzzle', 'user')
 
     puzzle = factory.SubFactory(PuzzleFactory)
-    user = factory.SubFactory(UserProfileFactory)
+    user = factory.SubFactory(UserFactory)
     token = factory.Faker('uuid4')
 
 
