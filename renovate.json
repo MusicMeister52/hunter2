@@ -26,15 +26,19 @@
       "automergeType": "branch"
     },
     {
-      "matchPackagePatterns": [ "asgiref", "channels", "daphne" ],
+      "matchPackageNames": [ "asgiref", "channels", "daphne" ],
       "groupName": "channels"
     },
     {
-      "matchPackagePatterns": [ "django-webpack-loader", "webpack-bundle-tracker" ],
+      "matchPackageNames": [ "django-webpack-loader", "webpack-bundle-tracker" ],
       "groupName": "django-webpack"
     },
     {
-      "matchPackagePatterns": [ "pytest" ],
+      "matchPackageNames": [ "vue", "vue-loader" ],
+      "groupName": "vue"
+    },
+    {
+      "matchPackagePrefixes": [ "pytest" ],
       "groupName": "pytest"
     },
     {
