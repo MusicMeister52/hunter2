@@ -24,7 +24,9 @@ services:
     volumes:
       - ${PWD:-.}:/code
   docs:
-    image: ${APP_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/app:latest}
+    environment:
+      - H2_IMAGE_VERSION
+    image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
     volumes:
       - ${PWD:-.}:/opt/hunter2/src
 
