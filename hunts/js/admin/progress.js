@@ -1,19 +1,11 @@
-import {BButton, BCardBody, BCardHeader, BCardText, BCollapse, BTable, VBToggle} from 'bootstrap-vue'
+import 'bootstrap/js/dist/button'
+import 'bootstrap/js/dist/collapse'
 import ProgressState from './state.vue'
 import DateTime from 'luxon/src/datetime.js'
 
 export default {
   components: {
-    'b-button': BButton,
-    'b-card-body': BCardBody,
-    'b-card-header': BCardHeader,
-    'b-card-text': BCardText,
-    'b-collapse': BCollapse,
-    'b-table': BTable,
     'progress-state': ProgressState,
-  },
-  directives: {
-    'b-toggle': VBToggle,
   },
   computed: {
     episodes: function () {
@@ -23,17 +15,13 @@ export default {
     },
     fields: function () {
       // Prepend an entry for the team name
-      return [{
-        key: 'team',
-        label: 'team',
-      }].concat(this.puzzles.filter(pz => {
+      return this.puzzles.filter(pz => {
         // Filter out entries for puzzles from unselected episodes
         return this.displayForEpisodeNum(pz.episode)
-      }).map((pz, i) => {return {
-        key: i.toString(),
+      }).map(pz => {return {
         label: pz.short_name,
         headerTitle: pz.title,
-      }}))
+      }})
     },
     progress_data: function () {
       return this.team_progress.map(team => {
@@ -71,9 +59,6 @@ export default {
           total_guesses >= this.filters.total_guesses[0] &&
           total_guesses <= this.filters.total_guesses[1]
         )
-      }).map(team => {
-        // Step 3: Splat the team progress object into the root object, because this is what b-table requires
-        return {team: {name: team.name, url: team.url}, ...team.progress}
       })
     },
     oldest_latest_guess: function() {

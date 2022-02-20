@@ -1,20 +1,19 @@
 <div class="alert-list">
-	<b-alert
+	<div
 		v-for="announcement in announcements"
-		v-bind:key="announcement.id"
-		v-bind:variant="announcement.variant"
-		v-bind:dismissible="announcement.dismissible"
-		show
+		:class="'alert alert-' + announcement.variant + (announcement.dismissible ? ' alert-dismissible' : '')"
+		:key="announcement.id"
 	>
-		<h2 v-html="announcement.title"></h2><p v-html="announcement.text"></p>
-	</b-alert>
-	<b-alert
+		<h2 v-html="announcement.title" /><p v-html="announcement.text" />
+		<button v-if="announcement.dismissible" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" />
+	</div>
+	<div
 		v-for="message in messages"
-		v-bind:key="message.text"
-		v-bind:variant="message.variant"
-		dismissible
-		show
+		:class="'alert alert-dismissible alert-' + message.variant"
+		:key="message.text"
+		role="alert"
 	>
 		<p>{{ message.text }}</p>
-	</b-alert>
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" />
+	</div>
 </div>

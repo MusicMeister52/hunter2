@@ -1,5 +1,4 @@
-import $ from 'jquery'
-import 'bootstrap/js/dist/popover'
+import Popover from 'bootstrap/js/dist/popover'
 import 'bootstrap/js/dist/tooltip'
 
 export function SocketHandler(handler, notify=false, notificationText='') {
@@ -12,7 +11,7 @@ SocketHandler.prototype.handle = function(data) {
   this.handler(data)
   if (this.notify) {
     if (window.localStorage.getItem('notificationSounds') === 'true') {
-      $('#notification-sound')[0].play().catch(() => {
+      document.getElementById('notification-sound').play().catch(() => {
         window.alertList.addAnnouncement({
           announcement_id: '_autoplay_rejected',
           message: 'Playing notification sound failed. You may wish to enable autoplay audio.',
@@ -29,7 +28,7 @@ SocketHandler.prototype.handle = function(data) {
 
 SocketHandler.prototype.makeNotification = function(data) {
   if (!document.hasFocus()) {
-    let name = $('h1').text()
+    let name = document.getElementById('puzzle-title').textContent
     let options = {
       'icon': icon,
       'body': typeof this.notificationText === 'function' ? this.notificationText(data) : this.notificationText,
@@ -60,7 +59,53 @@ export function setupNotifications() {
     window.localStorage.setItem('notificationNative', 'false')
   }
 
-  let notificationButton = $('#notification-button')
+  const notificationButton = document.getElementById('notification-button')
+  const notificationContainer = document.getElementById('notification-popover-container')
+  const notificationContent = document.getElementById(notificationButton.dataset.contentId)
+  const notificationPopover = new Popover(notificationButton, {
+    content: notificationContent.innerHTML,
+    sanitize: false,
+  })
+  notificationContent.remove()
+
+  notificationButton.addEventListener('inserted.bs.popover', () => {
+    const browserNotificationsCheckbox = document.getElementById('browser-notifications-cb')
+    browserNotificationsCheckbox.checked = (window.localStorage.getItem('notificationNative') === 'true')
+    browserNotificationsCheckbox.addEventListener('change', function(event) {
+      let checkbox = event.target
+      let enable = checkbox.checked
+      window.localStorage.setItem('notificationNative', enable.toString())
+      setNotificationIndicators()
+      if (enable) {
+        if (window.Notification.permission === 'default') {
+          window.Notification.requestPermission().then(() => {
+            setNotificationIndicators()
+          })
+        }
+      }
+    })
+    const soundNotificationsCheckbox = document.getElementById('sound-notifications-cb')
+    soundNotificationsCheckbox.checked = (window.localStorage.getItem('notificationSounds') === 'true')
+    soundNotificationsCheckbox.addEventListener('change', function(event) {
+      let checkbox = event.target
+      let enable = checkbox.checked
+      window.localStorage.setItem('notificationSounds', enable.toString())
+      setNotificationIndicators()
+    })
+    document.getElementById('notification-permission-msg').style.visibility = (
+      window.localStorage.getItem('notificationNative') === 'true' && window.Notification.permission !== 'granted' ? 'visible' : 'hidden'
+    )
+    document.getElementById('sound-permission-msg').style.visibility = (
+      window.localStorage.getItem('notificationSounds') === 'true' ? 'visible' : 'hidden'
+    )
+  })
+
+  document.body.addEventListener('click', function(event) {
+    if (!notificationButton.contains(event.target) && !notificationContainer.contains(event.target)) {
+      notificationPopover.hide()
+    }
+  })
+
   function setNotificationIndicators() {
     let willDoSounds = window.localStorage.getItem('notificationSounds') === 'true'
     let willDoNativeNotifications = (
@@ -68,55 +113,11 @@ export function setupNotifications() {
       window.Notification.permission === 'granted'
     )
     if (willDoSounds || willDoNativeNotifications) {
-      notificationButton.text('🔔')
+      notificationButton.textContent = '🔔'
     } else {
-      notificationButton.text('🔕')
+      notificationButton.textContent = '🔕'
     }
-    $('#notification-permission-msg').toggle(
-      window.localStorage.getItem('notificationNative') === 'true' && window.Notification.permission !== 'granted',
-    )
-    $('#sound-permission-msg').toggle(willDoSounds)
   }
   setNotificationIndicators()
-  notificationButton.popover({
-    content: $('#notification-popover').html(),
-    html: true,
-    sanitize: false,
-    placement: 'bottom',
-    trigger: 'click',
-    boundary: document.getElementsByTagName('main')[0],
-  }).on('inserted.bs.popover', () => {
-    $('#browser-notifications-cb').prop('checked', window.localStorage.getItem('notificationNative') === 'true')
-    $('#sound-notifications-cb').prop('checked', window.localStorage.getItem('notificationSounds') === 'true')
-  })
-  // Remove the original HTML so as not to duplicate IDs
-  $('#notification-popover').remove()
-  // Hide popover on clicking outside the button or popover. 'focus' trigger would also hide when focusing
-  // anything inside the popover.
-  $('html').on('click', function(e) {
-    let target = e.target
-    if (!notificationButton.is(target) && notificationButton.has(target).length === 0 && $('.popover').has(target).length === 0) {
-      notificationButton.popover('hide')
-    }
-  })
-  $('body').on('change', '#browser-notifications-cb', function() {
-    let checkbox = $(this)
-    let enable = checkbox.is(':checked')
-    window.localStorage.setItem('notificationNative', enable.toString())
-    setNotificationIndicators()
-    if (enable) {
-      if (window.Notification.permission === 'default') {
-        window.Notification.requestPermission().then(() => {
-          setNotificationIndicators()
-        })
-      }
-    }
-  })
-  $('body').on('change', '#sound-notifications-cb', function() {
-    let checkbox = $(this)
-    let enable = checkbox.is(':checked')
-    window.localStorage.setItem('notificationSounds', enable.toString())
-    setNotificationIndicators()
-  })
 }
 

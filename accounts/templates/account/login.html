@@ -2,7 +2,7 @@
 
 {% load i18n %}
 {% load account socialaccount %}
-{% load bootstrap4 %}
+{% load django_bootstrap5 %}
 
 {% block head_title %}{% trans "Sign In" %}{% endblock %}
 
@@ -45,17 +45,14 @@
 				{% if redirect_field_value %}
 					<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
 				{% endif %}
-				{% buttons %}
-					<button class="btn btn-primary" type="submit">{% trans "Sign In" %}</button>
-					<a class="btn btn-secondary" href="{% url 'account_reset_password' %}">{% trans "Forgot Password?" %}</a>
-				{% endbuttons %}
+				{% bootstrap_button _("Sign In") button_type="submit" %}
+				{% url 'account_reset_password' as reset_url %}
+				{% bootstrap_button _("Forgot Password?") button_class="btn-secondary" href=reset_url %}
 			</form>
 			<p>
 				If you don't already have an account, you can register below:
-				{% buttons %}
-					<a class="btn btn-secondary" href="{{ signup_url }}">Sign Up</a>
-				{% endbuttons %}
 			</p>
+			{% bootstrap_button _("Sign Up") button_class="btn-secondary" %}
 		</div>
 	</div>
 {% endblock %}

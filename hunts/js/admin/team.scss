@@ -16,6 +16,26 @@ ol.hints {
   margin: 3pt;
 }
 
+.expandable-indicator {
+    float: left;
+    font-weight: bold;
+    font-size: 200%;
+    line-height: 75%;
+    vertical-align: top;
+}
+
+.started-puzzle-header {
+    &.collapsed::before {
+        @extend .expandable-indicator;
+        content: "+";
+    }
+
+    &:not(.collapsed)::before {
+        @extend .expandable-indicator;
+        content: "\2212"; /* Minus Sign */
+    }
+}
+
 .reset-button {
     float: right;
     margin-left: 1em;

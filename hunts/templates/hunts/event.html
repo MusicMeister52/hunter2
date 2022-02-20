@@ -20,15 +20,32 @@ var eventTitle = '{{ event.name }}'
 			<div id="event-complete" class="event-completed-{{ position }}"><p>Your team came {{ position_text }}!</p></div>
 		{% endif %}
 		<div class="col-md-12">
-			<ul id="ep-list" class="nav nav-tabs">
+			<ul id="ep-list" class="nav nav-tabs" role="tablist">
 				{% for episode in episodes %}
-					<li class="nav-item"><a class="episode-link nav-link" href="#episode-{{ episode.index }}"
-					       data-url="{% url 'episode_content' episode_number=episode.index %}" data-toggle="tab">{{ episode.name }}</a></li>
+					<li class="nav-item" role="presentation">
+						<button
+							id="episode-{{ episode.index }}-tab"
+							class="episode-link nav-link"
+					        data-url="{% url 'episode_content' episode_number=episode.index %}"
+							data-bs-toggle="tab"
+							data-bs-target="#episode-{{ episode.index }}"
+							role="tab"
+							aria-controls="{{ episode.name }}"
+						>
+							{{ episode.name }}
+						</button>
+					</li>
 				{% endfor %}
 			</ul>
 			<div class="tab-content" id="ep">
 				{% for episode in episodes %}
-					<div class="tab-pane" id="episode-{{ episode.index }}"></div>
+					<div
+						class="tab-pane fade"
+						id="episode-{{ episode.index }}"
+						role="tabpanel"
+						aria-labelledby="episode-{{ episode.index }}-tab"
+					>
+					</div>
 				{% endfor %}
 			</div>
 		</div>

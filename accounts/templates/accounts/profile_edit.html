@@ -1,6 +1,6 @@
 {% extends "teams/base.html" %}
 
-{% load bootstrap4 %}
+{% load django_bootstrap5 %}
 
 {% block content %}
 	<h1>Account</h1>
@@ -17,9 +17,7 @@
 						{% if attendance_formset %}
 							{% bootstrap_formset attendance_formset layout='horizontal' %}
 						{% endif %}
-						{% buttons %}
-							<button class="btn btn-primary" type="submit">Update</button>
-						{% endbuttons %}
+						{% bootstrap_button "Update" %}
 					</form>
 				</div>
 			</div>
@@ -33,9 +31,7 @@
 						<form action="{% url 'account_change_password' %}" method="post">
 							{% csrf_token %}
 							{% bootstrap_form password_form layout='horizontal' %}
-							{% buttons %}
-								<button class="btn btn-primary" type="submit">Change Password</button>
-							{% endbuttons %}
+							{% bootstrap_button "Change Password" %}
 						</form>
 					</div>
 				{% else %}
@@ -44,9 +40,7 @@
 						<form action="{% url 'account_set_password' %}?next={{ request.get_full_path | urlencode }}" method="post">
 							{% csrf_token %}
 							{% bootstrap_form password_form layout='horizontal' %}
-							{% buttons %}
-								<button class="btn btn-primary" type="submit">Set Password</button>
-							{% endbuttons %}
+							{% bootstrap_button "Set Password" %}
 						</form>
 					</div>
 				{% endif %}

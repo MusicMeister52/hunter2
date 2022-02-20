@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import App from './team-admin.vue'
+import App from './team.vue'
 
 const el = document.getElementById('team_puzzles_admin_widget')
 

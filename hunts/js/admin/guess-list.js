@@ -1,13 +1,17 @@
-import {BTable, BPagination} from 'bootstrap-vue'
+import { Pagination } from 'element-ui'
+import 'element-ui/lib/theme-chalk/index.css'
+import lang from 'element-ui/lib/locale/lang/en'
+import locale from 'element-ui/lib/locale'
 import URI from 'urijs'
 
 import HumanDateTime from '../human-datetime.vue'
 import HumanDuration from '../human-duration.vue'
 
+locale.use(lang)
+
 export default {
   components: {
-    'b-pagination': BPagination,
-    'b-table': BTable,
+    'el-pagination': Pagination,
     'human-datetime': HumanDateTime,
     'human-duration': HumanDuration,
   },
@@ -21,15 +25,6 @@ export default {
     return {
       autoUpdate: true,
       currentPage: page,
-      fields: [
-        'episode',
-        'puzzle',
-        'user',
-        'seat',
-        'guess',
-        'given',
-        'time_on_puzzle',
-      ],
       filter: search,
       guesses: [],
       rows: 0,
@@ -73,16 +68,6 @@ export default {
           response => response.json(),
         ).then(
           data => {
-            for (let guess of data.guesses) {
-              if (guess.correct) {
-                guess._rowVariant = 'success'
-                continue
-              }
-              if (guess.unlocked) {
-                guess._rowVariant = 'info'
-                continue
-              }
-            }
             v.guesses = data.guesses
             v.rows = data.rows
           },
