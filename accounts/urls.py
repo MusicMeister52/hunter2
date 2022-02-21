@@ -17,7 +17,7 @@ from . import views
 urlpatterns = [
     path('accounts/password/change/', views.PasswordChangeView.as_view(), name='account_change_password'),
     path('accounts/', include('allauth.urls')),
-    path('profile/<uuid:pk>', views.ProfileView.as_view(), name='profile'),
+    path('profile/<uuid:uuid>', views.ProfileView.as_view(), name='profile'),
     path('profile/edit', views.EditProfileView.as_view(), name='edit_profile'),
     path('user_autocomplete/', views.UserAutoComplete.as_view(), name='user_autocomplete'),
 ]
