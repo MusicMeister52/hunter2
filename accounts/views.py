@@ -24,7 +24,7 @@ from django.views import View
 from django.views.generic.detail import DetailView
 from django_tenants.utils import tenant_context
 
-from teams.models import Team
+from teams.models import Team, TeamRole
 from . import forms
 
 
@@ -57,21 +57,26 @@ class ProfileView(DetailView):
 
     def get_context_data(self, object):
         context = super().get_context_data(object=object)
-        context['participations'] = list()
-        context['administrations'] = list()
+        context.update({
+            'authorships': [],
+            'administrations': [],
+            'participations': [],
+        })
+        context_keys = {
+            TeamRole.AUTHOR: 'authorships',
+            TeamRole.ADMIN: 'administrations',
+            TeamRole.PLAYER: 'participations',
+        }
         for attendance in object.attendance_set.all().order_by('-event__end_date').select_related('event'):
             event = attendance.event
             with tenant_context(event):
                 try:
                     team = Team.objects.filter(members=object).get()
                     attendance_info = {
-                        "event": attendance.event.name,
+                        "event": event.name,
                         "team": team.name,
                     }
-                    if team.is_admin:
-                        context['administrations'].append(attendance_info)
-                    else:
-                        context['participations'].append(attendance_info)
+                    context[context_keys[team.role]].append(attendance_info)
                 except Team.DoesNotExist:
                     pass
         return context

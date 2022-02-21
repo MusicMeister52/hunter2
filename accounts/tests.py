@@ -17,14 +17,51 @@ from django.urls import reverse
 from faker import Faker
 
 from accounts.models import UserProfile
+from events.factories import AttendanceFactory
+from events.test import EventTestCase
 from hunter2.models import Configuration
+from teams.factories import TeamMemberFactory
 
 from accounts.factories import UserFactory
+from teams.models import TeamRole
 
 
 class FactoryTests(TestCase):
     def test_user_factory_default_construction(self):
         UserFactory.create()
+
+
+class ProfilePageTests(EventTestCase):
+    def test_participant(self):
+        user = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        team = user.team_at(self.tenant)
+        AttendanceFactory(user=user, event=self.tenant)
+        response = self.client.get(reverse('profile', kwargs={'uuid': user.uuid}))
+        self.assertEqual(200, response.status_code)
+        self.assertInHTML(
+            f'<h2>Participant in</h2><ul><li>{team.name} @ {self.tenant.name}</li></ul>',
+            response.content.decode('utf-8')
+        )
+
+    def test_admin(self):
+        user = TeamMemberFactory(team__role=TeamRole.ADMIN)
+        AttendanceFactory(user=user, event=self.tenant)
+        response = self.client.get(reverse('profile', kwargs={'uuid': user.uuid}))
+        self.assertEqual(200, response.status_code)
+        self.assertInHTML(
+            f'<h2>Admin at</h2><ul><li>{self.tenant.name}</li></ul>',
+            response.content.decode('utf-8')
+        )
+
+    def test_author(self):
+        user = TeamMemberFactory(team__role=TeamRole.AUTHOR)
+        AttendanceFactory(user=user, event=self.tenant)
+        response = self.client.get(reverse('profile', kwargs={'uuid': user.uuid}))
+        self.assertEqual(200, response.status_code)
+        self.assertInHTML(
+            f'<h2>Author of</h2><ul><li>{self.tenant.name}</li></ul>',
+            response.content.decode('utf-8')
+        )
 
 
 class AdminRegistrationTests(TestCase):
