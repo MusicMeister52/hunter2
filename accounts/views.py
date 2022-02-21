@@ -51,6 +51,8 @@ class UserAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
 
 class ProfileView(DetailView):
     model = User
+    slug_field = 'uuid'
+    slug_url_kwarg = 'uuid'
     template_name = 'accounts/profile.html'
 
     def get_context_data(self, object):

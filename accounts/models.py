@@ -49,7 +49,7 @@ class User(AbstractUser):
         return attendance
 
     def get_absolute_url(self):
-        return reverse('profile', kwargs={'pk': self.uuid})
+        return reverse('profile', kwargs={'uuid': self.uuid})
 
     def is_on_explicit_team(self, event):
         return self.teams.filter(at_event=event).exclude(name=None).exists()
