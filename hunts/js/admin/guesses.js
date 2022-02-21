@@ -1,13 +1,13 @@
-import Vue from 'vue'
+import { createApp } from 'vue'
+import * as Sentry from '@sentry/vue'
 
 import 'hunter2/js/base'
 import AdminGuessList from './guess-list.vue'
 
 const href = document.getElementById('admin-guess-list').dataset.href
-const adminguesslist = new Vue({
-  ...AdminGuessList,
-  propsData: {
-    href: href,
-  },
+const adminGuessList = createApp(AdminGuessList, {
+  href: href,
 })
-adminguesslist.$mount('#admin-guess-list')
+adminGuessList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
+Sentry.attachErrorHandler(adminGuessList, { logErrors: true })
+adminGuessList.mount('#admin-guess-list')

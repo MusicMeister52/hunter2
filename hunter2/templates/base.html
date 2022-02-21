@@ -26,15 +26,15 @@
 	<title>{% block title %}{{ request.site.name }}{% endblock %}</title>
 
 	<script>
-	window.announcements = {
+	window.announcements = new Map([
 		{% for announcement in announcements %}
-		{{ announcement.id }}: {
+		["{{ announcement.id }}", {
 			"text": "{{ announcement.message | safe }}",
 			"title": "{{ announcement.title | safe }}",
 			"variant": "{{ announcement.type.variant }}",
-		},
+		}],
 		{% endfor %}
-	}
+	])
 	window.messages = [
 		{% for message in messages %}
 		{

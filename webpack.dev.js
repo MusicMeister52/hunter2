@@ -31,12 +31,6 @@ module.exports = merge(common, {
     }),
   ],
 
-  resolve: {
-    alias: {
-      'vue$': 'vue/dist/vue.esm.js',
-    },
-  },
-
   watchOptions: {
     aggregateTimeout: 300,
     poll: 1000,

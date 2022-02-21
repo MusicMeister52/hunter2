@@ -1,19 +1,13 @@
-import Vue from 'vue'
-import { Slider } from 'element-ui'
-import 'element-ui/lib/theme-chalk/index.css'
+import { createApp } from 'vue'
+import * as Sentry from '@sentry/vue'
 
-import App from './progress.vue'
+import Progress from './progress.vue'
 
-Vue.use(Slider)
+const el = document.getElementById('admin_progress_widget')
 
-const id = '#admin_progress_widget'
-const el = document.querySelector(id)
-
-new Vue({
-  el: id,
-  render: h => h(App, {
-    props: {
-      href: el.attributes.href.value,
-    },
-  }),
+const progress = createApp(Progress, {
+  href: el.attributes.href.value,
 })
+progress.mixin(Sentry.createTracingMixins({ trackComponents: true }))
+Sentry.attachErrorHandler(progress, { logErrors: true })
+progress.mount(el)

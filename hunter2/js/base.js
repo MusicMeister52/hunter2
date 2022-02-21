@@ -1,4 +1,5 @@
-import Vue from 'vue'
+import {createApp, reactive} from 'vue'
+import * as Sentry from '@sentry/vue'
 import 'bootstrap/js/dist/collapse'
 
 import AlertList from './alert-list.vue'
@@ -27,14 +28,19 @@ window.addEventListener('DOMContentLoaded', function() {
     })
   }
 
-  window.alertList = new Vue({
-    ...AlertList,
-    data: {
+  window.announcements = reactive(window.announcements)
+  window.messages = reactive(window.messages)
+
+  window.alertList = createApp(
+    AlertList,
+    {
       announcements: window.announcements,
       messages: window.messages,
     },
-    el: '#alert-list',
-  })
+  )
+  window.alertList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
+  Sentry.attachErrorHandler(window.alertList, { logErrors: true })
+  window.alertList.mount('#alert-list')
 
   formatDatesForLocalTZ()
 })
