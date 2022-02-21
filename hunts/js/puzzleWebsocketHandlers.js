@@ -8,8 +8,7 @@ export function SocketHandler(handler, notify=false, notificationText='') {
 }
 
 SocketHandler.prototype.handle = function(data) {
-  this.handler(data)
-  if (this.notify) {
+  if (this.notify && !window.solved) {
     if (window.localStorage.getItem('notificationSounds') === 'true') {
       document.getElementById('notification-sound').play().catch(() => {
         window.alertList.addAnnouncement({
@@ -24,6 +23,7 @@ SocketHandler.prototype.handle = function(data) {
       this.makeNotification(data)
     }
   }
+  this.handler(data)
 }
 
 SocketHandler.prototype.makeNotification = function(data) {
