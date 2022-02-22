@@ -18,7 +18,7 @@ from django.utils.html import format_html
 from django.urls import path, reverse
 from django.db.models import Count, Sum
 from nested_admin import NestedModelAdmin, NestedModelAdminMixin, NestedStackedInline, NestedTabularInline
-from ordered_model.admin import OrderedModelAdmin
+from ordered_model.admin import OrderedInlineMixin, OrderedInlineModelAdminMixin, OrderedModelAdmin
 from rules.contrib.admin import ObjectPermissionsModelAdmin, ObjectPermissionsModelAdminMixin, ObjectPermissionsInlineModelAdminMixin
 from webpack_loader.utils import get_files
 
@@ -164,8 +164,11 @@ class UnlockAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdmin):
         return False
 
 
-class UnlockInline(ObjectPermissionsInlineModelAdminMixin, NestedStackedInline):
+class UnlockInline(ObjectPermissionsInlineModelAdminMixin, OrderedInlineMixin, NestedTabularInline):
     model = models.Unlock
+    fields = ('text', 'move_up_down_links', )
+    readonly_fields = ('move_up_down_links', )
+    ordering = ('order', )
     inlines = [
         UnlockAnswerInline,
     ]
@@ -185,7 +188,7 @@ class GuessAdmin(admin.ModelAdmin):
 
 
 @admin.register(models.Puzzle)
-class PuzzleAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdminMixin, OrderedModelAdmin):
+class PuzzleAdmin(ObjectPermissionsModelAdminMixin, NestedModelAdminMixin, OrderedInlineModelAdminMixin, OrderedModelAdmin):
     class Form(forms.ModelForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)

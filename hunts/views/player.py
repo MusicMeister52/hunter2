@@ -199,6 +199,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
             unlock_text = mark_safe(u.text)  # nosec unlock text is provided by puzzle admins, we consider this safe
             unlocks.append({
                 'compact_id': u.compact_id,
+                'order': u.order,
                 'guesses': guesses,
                 'text': unlock_text,
                 'hidden': u.hidden,

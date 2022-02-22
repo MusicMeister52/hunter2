@@ -278,7 +278,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         return {
             'guess': teamunlock.unlocked_by.guess,
             'unlock': teamunlock.unlockanswer.unlock.text,
-            'unlock_uid': teamunlock.unlockanswer.unlock.compact_id
+            'unlock_order': teamunlock.unlockanswer.unlock.order,
+            'unlock_uid': teamunlock.unlockanswer.unlock.compact_id,
         }
 
     @classmethod
@@ -344,6 +345,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
             'type': 'change_unlock',
             'content': {
                 'unlock': unlock.text,
+                'unlock_order': unlock.order,
                 'unlock_uid': unlock.compact_id,
             }
         })

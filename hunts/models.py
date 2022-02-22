@@ -612,7 +612,9 @@ class Hint(Clue):
         return False
 
 
-class Unlock(Clue):
+class Unlock(Clue, OrderedModel):
+    order_with_respect_to = 'puzzle'
+
     text = models.TextField(help_text="Text displayed when this clue is unlocked", blank=True)
 
     @property

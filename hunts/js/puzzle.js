@@ -307,8 +307,8 @@ function newUnlock(content) {
     this.createBlankUnlock(content.unlock_uid)
   }
   let unlockInfo = this.unlocks.get(content.unlock_uid)
-  unlockInfo.unlock = content.unlock
-  unlockInfo.guesses.add(content.guess)
+  unlockInfo.order = content.order
+  unlockInfo.guesses.add(encode(content.guess))
   unlockInfo.isNew = true
 }
 
@@ -316,7 +316,9 @@ function changeUnlock(content) {
   if (!(this.unlocks.has(content.unlock_uid))) {
     throw `WebSocket changed invalid unlock: ${content.unlock_uid}`
   }
-  this.unlocks.get(content.unlock_uid).unlock = content.unlock
+  let unlockInfo = this.unlocks.get(content.unlock_uid)
+  unlockInfo.unlock = content.unlock
+  unlockInfo.order = content.order
 }
 
 function deleteUnlockGuess(content) {
