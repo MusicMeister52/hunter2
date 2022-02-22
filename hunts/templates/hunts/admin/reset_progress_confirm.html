@@ -23,7 +23,7 @@
 	{% endif %}
 
 	<p>This <b>{{ team.role|lower }}</b> team has <b>{{ team.members.count }}</b> members:
-		{% for member in team.members.all %}{% if not forloop.first %}{% if not forloop.last %}, {% else %} and{% endif %}{% endif %} {{ member.user.username }}{% endfor %}
+		{% for member in team.members.all %}{% if not forloop.first %}{% if not forloop.last %}, {% else %} and{% endif %}{% endif %} {{ member.username }}{% endfor %}
 	</p>
 	{% if puzzle %}
 	<p>

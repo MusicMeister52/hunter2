@@ -1815,6 +1815,8 @@ class AdminContentTests(EventTestCase):
         url = reverse('reset_progress') + f'?team={self.admin_team.id}'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.admin_user.username, msg_prefix='Reset Progress warning page does not contain team member usernames')
+        self.assertContains(response, self.admin_team.name, msg_prefix='Reset Progress warning page does not contain team name')
         response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
 
