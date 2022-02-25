@@ -46,12 +46,21 @@
 	display: inline-block;
 }
 
-.submission-error-container {
-    display: flex;
+@keyframes fade {
+    0%   {opacity: 1}
+    100% {opacity: 0}
 }
 
-.submission-error {
+.fading-message-container {
+    animation: fade 2s ease 5s 1;
+}
+
+.fading-message {
     margin: auto 0 auto 1em;
+}
+
+.submission-error-container {
+    display: flex;
 }
 
 #guesses td, #guesses th {

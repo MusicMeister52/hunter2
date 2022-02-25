@@ -118,10 +118,13 @@
 <h3>Guesses <button id="guesses-button" class="btn" data-bs-toggle="collapse" data-bs-target="#guesses-container" aria-expanded="false" aria-controls="guesses-container">Show</button></h3>
 <div id="guesses-container" class="collapse">
 	<table id="guesses">
-		<tr class="guess-viewer-header">
-			<th>User</th>
-			<th>Guess</th>
+		<thead>
+		<tr>
+			<th scope="col">User</th>
+			<th scope="col">Guess</th>
 		</tr>
+		</thead>
+		<tbody id="guess-viewer-body"></tbody>
 	</table>
 </div>
 </section>

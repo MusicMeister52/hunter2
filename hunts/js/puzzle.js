@@ -12,7 +12,6 @@
  * You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import $ from 'jquery'
 import 'bootstrap/js/dist/button'
 import 'bootstrap/js/dist/collapse'
 import {easeLinear, format, select} from 'd3'
@@ -21,9 +20,9 @@ import {Duration} from 'luxon'
 import RobustWebSocket from 'robust-websocket'
 import {encode} from 'html-entities'
 import Vue from 'vue'
+import Cookies from 'js-cookie'
 
 import 'hunter2/js/base'
-import 'hunter2/js/csrf.js'
 
 import '../scss/puzzle.scss'
 import ClueList from './clue-list.vue'
@@ -44,18 +43,24 @@ function incorrect_answer(guess, timeout_length, timeout) {
 }
 
 function correct_answer() {
-  var form = $('#answer-form')
-  if (form.length) {
+  let form = document.getElementById('answer-form')
+  if (form !== null) {
     // We got a direct response before the WebSocket notified us (possibly because the WebSocket is broken
     // in this case, we still want to tell the user that they got the right answer. If the WebSocket is
     // working, this will be updated when it replies.
-    form.after('<div id="correct-answer-message">Correct!</div>')
+    form.insertAdjacentHTML('afterend', '<div id="correct-answer-message">Correct!</div>')
+    form.parentElement.removeChild(form)
   }
 }
 
-function message(message, error) {
-  var error_msg = $('<div class="submission-error-container"><p class="submission-error" title="' + error + '">' + message + '</p></div>')
-  error_msg.appendTo($('#answer-form')).delay(5000).fadeOut(2000, function(){$(this).remove()})
+function fadingMessage(element, message, title) {
+  let container = document.createElement('div')
+  container.classList.add('fading-message-container')
+  container.innerHTML = `<p class="fading-message" title="${title}">${message}</p>`
+  element.insertAdjacentElement('beforeend', container)
+  container.addEventListener('animationend', function(event) {
+    event.target.parentNode.removeChild(event.target)
+  })
 }
 
 function evaluateButtonDisabledState(button) {
@@ -124,7 +129,7 @@ function doCooldown(milliseconds) {
 
   setTimeout(function () {
     g.remove()
-    btn.removeData('cooldown')
+    delete btn.dataset.cooldown
     evaluateButtonDisabledState(btn)
   }, milliseconds)
 }
@@ -202,8 +207,8 @@ function addSVG() {
 var guesses = []
 
 function addAnswer(user, guess, correct, guess_uid) {
-  var guesses_table = $('#guesses .guess-viewer-header')
-  guesses_table.after('<tr><td>' + encode(user) + '</td><td>' + encode(guess) + '</td></tr>')
+  let guess_table_body = document.getElementById('guess-viewer-body')
+  guess_table_body.insertAdjacentHTML('afterbegin', `<tr><td>${encode(user)}</td><td>${encode(guess)}</td></tr>`)
   guesses.push(guess_uid)
 }
 
@@ -223,18 +228,18 @@ function receivedOldAnswers(content) {
 
 function receivedSolvedMsg(content) {
   window.puzzle_solved = true
-  let message = $('#correct-answer-message')
   const time = durationFilters.filters.durationForHumans(Duration.fromMillis(content.time * 1000).toISO())
   const html = `"${content.guess}" by ${content.by} was correct! You spent ${time} on the puzzle. ` +
     `Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
-  if (message.length) {
+  let message = document.getElementById('correct-answer-message')
+  if (message !== null) {
     // The server already replied so we already put up a temporary message; just update it
-    message.html(html)
+    message.innerHTML = html
   } else {
     // That did not happen, so add the message
-    var form = $('#answer-form')
-    form.after(`<div id="correct-answer-message">${html}</div>`)
-    form.remove()
+    let form = document.getElementById('answer-form')
+    form.insertAdjacentHTML('afterend', `<div id="correct-answer-message">${html}</div>`)
+    form.parentElement.removeChild(form)
   }
   setTimeout(function () {window.location.href = content.redirect}, 3000)
 }
@@ -291,25 +296,19 @@ function openEventSocket() {
     }
   }
   sock.onerror = function() {
-    let conn_status = $('#connection-status')
-    conn_status.html('<p class="connection-error">' +
+    let conn_status = document.getElementById('connection-status')
+    conn_status.innerHTML = '<p class="connection-error">' +
       'Websocket is disconnected; attempting to reconnect. ' +
-      'If the problem persists, please notify the admins.</p>',
-    )
+      'If the problem persists, please notify the admins.</p>'
   }
   sock.onopen = function() {
-    let error = $('#connection-status > .connection-error')
+    let error = document.querySelector('#connection-status > .connection-error')
     // If connecting when there is an existing error message, hide it and display a
     // message to say we reconnected.
-    if (error.length) {
-      error.remove()
-      let conn_status = $('#connection-status')
-      let msg = $('<p class="connection-opened">' +
-        'Websocket connection re-established.</p>',
-      )
-      msg.appendTo(conn_status).delay(5000).fadeOut(2000, function() {
-        $(this).remove()
-      })
+    if (error !== null) {
+      error.parentElement.removeChild(error)
+      let conn_status = document.getElementById('connection-status')
+      fadingMessage(conn_status, 'Websocket connection re-established', '')
     }
     if (lastUpdated != undefined) {
       sock.send(JSON.stringify({'type': 'guesses-plz', 'from': lastUpdated}))
@@ -335,58 +334,68 @@ window.addEventListener('DOMContentLoaded', function() {
     el: '#clue-list',
   })
 
-  let field = $('#answer-entry')
-  let button = $('#answer-button')
+  let field = document.getElementById('answer-entry')
+  let button = document.getElementById('answer-button')
 
-  function fieldKeyup() {
-    if (!field.val()) {
-      button.data('empty-answer', true)
+  field.addEventListener('input', function(event) {
+    if (!event.target.value) {
+      button.dataset.emptyAnswer = true
     } else {
-      button.removeData('empty-answer')
+      delete button.dataset.emptyAnswer
     }
     evaluateButtonDisabledState(button)
-  }
-  field.on('input', fieldKeyup)
+  })
 
   setupNotifications()
   openEventSocket()
 
-  $('#answer-form').submit(function(e) {
+  let answerForm = document.getElementById('answer-form')
+  answerForm.addEventListener('submit', function(e) {
     e.preventDefault()
-    if (!field.val()) {
+    if (!field.value) {
       field.focus()
       return
     }
 
-    var data = {
-      answer: field.val(),
-    }
-    $.ajax({
-      type: 'POST',
-      url: 'an',
-      data: $.param(data),
-      contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-      success: function(data) {
-        field.val('')
-        fieldKeyup()
-        if (data.correct == 'true') {
+    fetch(
+      'an',
+      {
+        method: 'POST',
+        body: new URLSearchParams({
+          answer: field.value,
+        }),
+        headers: {
+          'X-CSRFToken': Cookies.get('csrftoken'),
+        },
+      },
+    ).then(
+      res => res.json(),
+    ).then(
+      data => {
+        if ('error' in data) {
+          delete button.dataset.ccooldown
+          if (data.error === 'too fast') {
+            fadingMessage(answerForm, 'Slow down there, sparky! You\'re supposed to wait 5s between submissions.', '')
+          } else if (data.error === 'already answered') {
+            fadingMessage(answerForm, 'Your team has already correctly answered this puzzle!', '')
+          } else {
+            fadingMessage(answerForm, 'Server returned error from answer submission.', data.error)
+          }
+          return
+        }
+        field.value = ''
+        field.dispatchEvent(new CustomEvent('input'))
+        if (data.correct === 'true') {
           correct_answer()
         } else {
           incorrect_answer(data.guess, data.timeout_length, data.timeout_end, data.unlocks)
         }
       },
-      error: function(xhr, status, error) {
-        button.removeData('cooldown')
-        if (xhr.responseJSON && xhr.responseJSON.error == 'too fast') {
-          message('Slow down there, sparky! You\'re supposed to wait 5s between submissions.', '')
-        } else if (xhr.responseJSON && xhr.responseJSON.error == 'already answered') {
-          message('Your team has already correctly answered this puzzle!', '')
-        } else {
-          message('There was an error submitting the answer.', error)
-        }
+    ).catch(
+      err => {
+        fadingMessage(answerForm, 'There was an error submitting the answer.', err)
       },
-      dataType: 'json',
-    })
+    )
   })
 
   const solution_button = document.getElementById('solution-button')
