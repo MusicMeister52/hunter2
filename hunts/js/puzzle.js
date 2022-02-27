@@ -222,6 +222,7 @@ function receivedOldAnswers(content) {
 }
 
 function receivedSolvedMsg(content) {
+  window.puzzle_solved = true
   let message = $('#correct-answer-message')
   const time = durationFilters.filters.durationForHumans(Duration.fromMillis(content.time * 1000).toISO())
   const html = `"${content.guess}" by ${content.by} was correct! You spent ${time} on the puzzle. ` +

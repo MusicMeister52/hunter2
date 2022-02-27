@@ -15,13 +15,14 @@
 {% render_bundle 'hunts_puzzle' 'js' attrs='defer' %}
 	<script>
 		"use strict"
-		var hints = new Map([{% for hint in hints %}[
+		window.solved = {{ answered | yesno:"true,false" }};
+		window.hints = new Map([{% for hint in hints %}[
 			'{{ hint.compact_id }}', {
 				'time': '{{ hint.time }}',
 				'hint': '{{ hint.text|escapejs }}',
 			}],
-		{% endfor %}])
-		var unlocks = new Map([{% for unlock in unlocks %}[
+		{% endfor %}]);
+		window.unlocks = new Map([{% for unlock in unlocks %}[
 			'{{ unlock.compact_id }}', {
 				'unlock': '{{ unlock.text|escapejs }}',
 				'guesses': new Set([{% for g in unlock.guesses %}'{{ g|escapejs }}'{% if not forloop.last %}, {%endif %}{% endfor %}]),
