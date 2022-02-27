@@ -46,12 +46,6 @@ urlpatterns = [
 
 if settings.DEBUG:
 
-    import debug_toolbar
-
-    urlpatterns += [
-        path('__debug__/', include(debug_toolbar.urls)),
-    ]
-
     # Http error code handlers (including CSRF validation)
     urlpatterns += [
         path('test/http/400/', bad_request, kwargs={'exception': Exception("Bad Request!")}),
