@@ -14,9 +14,9 @@
 <div id="member-list" class="member-list">
 {% for member in members.all %}
 	<div class="member">
-		<h3><a href="{{ member.user.get_absolute_url }}">{{ member.username }}</a></h3>
-		{% if member.user.picture %}
-			<img src="{{ member.user.picture }}" alt="{{ member.username }}" />
+		<h3><a href="{{ member.get_absolute_url }}">{{ member.username }}</a></h3>
+		{% if member.picture %}
+			<img src="{{ member.picture }}" alt="{{ member.username }}" />
 		{% endif %}
 		<p>
 		{% if member.seat %}
