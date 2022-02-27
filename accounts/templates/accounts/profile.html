@@ -9,19 +9,27 @@
 {% block content %}
 <h1>{{ object.username }}</h1>
 <img class="profile-picture" src="{{ object.picture }}" />
-{% if participations %}
-<h2>Participated Events</h2>
+{% if authorships %}
+<h2>Author of</h2>
 <ul>
-	{% for p in participations %}
-	<li>{% if p.team != None %}{{ p.team }} @ {% endif %}{{ p.event }}</li>
+	{% for a in authorships %}
+	<li>{{ a.event }}</li>
 	{% endfor %}
 </ul>
 {% endif %}
 {% if administrations %}
-<h2>Ran Events</h2>
+<h2>Admin at</h2>
 <ul>
 	{% for a in administrations %}
 	<li>{{ a.event }}</li>
+	{% endfor %}
+</ul>
+{% endif %}
+{% if participations %}
+<h2>Participant in</h2>
+<ul>
+	{% for p in participations %}
+	<li>{% if p.team != None %}{{ p.team }} @ {% endif %}{{ p.event }}</li>
 	{% endfor %}
 </ul>
 {% endif %}
