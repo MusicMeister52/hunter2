@@ -54,7 +54,7 @@
     "html-entities": "2.3.2",
     "jquery": "3.6.0",
     "js-cookie": "3.0.1",
-    "luxon": "2.3.0",
+    "luxon": "2.3.1",
     "path-browserify": "*",
     "popper.js": "1.16.1",
     "robust-websocket": "1.0.0",
