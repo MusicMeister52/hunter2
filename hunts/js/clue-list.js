@@ -24,16 +24,6 @@ export default {
     sortedHints() {
       return this.hintArray(this.clueData.hints)
     },
-    sortedUnlocks() {
-      let array = Array.from(this.clueData.unlocks.entries(), u => [u[0], {
-        unlock: u[1].unlock,
-        guesses: u[1].guesses,
-        isNew: u[1].isNew,
-        hints: this.hintArray(u[1].hints),
-      }])
-      array.sort((a, b) => this.unlocks.get(a[0]).order - this.unlocks.get(b[0]).order)
-      return array
-    },
   },
   methods: {
     hintArray(hintMap) {

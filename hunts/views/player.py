@@ -189,22 +189,19 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         hints = progress.hints()
 
         unlocks = []
-        unlocks_to_guesses = progress.unlocks_to_guesses()
+        unlocks_with_guesses = progress.unlocks_with_guesses()
+        print(unlocks_with_guesses)
 
-        for u in unlocks_to_guesses:
-            guesses = [g.guess for g in unlocks_to_guesses[u]]
-            # Get rid of duplicates but preserve order
-            duplicates = set()
-            guesses = [g for g in guesses if not (g in duplicates or duplicates.add(g))]
-            unlock_text = mark_safe(u.text)  # nosec unlock text is provided by puzzle admins, we consider this safe
-            unlocks.append({
-                'compact_id': u.compact_id,
-                'order': u.order,
-                'guesses': guesses,
-                'text': unlock_text,
-                'hidden': u.hidden,
-                'hints': hints[u.id],
-            })
+        unlocks = [
+            {
+                'compact_id': unlock.compact_id,
+                'guesses': unlock.guesses,
+                'text': unlock.text,
+                'hidden': unlock.hidden,
+                'hints': hints[unlock.id],
+            }
+            for unlock in unlocks_with_guesses
+        ]
 
         files = puzzle.files_map(request)
         text = Template(puzzle.runtime.create(puzzle.options).evaluate(

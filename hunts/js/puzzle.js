@@ -303,13 +303,24 @@ function deleteHint(content) {
 }
 
 function newUnlock(content) {
-  if (!(this.unlocks.has(content.unlock_uid))) {
-    this.createBlankUnlock(content.unlock_uid)
+  let newIndex = 0
+  if (content.place_after !== null) {
+    for (i = 0; i < this.unlocks.length; i++) {
+      if (this.unlocks[i].id === content.place_after) {
+        newIndex = i + 1
+        break
+      }
+    }
   }
-  let unlockInfo = this.unlocks.get(content.unlock_uid)
-  unlockInfo.order = content.order
-  unlockInfo.guesses.add(encode(content.guess))
-  unlockInfo.isNew = true
+  if (this.unlocks[newIndex].id !== content.unlock_uid) {
+    this.unlocks.splice(newIndex, 0, {
+      id: content.unlock_uid,
+      unlock: content.unlock,
+      guesses: new Set(),
+      isNew: true,
+    })
+  }
+  this.unlocks[newIndex].guesses.add(content.guess)
 }
 
 function changeUnlock(content) {
@@ -318,7 +329,6 @@ function changeUnlock(content) {
   }
   let unlockInfo = this.unlocks.get(content.unlock_uid)
   unlockInfo.unlock = content.unlock
-  unlockInfo.order = content.order
 }
 
 function deleteUnlockGuess(content) {
@@ -419,10 +429,6 @@ window.addEventListener('DOMContentLoaded', function() {
   window.clueData = reactive({
     hints: window.hints,
     unlocks: window.unlocks,
-
-    createBlankUnlock(uid) {
-      this.unlocks.set(uid, {'unlock': null, 'guesses': new Set(), 'hints': new Map()})
-    },
   })
 
   let field = document.getElementById('answer-entry')

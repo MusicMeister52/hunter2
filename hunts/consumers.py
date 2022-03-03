@@ -277,8 +277,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
     def _new_unlock_json(cls, teamunlock):
         return {
             'guess': teamunlock.unlocked_by.guess,
+            'place_after': '',
             'unlock': teamunlock.unlockanswer.unlock.text,
-            'unlock_order': teamunlock.unlockanswer.unlock.order,
             'unlock_uid': teamunlock.unlockanswer.unlock.compact_id,
         }
 

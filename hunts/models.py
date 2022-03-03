@@ -16,6 +16,7 @@ from collections import defaultdict
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -962,8 +963,8 @@ class TeamPuzzleProgress(SealableModel):
         """
         hints = self.puzzle.hint_set.all()
         unlocked_unlocks = {
-            unlock.id: sorted(guesses, key=lambda g: g.given)[0].given
-            for unlock, guesses in self.unlocks_to_guesses().items()
+            unlock.id: unlock.time
+            for unlock in self.unlocks_with_guesses()
         }
         accepted = set(self.accepted_hints.all())
         obsolete = set(hints.annotate(
@@ -985,12 +986,19 @@ class TeamPuzzleProgress(SealableModel):
             hs.sort(key=lambda h: h.time)
         return hint_dict
 
-    def unlocks_to_guesses(self):
-        d = defaultdict(list)
-        for teamunlock in self.teamunlock_set.all():
-            d[teamunlock.unlockanswer.unlock].append(teamunlock.unlocked_by)
-
-        return dict(d)
+    def unlocks_with_guesses(self):
+        return self.puzzle.unlock_set.annotate(
+            guesses=ArrayAgg(
+                'unlockanswer__teamunlock__unlocked_by__guess',
+                filter=Q(unlockanswer__teamunlock__unlocked_by__by_team__id=self.team.id),
+            ),
+            time=Min(
+                'unlockanswer__teamunlock__unlocked_by__given',
+                filter=Q(unlockanswer__teamunlock__unlocked_by__by_team__id=self.team.id),
+            ),
+        ).filter(
+            time__isnull=False,
+        ).seal()
 
     def reevaluate(self, answers, guesses):
         """Update this instance to reflect the team's progress in the supplied guesses.

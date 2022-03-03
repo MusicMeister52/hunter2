@@ -15,7 +15,7 @@
 	<h3>Clues</h3>
 	<p v-if="none"><em>None yet</em></p>
 	<transition-group id="hints" name="highlight" tag="ul">
-		<li v-for="[id, hint] in sortedHints" v-bind:key="id" v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
+		<li v-for="[id, hint] in sortedHints" :key="id" :class="hint.isNew ? 'newClue' : 'oldClue'">
 			<span class="hint-time">{{ hint.time }}: </span>
 			<span v-if="hint.obsolete" class="obsolete">
 				(<span class="hover" title="You entered a guess which indicated you don't need this hint">surpassed</span>)
@@ -24,28 +24,28 @@
 			<a v-else href="#" :class="{ obsolete: hint.obsolete }" @click.prevent="acceptHint(id, null)">show</a>
 		</li>
 	</transition-group>
-	<table v-if="this.clueData.unlocks.size > 0" id="unlocks">
+	<table v-if="this.clueData.unlocks.length > 0" id="unlocks">
 		<tr class="unlock">
 			<th class="unlock-guesses">Guesses</th>
 			<th class="unlock-clues">Clues</th>
 		</tr>
-		<tr v-bind:key="id" v-for="([id, unlock], index) in sortedUnlocks" class="unlock">
+		<tr :key="unlock.id" v-for="(unlock, index) in this.clueData.unlocks" class="unlock">
 			<td>
-				<transition-group v-bind:id="`unlock-${id}-guesses`" name="highlight" tag="ul" class="unlock-guesses" appear>
+				<transition-group :id="`unlock-${unlock.id}-guesses`" name="highlight" tag="ul" class="unlock-guesses" appear>
 					<li v-for="ua in unlock.guesses"
 						:key="ua"
-						v-bind:title="ua"
-						v-bind:class="unlock.isNew ? 'newClue' : 'oldClue'">
+						:title="ua"
+						:class="unlock.isNew ? 'newClue' : 'oldClue'">
 						<strong>{{ ua }}</strong>
 					</li>
 				</transition-group>
 			</td>
 			<td>
-				<transition-group v-bind:id="`unlock-${id}-hints`" name="highlight" tag="ul" class="unlock-clues" appear>
+				<transition-group :id="`unlock-${unlock.id}-hints`" name="highlight" tag="ul" class="unlock-clues" appear>
 					<li class="unlock-text" v-if="unlock.unlock" v-html="unlock.unlock" />
 					<li v-for="[hintID, hint] in unlock.hints"
-						v-bind:key="hintID"
-						v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
+						:key="hintID"
+						:class="hint.isNew ? 'newClue' : 'oldClue'">
 						<span v-if="hint.obsolete" class="obsolete">
 							(<span class="hover" title="You entered a guess which indicated you don't need this hint">surpassed</span>)
 						</span>
@@ -55,7 +55,7 @@
 					</li>
 				</transition-group>
 			</td>
-			<div v-if="index != sortedUnlocks.length - 1" class="unlock-divider"/>
+			<div v-if="index != this.clueData.unlocks.length - 1" class="unlock-divider"/>
 		</tr>
 	</table>
 </div>

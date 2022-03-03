@@ -25,11 +25,11 @@
 				'obsolete': {% if hint.obsolete %}true{% else %}false{% endif %},
 			}],
 		{% endfor %}]);
-		window.unlocks = new Map([{% for unlock in unlocks %}{% if not unlock.hidden or unlock.hints %}[
-			'{{ unlock.compact_id }}', {
+		window.unlocks = [{% for unlock in unlocks %}{% if not unlock.hidden or unlock.hints %}
+			{
+				'id': '{{ unlock.compact_id }}',
 				'unlock': {% if unlock.text %}'{{ unlock.text|escapejs }}'{% else %}null{% endif %},
 				'guesses': new Set([{% for g in unlock.guesses %}'{{ g|escapejs }}'{% if not forloop.last %}, {%endif %}{% endfor %}]),
-				'order': '{{  unlock.order }}',
 				'hints': new Map([{% for h in unlock.hints %}[
 					'{{ h.compact_id }}', {
 						'time': '{{ h.time }}',
@@ -38,8 +38,8 @@
 						'obsolete': {% if hint.obsolete %}true{% else %}false{% endif %},
 					}],
 				{% endfor %}])
-			}],{% endif %}{% endfor %}
-		])
+			}
+		,{% endif %}{% endfor %}]
 	</script>
 {% endblock %}
 
