@@ -64,8 +64,8 @@ There is no maximum team size.
 	<li>
 		{{ user.username }} has requested to join
 		<span style="float: right">
-			&nbsp;<a href="#" class="req-accept" data-team="{{ team.pk }}" data-user="{{ user.pk }}">Accept</a>
-			&nbsp;<a href="#" class="req-deny" data-team="{{ team.pk }}" data-user="{{ user.pk }}">Ignore</a>
+			&nbsp;<a href="#" class="req-accept" data-team="{{ team.pk }}" data-user="{{ user.uuid }}">Accept</a>
+			&nbsp;<a href="#" class="req-deny" data-team="{{ team.pk }}" data-user="{{ user.uuid }}">Ignore</a>
 		</span>
 	</li>
 {% endfor %}
