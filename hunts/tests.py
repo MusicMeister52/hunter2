@@ -1445,9 +1445,46 @@ class AdminContentTests(EventTestCase):
         self.episode = EpisodeFactory(event=self.tenant)
         self.admin_user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
         self.admin_team = self.admin_user.team_at(self.tenant)
+        self.player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
         self.puzzle = PuzzleFactory(episode=self.episode, start_date=None)
         self.guesses = GuessFactory.create_batch(5, for_puzzle=self.puzzle)
         self.guesses_url = reverse('admin_guesses_list')
+
+    def test_cache_authorisation(self):
+        with freezegun.freeze_time():
+            self.client.force_login(self.admin_user)
+            # add everything to the cache
+            response = self.client.get(reverse('admin_guesses'))
+            self.assertEqual(response.status_code, 200)
+            response = self.client.get(reverse('admin_guesses_list'))
+            self.assertEqual(response.status_code, 200)
+
+            response = self.client.get(reverse('admin_stats'))
+            self.assertEqual(response.status_code, 200)
+            response = self.client.get(reverse('admin_stats_content'))
+            self.assertEqual(response.status_code, 200)
+
+            response = self.client.get(reverse('admin_progress'))
+            self.assertEqual(response.status_code, 200)
+            response = self.client.get(reverse('admin_progress_content'))
+            self.assertEqual(response.status_code, 200)
+
+            self.client.force_login(self.player)
+            # check that caching does not bypass authentication
+            response = self.client.get(reverse('admin_guesses'))
+            self.assertEqual(response.status_code, 403)
+            response = self.client.get(reverse('admin_guesses_list'))
+            self.assertEqual(response.status_code, 403)
+
+            response = self.client.get(reverse('admin_stats'))
+            self.assertEqual(response.status_code, 403)
+            response = self.client.get(reverse('admin_stats_content'))
+            self.assertEqual(response.status_code, 403)
+
+            response = self.client.get(reverse('admin_progress'))
+            self.assertEqual(response.status_code, 403)
+            response = self.client.get(reverse('admin_progress_content'))
+            self.assertEqual(response.status_code, 403)
 
     def test_can_view_guesses(self):
         self.client.force_login(self.admin_user)
@@ -1455,8 +1492,7 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_non_admin_cannot_view_guesses(self):
-        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player)
+        self.client.force_login(self.player)
         response = self.client.get(reverse('admin_guesses'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_guesses_list'))
@@ -1500,16 +1536,14 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_non_admin_cannot_view_stats(self):
-        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player)
+        self.client.force_login(self.player)
         response = self.client.get(reverse('admin_stats'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_stats_content'))
         self.assertEqual(response.status_code, 403)
 
     def test_non_admin_cannot_view_admin_team(self):
-        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player)
+        self.client.force_login(self.player)
         response = self.client.get(reverse('admin_team'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_team_detail', kwargs={'team_id': self.admin_team.id}))
@@ -1662,8 +1696,7 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_non_admin_cannot_view_admin_progress(self):
-        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player)
+        self.client.force_login(self.player)
         response = self.client.get(reverse('admin_progress'))
         self.assertEqual(response.status_code, 403)
         response = self.client.get(reverse('admin_progress_content'))
@@ -1800,10 +1833,9 @@ class AdminContentTests(EventTestCase):
             self.assertTrue(progress[0]['hints_scheduled'])
 
     def test_non_admin_cant_reset_progress(self):
-        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        self.client.force_login(player)
+        self.client.force_login(self.player)
 
-        url = reverse('reset_progress') + f'?team={player.team_at(self.tenant).id}'
+        url = reverse('reset_progress') + f'?team={self.player.team_at(self.tenant).id}'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 403)
         response = self.client.post(url)
@@ -1821,8 +1853,7 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_reset_progress_resets_progress(self):
-        player = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.PLAYER)
-        team = player.team_at(self.tenant)
+        team = self.player.team_at(self.tenant)
 
         # We are going to first reset progress on a specific puzzle and check that the following
         # all disappears
@@ -1848,7 +1879,7 @@ class AdminContentTests(EventTestCase):
         UnlockAnswerFactory(unlock__puzzle=tpp_player.puzzle, guess='__UNLOCK__')
         GuessFactory(for_puzzle=tpp_player.puzzle, by_team=team, guess='__UNLOCK__')
         TeamPuzzleDataFactory(team=team, puzzle=tpp_player.puzzle)
-        UserPuzzleDataFactory(user=player, puzzle=tpp_player.puzzle)
+        UserPuzzleDataFactory(user=self.player, puzzle=tpp_player.puzzle)
 
         self.client.force_login(self.admin_user)
         url = reverse('reset_progress') + f'?team={self.admin_team.id}&puzzle={tpp_1.puzzle.id}'
