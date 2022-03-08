@@ -23,7 +23,7 @@ sys.path.insert(0, '.')
 # -- Project information -----------------------------------------------------
 
 project = 'hunter2'
-copyright = '2021, The Hunter2 Maintainers'
+copyright = '2021-2022, The Hunter2 Maintainers'
 author = 'The Hunter2 Maintainers'
 
 

@@ -1,4 +1,4 @@
-#  Copyright (C) 2021 The Hunter2 Contributors.
+#  Copyright (C) 2021-2022 The Hunter2 Contributors.
 #
 #  This file is part of Hunter2.
 #
