@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import 'bootstrap/js/dist/collapse'
 
 import AlertList from './alert-list.vue'
 
