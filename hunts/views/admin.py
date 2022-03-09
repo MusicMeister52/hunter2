@@ -27,15 +27,13 @@ from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.urls import reverse
-from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.decorators import cache
 from django.views.generic.edit import FormView
 
 from events.models import Attendance
 from events.utils import annotate_user_queryset_with_seat
 from teams.models import Team, TeamRole
-from .mixins import PuzzleAdminMixin, EventAdminMixin, EventAdminJSONMixin
+from .mixins import PuzzleAdminMixin, EventAdminMixin, EventAdminJSONMixin, CacheMixin
 from ..forms import BulkUploadForm, ResetProgressForm
 from .. import models
 
@@ -92,11 +90,12 @@ class Guesses(EventAdminMixin, View):
         )
 
 
-# The cache timeout of 5 seconds is set equal to the refresh interval used on the page. A single user
-# will see virtually no difference, but multiple people observing the page will not cause additional
-# load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
-@method_decorator(cache.cache_page(5), name='dispatch')
-class GuessesList(EventAdminJSONMixin, View):
+class GuessesList(EventAdminJSONMixin, CacheMixin, View):
+    # The cache timeout of 5 seconds is set equal to the refresh interval used on the page. A single user
+    # will see virtually no difference, but multiple people observing the page will not cause additional
+    # load (but will potentially be out of date by up to 10 instead of up to 5 seconds)
+    cache_timeout = 5
+
     def get(self, request):
         episode = request.GET.get('episode')
         puzzle = request.GET.get('puzzle')
@@ -205,9 +204,10 @@ class Stats(EventAdminMixin, View):
         )
 
 
-# 5 seconds is the default refresh interval on the page
-@method_decorator(cache.cache_page(5), name='dispatch')
-class StatsContent(EventAdminJSONMixin, View):
+class StatsContent(EventAdminJSONMixin, CacheMixin, View):
+    # 5 seconds is the default refresh interval on the page
+    cache_timeout = 5
+
     def get(self, request, episode_id=None):
         now = timezone.now()
         end_time = min(now, request.tenant.end_date) + timedelta(minutes=10)
@@ -301,9 +301,10 @@ class Progress(EventAdminMixin, View):
         )
 
 
-# The cache timeout of 5 seconds is set equal to the refresh interval used on the page.
-@method_decorator(cache.cache_page(5), name='dispatch')
-class ProgressContent(EventAdminJSONMixin, View):
+class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
+    # The cache timeout of 5 seconds is set equal to the refresh interval used on the page.
+    cache_timeout = 5
+
     def get(self, request):
         puzzles = models.Puzzle.objects.filter(
             episode_id__isnull=False

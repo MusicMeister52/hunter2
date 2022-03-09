@@ -16,6 +16,7 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.cache import cache_page
 
 from teams.permissions import is_admin_for_event
 from ..models import Puzzle
@@ -125,3 +126,11 @@ class EventAdminJSONMixin(LoginRequiredMixin):
             }, status=403)
 
         return super().dispatch(request, *args, **kwargs)
+
+
+class CacheMixin:
+    # default to one minute
+    cache_timeout = 60
+
+    def dispatch(self, *args, **kwargs):
+        return cache_page(self.cache_timeout)(super(CacheMixin, self).dispatch)(*args, **kwargs)
