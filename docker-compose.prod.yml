@@ -22,6 +22,7 @@ services:
       - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
       - PYTHONFAULTHANDLER=true
+      - UWSGI_THREADS
       - UWSGI_WORKERS
     image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
     volumes:
