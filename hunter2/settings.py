@@ -125,8 +125,6 @@ DATABASE_ROUTERS = (
 # Work around this by setting a large data upload size
 DATA_UPLOAD_MAX_MEMORY_SIZE = 268435456
 
-DEBUG_TOOLBAR_PATCH_SETTINGS = False
-
 FULLCLEAN_WHITELIST = [
     'events',
     'hunts',
@@ -151,7 +149,6 @@ SHARED_APPS = (
     'channels',
     'dal',
     'dal_select2',
-    'debug_toolbar',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -219,7 +216,6 @@ MIDDLEWARE = (
     'django.middleware.http.ConditionalGetMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
