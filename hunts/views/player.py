@@ -130,7 +130,7 @@ class EventIndex(LoginRequiredMixin, View):
         episodes = [
             e for e in
             models.Episode.objects.filter(event=event.id).order_by('start_date')
-            if e.started_for(request.team)
+            if e.available(request.team)
         ]
 
         # Annotate the episodes with their position in the event.
