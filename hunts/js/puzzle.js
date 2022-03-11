@@ -337,67 +337,70 @@ window.addEventListener('DOMContentLoaded', function() {
   let field = document.getElementById('answer-entry')
   let button = document.getElementById('answer-button')
 
-  field.addEventListener('input', function(event) {
-    if (!event.target.value) {
-      button.dataset.emptyAnswer = true
-    } else {
-      delete button.dataset.emptyAnswer
-    }
-    evaluateButtonDisabledState(button)
-  })
+  if (field !== null) {
+    field.addEventListener('input', function (event) {
+      if (!event.target.value) {
+        button.dataset.emptyAnswer = true
+      } else {
+        delete button.dataset.emptyAnswer
+      }
+      evaluateButtonDisabledState(button)
+    })
+  }
 
   setupNotifications()
   openEventSocket()
 
   let answerForm = document.getElementById('answer-form')
-  answerForm.addEventListener('submit', function(e) {
-    e.preventDefault()
-    if (!field.value) {
-      field.focus()
-      return
-    }
+  if (answerForm !== null) {
+    answerForm.addEventListener('submit', function (e) {
+      e.preventDefault()
+      if (!field.value) {
+        field.focus()
+        return
+      }
 
-    fetch(
-      'an',
-      {
-        method: 'POST',
-        body: new URLSearchParams({
-          answer: field.value,
-        }),
-        headers: {
-          'X-CSRFToken': Cookies.get('csrftoken'),
+      fetch(
+        'an',
+        {
+          method: 'POST',
+          body: new URLSearchParams({
+            answer: field.value,
+          }),
+          headers: {
+            'X-CSRFToken': Cookies.get('csrftoken'),
+          },
         },
-      },
-    ).then(
-      res => res.json(),
-    ).then(
-      data => {
-        if ('error' in data) {
-          delete button.dataset.ccooldown
-          if (data.error === 'too fast') {
-            fadingMessage(answerForm, 'Slow down there, sparky! You\'re supposed to wait 5s between submissions.', '')
-          } else if (data.error === 'already answered') {
-            fadingMessage(answerForm, 'Your team has already correctly answered this puzzle!', '')
-          } else {
-            fadingMessage(answerForm, 'Server returned error from answer submission.', data.error)
+      ).then(
+        res => res.json(),
+      ).then(
+        data => {
+          if ('error' in data) {
+            delete button.dataset.ccooldown
+            if (data.error === 'too fast') {
+              fadingMessage(answerForm, 'Slow down there, sparky! You\'re supposed to wait 5s between submissions.', '')
+            } else if (data.error === 'already answered') {
+              fadingMessage(answerForm, 'Your team has already correctly answered this puzzle!', '')
+            } else {
+              fadingMessage(answerForm, 'Server returned error from answer submission.', data.error)
+            }
+            return
           }
-          return
-        }
-        field.value = ''
-        field.dispatchEvent(new CustomEvent('input'))
-        if (data.correct === 'true') {
-          correct_answer()
-        } else {
-          incorrect_answer(data.guess, data.timeout_length, data.timeout_end, data.unlocks)
-        }
-      },
-    ).catch(
-      err => {
-        fadingMessage(answerForm, 'There was an error submitting the answer.', err)
-      },
-    )
-  })
-
+          field.value = ''
+          field.dispatchEvent(new CustomEvent('input'))
+          if (data.correct === 'true') {
+            correct_answer()
+          } else {
+            incorrect_answer(data.guess, data.timeout_length, data.timeout_end, data.unlocks)
+          }
+        },
+      ).catch(
+        err => {
+          fadingMessage(answerForm, 'There was an error submitting the answer.', err)
+        },
+      )
+    })
+  }
   const solution_button = document.getElementById('solution-button')
   const solution_content = document.getElementById('solution-content')
 
