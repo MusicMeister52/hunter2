@@ -210,6 +210,61 @@ class HomePageTests(EventTestCase):
         self.assertContains(response, 'body {width: 1234px;}')
 
 
+class EventIndexTests(EventTestCase):
+    def setUp(self):
+        self.url = reverse('event')
+        self.player = TeamMemberFactory()
+        self.admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
+
+    def test_load_event_index(self):
+        self.client.force_login(self.player)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.client.force_login(self.admin)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_future_episode_not_visible(self):
+        episode = EpisodeFactory(start_date=timezone.now() + datetime.timedelta(hours=1))
+        self.client.force_login(self.player)
+        response = self.client.get(self.url)
+        self.assertNotContains(response, episode.name)
+
+    def test_started_episode_visible(self):
+        episode = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(hours=1))
+        self.client.force_login(self.player)
+        response = self.client.get(self.url)
+        self.assertContains(response, episode.name)
+
+    def test_independent_started_episode_visible(self):
+        episode1 = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(hours=1))
+        episode2 = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(minutes=1))
+        self.client.force_login(self.player)
+        response = self.client.get(self.url)
+        self.assertContains(response, episode1.name)
+        self.assertContains(response, episode2.name)
+
+    def test_dependent_locked_episode_not_visible(self):
+        episode1 = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(hours=1))
+        PuzzleFactory(episode=episode1)
+        episode2 = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(minutes=1))
+        episode2.add_prequel(episode1)
+        self.client.force_login(self.player)
+        response = self.client.get(self.url)
+        self.assertContains(response, episode1.name)
+        self.assertNotContains(response, episode2.name)
+
+    def test_dependent_unlocked_episode_visible(self):
+        episode1 = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(hours=1))
+        GuessFactory(for_puzzle__episode=episode1, by=self.player, correct=True)
+        episode2 = EpisodeFactory(start_date=timezone.now() - datetime.timedelta(minutes=1))
+        episode2.add_prequel(episode1)
+        self.client.force_login(self.player)
+        response = self.client.get(self.url)
+        self.assertContains(response, episode1.name)
+        self.assertContains(response, episode2.name)
+
+
 class StaticValidationTests(EventTestCase):
     @staticmethod
     def test_static_save_answer():
