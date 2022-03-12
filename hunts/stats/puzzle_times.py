@@ -97,6 +97,8 @@ class PuzzleTimesGenerator(AbstractGenerator):
                     'team',
                 ).prefetch_related(
                     'puzzle__episode__puzzle_set',
+                    'team__members',
+                    'team__members__anonymised_relation',
                 ).annotate(
                     solve_time=F('solved_by__given') - F('start_time'),
                 ).order_by('solve_time').seal()
