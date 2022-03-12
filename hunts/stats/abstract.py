@@ -121,7 +121,7 @@ class AbstractGenerator(abc.ABC):
         if data is None:
             try:
                 data = self.generate()
-                cache.set(key, data)
+                cache.set(key, data, timeout=None, version=self.version)
             except ValueError:
                 cache.set(key, False)
         return data
