@@ -192,6 +192,7 @@ class GuessesList(EventAdminJSONMixin, CacheMixin, View):
         return JsonResponse({
             'guesses': guesses_list,
             'rows': all_guesses.count(),
+            'seating': request.tenant.seat_assignments,
         })
 
 

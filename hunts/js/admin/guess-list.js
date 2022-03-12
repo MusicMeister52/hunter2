@@ -28,6 +28,7 @@ export default {
       filter: search,
       guesses: [],
       rows: 0,
+      seating: false,
     }
   },
   methods: {
@@ -70,6 +71,7 @@ export default {
           data => {
             v.guesses = data.guesses
             v.rows = data.rows
+            v.seating = data.seating
           },
         )
         if (this.autoUpdate) {

@@ -1,6 +1,6 @@
 <div class="admin-guess-list">
 	<div id="controls" class="d-flex flex-row">
-		<p><a href="?" v-on:click.prevent="clearFilters">Clear filters</a></p>
+		<p><a href="?" @click.prevent="clearFilters">Clear filters</a></p>
 		<p>
 			<input type="checkbox" v-model="autoUpdate" id="auto-update" />
 			<label for="auto-update">Update automatically</label>
@@ -13,7 +13,8 @@
 			<th scope="col">Episode</th>
 			<th scope="col">Puzzle</th>
 			<th scope="col">User</th>
-			<th scope="col">Seat</th>
+			<th scope="col">Team</th>
+			<th v-if="seating" scope="col">Seat</th>
 			<th scope="col">Guess</th>
 			<th scope="col">Given</th>
 			<th scope="col">Time On Puzzle</th>
@@ -21,24 +22,25 @@
 		</thead>
 		<tbody>
 		<tr v-for="guess in guesses" :class="{ 'table-success': guess.correct, 'table-info': guess.unlocked && !guess.correct }">
-			<td><a :href="`?episode=${guess.episode.id}`" v-on:click.prevent="addFilter('episode', guess.episode.id)">{{ guess.episode.name }}</a></td>
+			<td><a :href="`?episode=${guess.episode.id}`" @click.prevent="addFilter('episode', guess.episode.id)">{{ guess.episode.name }}</a></td>
 			<td>
-				<a :href="`?puzzle=${guess.puzzle.id}`" v-on:click.prevent="addFilter('puzzle', guess.puzzle.id)">{{ guess.puzzle.title }}</a>
+				<a :href="`?puzzle=${guess.puzzle.id}`" @click.prevent="addFilter('puzzle', guess.puzzle.id)">{{ guess.puzzle.title }}</a>
 				<span class="shortcuts">(
 					<a :href="guess.puzzle.admin_url">E</a>
 					<a :href="guess.puzzle.site_url">V</a>
 				)</span>
 			</td>
 			<td>
-				<a :href="`?user=${guess.user.id}`" v-on:click.prevent="addFilter('user', guess.user.id)">{{ guess.user.name }}</a>
-				<span v-if="guess.team.name" class="team">
-					(
-						<a :href="`?team=${guess.team.id}`" v-on:click.prevent="addFilter('team', guess.team.id)">{{ guess.team.name }}</a>
-						<a class="team-admin-view" :href="guess.team_admin_view"><img src="../../../hunter2/img/eye.svg" alt="View team progress"></a>
-					)
-				</span>
+				<a :href="`?user=${guess.user.id}`" @click.prevent="addFilter('user', guess.user.id)">{{ guess.user.name }}</a>
 			</td>
-			<td>{{ guess.user.seat }}</td>
+			<td>
+				<a v-if="guess.team.name" :href="`?team=${guess.team.id}`" @click.prevent="addFilter('team', guess.team.id)">{{ guess.team.name }}</a>
+				<span v-if="!guess.team.name">none</span>
+				<span class="shortcuts">(
+					<a class="team-admin-view" :href="guess.team_admin_view"><img src="../../../hunter2/img/eye.svg" alt="View team progress"></a>
+				)</span>
+			</td>
+			<td v-if="seating">{{ guess.user.seat }}</td>
 			<td>
 				{{ guess.guess }}
 				<span class="shortcuts">(
