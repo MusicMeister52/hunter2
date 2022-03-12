@@ -78,6 +78,9 @@ class ProgressGenerator(AbstractGenerator):
             ).select_related(
                 'puzzle',
                 'team',
+            ).prefetch_related(
+                'team__members',
+                'team__members__anonymised_relation',
             )
 
             for tp_progress in tp_progresses:

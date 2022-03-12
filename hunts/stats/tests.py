@@ -34,19 +34,19 @@ from ..models import TeamPuzzleProgress
 class MockStat(AbstractGenerator):
     id = 'mock'
     title = 'Mock Statistic'
-    version = 1
+    version = 2
 
     schema = Schema(dict)
 
     def generate(self, episode=None):
-        # This generator always returns different data so we can test cache hit/miss
+        # This generator always returns different data, so we can test cache hit/miss
         fake = Faker()
         return fake.pydict()
 
 
 class StatCacheTests(SimpleTestCase):
     def setUp(self):
-        # We don't want to depend on a database but we need an event object with an ID
+        # We don't want to depend on a database, but we need an event object with an ID
         self.event = Event(id=1)
         self.stat = MockStat(self.event)
 
@@ -63,7 +63,7 @@ class StatCacheTests(SimpleTestCase):
 
     def test_version_change_cache_miss(self):
         data = self.stat.data()
-        self.stat.version = 2
+        self.stat.version = 3
         self.assertNotEqual(data, self.stat.data())
 
 

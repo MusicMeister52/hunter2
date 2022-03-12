@@ -46,7 +46,7 @@ class Team(SealableModel):
         return '%s @%s' % (self.get_verbose_name(), self.at_event)
 
     def get_display_name(self):
-        return self.name if self.is_explicit() else self.members.first().username
+        return self.name if self.is_explicit() else self.members.all()[0].username
 
     def get_verbose_name(self):
         if self.is_explicit():
