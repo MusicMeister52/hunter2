@@ -20,7 +20,7 @@
 		</tr>
 		</thead>
 		<tbody>
-		<tr v-for="guess in guesses" :class="{ 'table-success': guess.correct, 'table-info': guess.unlocked }">
+		<tr v-for="guess in guesses" :class="{ 'table-success': guess.correct, 'table-info': guess.unlocked && !guess.correct }">
 			<td><a :href="`?episode=${guess.episode.id}`" v-on:click.prevent="addFilter('episode', guess.episode.id)">{{ guess.episode.name }}</a></td>
 			<td>
 				<a :href="`?puzzle=${guess.puzzle.id}`" v-on:click.prevent="addFilter('puzzle', guess.puzzle.id)">{{ guess.puzzle.title }}</a>
