@@ -250,9 +250,20 @@ function receivedError(content) {
 
 var lastUpdated
 
+function shouldNotifyAnnouncement(announcement) {
+  switch (announcement.notify) {
+  case 'NONE':
+    return false
+  case 'CREATE':
+    return !window.alertList.announcementExists(announcement.announcement_id)
+  case 'UPDATE':
+    return true
+  }
+}
+
 function openEventSocket() {
   const socketHandlers = {
-    'announcement': new SocketHandler(window.alertList.addAnnouncement, true, 'New announcement'),
+    'announcement': new SocketHandler(window.alertList.addAnnouncement, shouldNotifyAnnouncement, 'New announcement'),
     'delete_announcement': new SocketHandler(window.alertList.deleteAnnouncement),
     'new_guesses': new SocketHandler(receivedNewAnswers),
     'old_guesses': new SocketHandler(receivedOldAnswers),

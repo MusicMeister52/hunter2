@@ -8,7 +8,8 @@ export function SocketHandler(handler, notify=false, notificationText='') {
 }
 
 SocketHandler.prototype.handle = function(data) {
-  if (this.notify && !window.solved) {
+  let notify = (this.notify instanceof Function) ? this.notify(data) : this.notify
+  if (notify && !window.solved) {
     if (window.localStorage.getItem('notificationSounds') === 'true') {
       document.getElementById('notification-sound').play().catch(() => {
         window.alertList.addAnnouncement({

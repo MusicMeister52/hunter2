@@ -9,6 +9,9 @@ export default {
     }
   },
   methods: {
+    announcementExists: function(announcementID) {
+      return (announcementID in this.announcements)
+    },
     addAnnouncement: function(announcement) {
       announcement = {dismissible: false, ...announcement}
       this.$set(this.announcements, announcement.announcement_id, {
