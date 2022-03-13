@@ -1,5 +1,5 @@
 # Construct a common base image for creating python wheels and the final image
-FROM python:3.8.11-alpine3.14@sha256:b12462dab319994e6a4be09eee3be7a29b6b7abf6202fb8030f45af4d39d7e24 AS runtime_base
+FROM python:3.8.12-alpine3.15@sha256:7c5cf4ffe8a16be5166a197eac378e802e5fbccfe958bd397cb90960916e8985 AS runtime_base
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
     libxml2 \
@@ -69,7 +69,7 @@ RUN --mount=type=cache,target=/root/.cache/luarocks \
 
 
 # Build the production webpack'ed assets
-FROM node:16.14.0-alpine3.14@sha256:98a87dfa76dde784bb4fe087518c839697ce1f0e4f55e6ad0b49f0bfd5fbe52c as webpack_build
+FROM node:16.14.0-alpine3.15@sha256:2c6c59cf4d34d4f937ddfcf33bab9d8bbad8658d1b9de7b97622566a52167f2b as webpack_build
 
 WORKDIR /opt/hunter2/src
 
