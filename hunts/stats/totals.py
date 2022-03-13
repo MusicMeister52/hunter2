@@ -28,11 +28,12 @@ class TotalsGenerator(AbstractGenerator):
         - Active Players - The number of users who were part of a team which submitted at least one guess.
         - Active Teams   - The number of teams who submitted at least one guess.
         - Correct Teams  - The number of teams which correctly solved at least one puzzle.
+        - Finished Teams  - The number of teams which solved all puzzles in the episode, or all winning episodes in the event.
         - Puzzles Solved - The number of puzzles solved by all teams combined.
         - Guess Count    - The total number of guesses submitted by all players and teams.
     """
     title = 'Totals'
-    version = 2
+    version = 3
 
     schema = Schema({
         'active_players': int,
@@ -49,16 +50,21 @@ class TotalsGenerator(AbstractGenerator):
             guesses_filter = Q(for_puzzle__episode=self.episode)
             team_guesses_filter = Q(guess__for_puzzle__episode=self.episode)
             team_puzzle_progress_filter = Q(puzzle__episode=self.episode)
+            finishing_episodes = [self.episode]
         else:
             guesses_filter = Q()
             team_guesses_filter = Q()
             team_puzzle_progress_filter = Q()
+            finishing_episodes = self.event.episode_set.filter(winning=True)
         teams = Team.objects.filter(role=TeamRole.PLAYER).annotate(
             guesses=Count('guess', filter=team_guesses_filter),
             correct_guesses=Count('guess', filter=team_guesses_filter & Q(guess__correct_for__isnull=False, guess__correct_current=True)),
         )
         active_teams = teams.filter(guesses__gt=0)
         correct_teams = active_teams.filter(correct_guesses__gt=0)
+        finished_teams = set.intersection(*[{
+            team for team, _ in episode.finished_times()
+        } for episode in finishing_episodes]) if len(finishing_episodes) > 0 else {}
         active_players = User.objects.filter(teams__in=active_teams)
         puzzles_solved = TeamPuzzleProgress.objects.filter(
             team_puzzle_progress_filter,
@@ -70,6 +76,7 @@ class TotalsGenerator(AbstractGenerator):
             'active_players': active_players.count(),
             'active_teams': active_teams.count(),
             'correct_teams': correct_teams.count(),
+            'finished_teams': len(finished_teams),
             'puzzles_solved': puzzles_solved.count(),
             'guess_count': guesses.count()
         }
