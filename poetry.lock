@@ -400,7 +400,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "django-autocomplete-light"
-version = "3.8.1"
+version = "3.9.1"
 description = "Fresh autocompletes for Django"
 category = "main"
 optional = false
@@ -1825,7 +1825,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "211fc2c472208bdaa5a94f20de856803ba11a03864a4beb6f63a6beef2b42ac8"
+content-hash = "b8b7c3df780fc67db450c921ce1a98552442a959629b856abdade6e1171ae19d"
 
 [metadata.files]
 aioredis = [
@@ -2078,7 +2078,7 @@ django-analytical = [
     {file = "django_analytical-3.0.0-py3-none-any.whl", hash = "sha256:acd6f9359cc4b4cd05eed8043041d625ce667566469b695f41ef6261247aea5e"},
 ]
 django-autocomplete-light = [
-    {file = "django-autocomplete-light-3.8.1.tar.gz", hash = "sha256:4e84a6d95d272b0d7221614332e2bd54ffff15ec06e78947279398f6507ce225"},
+    {file = "django-autocomplete-light-3.9.1.tar.gz", hash = "sha256:50bc562fe13c206cf53304d7f6a8b929729016ab1dae64d6176d4ccd6caff6ab"},
 ]
 django-bootstrap5 = [
     {file = "django-bootstrap5-21.3.tar.gz", hash = "sha256:35086341881780a44b2e27255894f6029fc5ef75e5a0ec8ebd82f47a5184fa73"},
