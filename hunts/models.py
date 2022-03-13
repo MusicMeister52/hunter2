@@ -1026,12 +1026,19 @@ class AnnouncementType(Enum):
         }[value]
 
 
+class AnnouncementNotificationOption(Enum):
+    NONE = 'N'
+    CREATE = 'C'
+    UPDATE = 'U'
+
+
 class Announcement(models.Model):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE, related_name='announcements', null=True, blank=True)
     title = models.CharField(max_length=255)
     posted = models.DateTimeField(default=timezone.now)
     message = models.TextField(blank=True)
     type = EnumField(AnnouncementType, max_length=1, default=AnnouncementType.INFO)
+    notify = EnumField(AnnouncementNotificationOption, max_length=1, default=AnnouncementNotificationOption.NONE)
 
     def __str__(self):
         return self.title
