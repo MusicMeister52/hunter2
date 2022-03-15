@@ -1,0 +1,18 @@
+{% load render_bundle from webpack_loader %}
+<script>
+	window.episode_distributions = {
+		{% for episode in episodes %}
+			"{{ episode.id }}": {
+				"puzzles": {{ episode.puzzles }},
+				"max": {{ episode.max }},
+			},
+		{% endfor %}
+	}
+	window.my_team = {{ my_team }}
+</script>
+{% render_bundle 'hunts_stats_distributions' 'js' attrs='defer' %}
+
+{% for episode in episodes %}
+	<h6>{{ episode.name }}</h6>
+	<canvas class="solve-time-distributions-graph" data-episode="{{ episode.id }}"></canvas>
+{% endfor %}

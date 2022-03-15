@@ -29,11 +29,55 @@ from hunts.stats.abstract import AbstractGenerator
 from teams.models import TeamRole
 
 
+def solve_time_tpps_for_puzzle(puzzle):
+    # In normal circumstances, getting solve times is a simple affair, but if team members get moved it can be that
+    # they are poorly defined. This is not usually a problem because nothing depends on them, but negative solve times
+    # would cause raised eyebrows in user-facing stats, so we make some effort to calculate a more sensible value
+    # in this situation.
+    tpps = TeamPuzzleProgress.objects.filter(
+        puzzle=puzzle,
+        start_time__isnull=False,
+        solved_by__isnull=False,
+        team__role=TeamRole.PLAYER,
+    ).select_related(
+        'puzzle',
+        'puzzle__episode',
+        'solved_by',
+        'team',
+    ).prefetch_related(
+        'puzzle__episode__puzzle_set',
+        'team__members',
+        'team__members__anonymised_relation',
+    ).annotate(
+        solve_time=F('solved_by__given') - F('start_time'),
+    ).order_by('solve_time').seal()
+
+    for tpp in tpps:
+        if tpp.solve_time < timedelta(0):
+            puzzle_number = tpp.puzzle.get_relative_id()
+            if tpp.puzzle.episode.parallel or puzzle_number == 1:
+                start_time = tpp.puzzle.start_time_for(tpp.team)
+            else:
+                # The position we have is 1-indexed and we're indexing into a 0-indexed array
+                prior_puzzle = tpp.puzzle.episode.puzzle_set.all()[puzzle_number - 2]
+                try:
+                    start_time = TeamPuzzleProgress.objects.get(
+                        puzzle=prior_puzzle,
+                        team=tpp.team,
+                        solved_by__isnull=False,
+                    ).solved_by.given
+                except TeamPuzzleProgress.DoesNotExist:
+                    continue
+            tpp.solve_time = tpp.solved_by.given - start_time
+
+    return sorted(tpps, key=lambda x: x.solve_time)
+
+
 class PuzzleTimesGenerator(AbstractGenerator):
     """
     Generates a table of solve times per puzzle
     """
-    title = 'Puzzle Solve Times'
+    title = 'Fastest Solve Times'
     version = 2
 
     schema = Schema([{
@@ -85,43 +129,7 @@ class PuzzleTimesGenerator(AbstractGenerator):
                 by_team = {}
                 by_time = []
 
-                tpps = TeamPuzzleProgress.objects.filter(
-                    puzzle=puzzle,
-                    start_time__isnull=False,
-                    solved_by__isnull=False,
-                    team__role=TeamRole.PLAYER,
-                ).select_related(
-                    'puzzle',
-                    'puzzle__episode',
-                    'solved_by',
-                    'team',
-                ).prefetch_related(
-                    'puzzle__episode__puzzle_set',
-                    'team__members',
-                    'team__members__anonymised_relation',
-                ).annotate(
-                    solve_time=F('solved_by__given') - F('start_time'),
-                ).order_by('solve_time').seal()
-
-                for tpp in tpps:
-                    if tpp.solve_time < timedelta(0):
-                        puzzle_number = tpp.puzzle.get_relative_id()
-                        if tpp.puzzle.episode.parallel or puzzle_number == 1:
-                            start_time = tpp.puzzle.start_time_for(tpp.team)
-                        else:
-                            # The position we have is 1-indexed and we're indexing into a 0-indexed array
-                            prior_puzzle = tpp.puzzle.episode.puzzle_set.all()[puzzle_number - 2]
-                            try:
-                                start_time = TeamPuzzleProgress.objects.get(
-                                    puzzle=prior_puzzle,
-                                    team=tpp.team,
-                                    solved_by__isnull=False,
-                                ).solved_by.given
-                            except TeamPuzzleProgress.DoesNotExist:
-                                continue
-                        tpp.solve_time = tpp.solved_by.given - start_time
-
-                tpps = sorted(tpps, key=lambda x: x.solve_time)
+                tpps = solve_time_tpps_for_puzzle(puzzle)
 
                 for position, tpp in enumerate(tpps):
                     team_name = tpp.team.get_display_name()

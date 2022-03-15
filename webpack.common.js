@@ -22,6 +22,7 @@ module.exports = {
     hunts_puzzle: 'hunts/js/puzzle.js',
     hunts_stats: 'hunts/js/stats.js',
     hunts_stats_progress: 'hunts/stats/js/progress.js',
+    hunts_stats_distributions: 'hunts/stats/js/solve_time_distributions.js',
     teams_manage: 'teams/js/manage.js',
   },
 

@@ -22,7 +22,7 @@ from events.models import Event
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
-from . import PuzzleTimesGenerator
+from . import PuzzleTimesGenerator, SolveDistributionGenerator
 from ..factories import GuessFactory, PuzzleFactory, EpisodeFactory
 from .abstract import AbstractGenerator
 from .leaders import LeadersGenerator
@@ -453,3 +453,37 @@ class PuzzleTimesTests(EventTestCase):
 
         self.assertEqual(len(data[0]['puzzles'][0]['top']), 1)
         self.assertNotIn(admin.team_at(self.tenant).get_display_name(), data[0]['puzzles'][0]['by_team'])
+
+
+class SolveDistributionTests(EventTestCase):
+    def test_episode_puzzle_times(self):
+        puzzle1 = PuzzleFactory(episode__winning=False)
+        puzzle2 = PuzzleFactory(episode__winning=True, episode__prequels=puzzle1.episode)
+        players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
+        teams = [player.team_at(self.tenant) for player in players]
+        now = timezone.now()
+        for i, (player, team) in enumerate(zip(players, teams)):
+            TeamPuzzleProgress(puzzle=puzzle1, team=team, start_time=now - timedelta(minutes=5)).save()
+            TeamPuzzleProgress(puzzle=puzzle2, team=team, start_time=now - timedelta(minutes=5)).save()
+            GuessFactory(by=player, for_puzzle=puzzle1, correct=True, given=now - timedelta(minutes=4 - i))
+            GuessFactory(by=player, for_puzzle=puzzle2, correct=True, given=now - timedelta(minutes=3))
+
+        data = SolveDistributionGenerator(event=self.tenant).generate()
+        self.assertTrue(SolveDistributionGenerator.schema.is_valid(data))
+        ep1 = 0 if data['episodes'][0]['id'] == puzzle1.episode.id else 1
+        ep2 = 1 - ep1
+        self.assertGreaterEqual(data['episodes'][ep1]['max_q3'], 180.0)
+        self.assertLessEqual(data['episodes'][ep1]['max_q3'], 240.0)
+        self.assertEqual(len(data['episodes'][ep1]['puzzles']), 1)
+        self.assertEqual(
+            data['episodes'][ep1]['puzzles'][0]['solve_times'],
+            {team.id: 60 * (i+1) for i, team in enumerate(teams)}
+        )
+        self.assertGreaterEqual(data['episodes'][ep1]['puzzles'][0]['90%'], data['episodes'][ep1]['max_q3'])
+        self.assertLessEqual(data['episodes'][ep1]['puzzles'][0]['90%'], 240.0)
+        self.assertEqual(data['episodes'][ep2]['max_q3'], 120.0)
+        self.assertEqual(len(data['episodes'][ep2]['puzzles']), 1)
+        self.assertEqual(
+            data['episodes'][ep2]['puzzles'][0]['solve_times'],
+            {team.id: 60 * 2 for team in teams}
+        )

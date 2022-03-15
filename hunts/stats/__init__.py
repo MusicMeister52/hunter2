@@ -16,6 +16,7 @@ from .progress import ProgressGenerator
 from .puzzle_times import PuzzleTimesGenerator
 from .top_guesses import TopGuessesGenerator
 from .totals import TotalsGenerator
+from .solve_time_distributions import SolveDistributionGenerator
 
 # __all__ is iterated elsewhere, so it should only contain generator subclasses
 __all__ = (
@@ -24,4 +25,5 @@ __all__ = (
     TopGuessesGenerator,
     TotalsGenerator,
     PuzzleTimesGenerator,
+    SolveDistributionGenerator,
 )
