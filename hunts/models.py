@@ -890,6 +890,9 @@ class TeamPuzzleProgress(SealableModel):
         unique_together = (('puzzle', 'team'), )
         verbose_name_plural = 'Team puzzle progresses'
 
+    def __repr__(self):
+        return f'<TeamPuzzleProgress for {self.team} on {self.puzzle}>'
+
     @property
     def unlocks(self):
         return set(ua.unlock for ua in self.unlockanswers.all())
