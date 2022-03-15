@@ -44,7 +44,9 @@ class Event(TenantMixin):
     discord_bot_id = models.BigIntegerField(null=True, blank=True)
 
     script = models.TextField(blank=True)
+    script_file = models.ForeignKey('EventFile', blank=True, null=True, on_delete=models.PROTECT, related_name='+')
     style = models.TextField(blank=True)
+    style_file = models.ForeignKey('EventFile', blank=True, null=True, on_delete=models.PROTECT, related_name='+')
 
     def __str__(self):
         return self.name
