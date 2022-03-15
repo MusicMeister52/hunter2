@@ -23,7 +23,7 @@ from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
 from . import PuzzleTimesGenerator
-from ..factories import GuessFactory, PuzzleFactory
+from ..factories import GuessFactory, PuzzleFactory, EpisodeFactory
 from .abstract import AbstractGenerator
 from .leaders import LeadersGenerator
 from .top_guesses import TopGuessesGenerator
@@ -317,7 +317,9 @@ class TopGuessesTests(EventTestCase):
 
 class TotalsTests(EventTestCase):
     def test_event_totals(self):
-        puzzle = PuzzleFactory()
+        puzzle = PuzzleFactory(episode__winning=True)
+        puzzle2 = PuzzleFactory(episode__winning=True)
+        puzzle3 = PuzzleFactory(episode__winning=False)
         players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
         players += UserFactory.create_batch(2)
         TeamFactory(members=(players[3], players[4]))
@@ -325,6 +327,8 @@ class TotalsTests(EventTestCase):
             GuessFactory(by=player, for_puzzle=puzzle, correct=False)
         for player in players[2:]:  # Player 1 did not get the puzzle right
             GuessFactory(by=player, for_puzzle=puzzle, correct=True)
+        GuessFactory(by=players[3], for_puzzle=puzzle2, correct=True)
+        GuessFactory(by=players[4], for_puzzle=puzzle3, correct=True)
 
         data = TotalsGenerator(event=self.tenant).generate()
         TotalsGenerator.schema.is_valid(data)
@@ -332,25 +336,30 @@ class TotalsTests(EventTestCase):
         self.assertEqual(data['active_players'], 4)
         self.assertEqual(data['active_teams'], 3)
         self.assertEqual(data['correct_teams'], 2)
-        self.assertEqual(data['puzzles_solved'], 2)
-        self.assertEqual(data['guess_count'], 7)
+        self.assertEqual(data['finished_teams'], 1)
+        self.assertEqual(data['puzzles_solved'], 4)
+        self.assertEqual(data['guess_count'], 9)
 
     def test_episode_totals(self):
-        puzzles = PuzzleFactory.create_batch(2)
+        episode = EpisodeFactory(winning=False)
+        puzzles = PuzzleFactory.create_batch(2, episode=episode)
+        irrelevant_puzzle = PuzzleFactory()
         players = TeamMemberFactory.create_batch(2, team__role=TeamRole.PLAYER)
 
         GuessFactory(by=players[0], for_puzzle=puzzles[0], correct=True)
         GuessFactory(by=players[0], for_puzzle=puzzles[1], correct=True)
         GuessFactory(by=players[1], for_puzzle=puzzles[1], correct=True)
+        GuessFactory(by=players[1], for_puzzle=irrelevant_puzzle, correct=True)
 
         data = TotalsGenerator(event=self.tenant, episode=puzzles[0].episode).generate()
         TotalsGenerator.schema.is_valid(data)
 
-        self.assertEqual(data['active_players'], 1)
-        self.assertEqual(data['active_teams'], 1)
-        self.assertEqual(data['correct_teams'], 1)
-        self.assertEqual(data['puzzles_solved'], 1)
-        self.assertEqual(data['guess_count'], 1)
+        self.assertEqual(data['active_players'], 2)
+        self.assertEqual(data['active_teams'], 2)
+        self.assertEqual(data['correct_teams'], 2)
+        self.assertEqual(data['finished_teams'], 1)
+        self.assertEqual(data['puzzles_solved'], 3)
+        self.assertEqual(data['guess_count'], 3)
 
     def test_admin_excluded(self):
         puzzle = PuzzleFactory()
@@ -365,6 +374,7 @@ class TotalsTests(EventTestCase):
         self.assertEqual(data['active_players'], 1)
         self.assertEqual(data['active_teams'], 1)
         self.assertEqual(data['correct_teams'], 1)
+        self.assertEqual(data['finished_teams'], 0)  # There is no winning episode
         self.assertEqual(data['puzzles_solved'], 1)
         self.assertEqual(data['guess_count'], 1)
 
