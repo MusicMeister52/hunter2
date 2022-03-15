@@ -81,9 +81,7 @@ function getChartDataSets(teamData, team_colours) {
 
 function setAllHidden(chart, hidden) {
   chart.data.datasets.forEach(dataset => {
-    Object.keys(dataset._meta).forEach(key => {
-      dataset._meta[key].hidden = hidden
-    })
+    dataset.hidden = hidden
   })
   chart.update()
 }
