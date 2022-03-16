@@ -1,1 +1,1 @@
-<span v-bind:title="title == '' ? (value | formatLocale) : title">{{ value | formatDistanceToNow }}</span>
+<span :title="title === undefined ? $options.filters.formatLocale(value) : title">{{ value | formatDistanceToNow }}</span>
