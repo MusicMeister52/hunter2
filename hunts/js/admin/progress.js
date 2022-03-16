@@ -1,7 +1,7 @@
 import 'bootstrap/js/dist/button'
 import 'bootstrap/js/dist/collapse'
 import ProgressState from './state.vue'
-import DateTime from 'luxon/src/datetime.js'
+import {DateTime, Duration} from 'luxon'
 
 export default {
   components: {
@@ -121,12 +121,15 @@ export default {
       }
     },
     hover_info: function(state) {
-      if (state.state != 'open') {
+      if (state.state === 'not_opened') {
         return ''
       }
       let display_format = { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short', hour: 'numeric', minute: 'numeric' }
-      let latest = state.latest_guess === null ? '' : `\nlatest guess: ${DateTime.fromISO(state.latest_guess).toLocaleString(display_format)}`
-      return `guesses: ${state.guesses}` + latest
+      let latest = DateTime.fromISO(state.latest_guess).toLocaleString(display_format)
+      let latest_str = state.latest_guess === null ? '' : `\nlatest guess: ${latest}`
+      let time_on = Duration.fromMillis(state.time_on * 1000).toFormat('hh:mm:ss')
+      let time_on_str = state.time_on === null ? '' : `\ntime on: ${time_on}`
+      return `guesses: ${state.guesses}` + latest_str + time_on_str
     },
     updateData: function(force) {
       clearTimeout(this.timer)
