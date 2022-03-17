@@ -8,10 +8,8 @@ const PUBLIC_PATH     = `http://${DEV_SERVER_HOST}:${DEV_SERVER_PORT}/assets/bun
 
 module.exports = merge(common, {
   mode: 'development',
-  devtool: 'source-map',
 
   output: {
-    devtoolNamespace: 'hunter2',
     publicPath: PUBLIC_PATH,
   },
 

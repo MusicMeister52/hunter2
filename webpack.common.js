@@ -6,6 +6,7 @@ const VueLoaderPlugin = require('vue-loader/lib/plugin')
 
 module.exports = {
   context: '/opt/hunter2/src',
+  devtool: 'source-map',
 
   entry: {
     sentry: 'hunter2/js/sentry.js',
@@ -90,6 +91,7 @@ module.exports = {
   },
 
   output: {
+    devtoolNamespace: 'hunter2',
     path: path.resolve('../assets/bundles/'),
     filename: '[name]/[contenthash].js',
     libraryTarget: 'var',
