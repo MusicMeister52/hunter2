@@ -40,7 +40,7 @@
     "webpack-merge": "5.8.0"
   },
   "dependencies": {
-    "@popperjs/core": "2.11.2",
+    "@popperjs/core": "2.11.4",
     "@sentry/browser": "6.18.2",
     "@sentry/integrations": "6.18.2",
     "bootstrap": "5.1.3",
