@@ -80,7 +80,12 @@ module.exports = {
       new CssMinimizerPlugin(),
     ],
     splitChunks: {
-      chunks: 'all',
+      chunks: (chunk) => {
+        // Running splitChunks on 'hunts_stats_distributions' somehow results in the following bug:
+        // Uncaught TypeError: o.nL is undefined
+        // solve_time_distributions.js:30:2
+        return chunk.name !== 'hunts_stats_distributions'
+      },
     },
   },
 
