@@ -12,7 +12,7 @@ services:
     volumes:
       - db14:/var/lib/postgresql/data:Z
   redis:
-    image: redis:6.2.6-alpine3.15@sha256:fbf4c0a9f7e414549063ae8652ce6b12780b8d757b5c0008e3622cd5f93f74ab
+    image: redis:6.2.6-alpine3.15@sha256:3566a01c4686e32d1e6bbf798075224c2a624cf019b00b305866c82263234ef8
     volumes:
       - redis:/data:Z
   webpack:
