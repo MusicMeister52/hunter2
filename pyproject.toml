@@ -49,7 +49,7 @@ pytest-django = "==4.5.2"
 pytest-cov = "==3.0.0"
 pytest-shard = "0.1.2"
 django-gdpr-assist = { git = "https://github.com/wildfish/django-gdpr-assist.git", rev = "12a8f1e8dc0"}
-dateparser = "1.1.0"
+dateparser = "==1.1.1"
 [tool.poetry.dev-dependencies]
 django-silk = "==4.3.0"
 ipython = "==8.1.1"
