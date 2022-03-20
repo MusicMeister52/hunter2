@@ -21,6 +21,7 @@ stages:
 .base_job:
   before_script:
     - export H2_IMAGE_VERSION=$([[ "${CI_COMMIT_BRANCH}" != "${CI_DEFAULT_BRANCH}" ]] && echo "${CI_COMMIT_REF_SLUG}_")$(git describe)
+    - export H2_REGISTRY="${CI_REGISTRY_IMAGE}"
     - chmod -R g-w,o-w .
     - ln -s docker-compose.prod.yml docker-compose.yml
     - ln -s docker-compose.test.yml docker-compose.override.yml
@@ -79,17 +80,17 @@ check:eslint:
         docker buildx create --name hunter2 --append --platform linux/arm64/v8 arm64;
       fi
   script:
-    - REPO="${CI_REGISTRY_IMAGE}/${SERVICE}"
+    - REPO="${H2_REGISTRY}/${SERVICE}"
     - CACHE_TAG="${REPO}:cache"
     - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --progress plain "images/${SERVICE}" --push
 
 image:app:
   extends: .image_job
   script:
-    - PYTHON_REPO="${CI_REGISTRY_IMAGE}/python"
+    - PYTHON_REPO="${H2_REGISTRY}/python"
     - PYTHON_CACHE_TAG="${PYTHON_REPO}:cache"
     - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${PYTHON_CACHE_TAG},mode=max" --cache-from="type=registry,ref=${PYTHON_CACHE_TAG}" --target python_build -t "${PYTHON_REPO}:${H2_IMAGE_VERSION}" --progress plain -f images/app/Dockerfile . --push
-    - APP_REPO="${CI_REGISTRY_IMAGE}/app"
+    - APP_REPO="${H2_REGISTRY}/app"
     - APP_CACHE_TAG="${APP_REPO}:cache"
     - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${APP_CACHE_TAG},mode=max" --cache-from="type=registry,ref=${APP_CACHE_TAG}" -t "${APP_REPO}:${H2_IMAGE_VERSION}" --progress plain -f images/app/Dockerfile . --push
 
@@ -113,9 +114,9 @@ image:web:
   needs: ["image:app"]
   stage: build2
   script:  # Web needs the build tag as an argument
-    - REPO="${CI_REGISTRY_IMAGE}/web"
+    - REPO="${H2_REGISTRY}/web"
     - CACHE_TAG="${REPO}:cache"
-    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --build-arg BUILD_TAG="${H2_IMAGE_VERSION}" --progress plain ./images/web --push
+    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --build-arg H2_REGISTRY --build-arg H2_IMAGE_VERSION --progress plain ./images/web --push
 
 doc:graph:
   extends: .base_job
@@ -248,7 +249,7 @@ report:coverage:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - REPO="${CI_REGISTRY_IMAGE}/${SERVICE}"
+    - REPO="${H2_REGISTRY}/${SERVICE}"
     - IMAGE_TAG="${REPO}:${H2_IMAGE_VERSION}"
     - LATEST_TAG="${REPO}:latest"
     - docker pull "${IMAGE_TAG}"

@@ -1,6 +1,6 @@
-ARG BUILD_TAG=latest
-ARG IMAGE_TAG=registry.gitlab.com/hunter2.app/hunter2/app:${BUILD_TAG}
-FROM ${IMAGE_TAG} AS app
+ARG H2_IMAGE_VERSION=latest
+ARG H2_REGISTRY=registry.gitlab.com/hunter2.app/hunter2
+FROM ${H2_REGISTRY}/app:${H2_IMAGE_VERSION} AS app
 
 USER root
 RUN /opt/hunter2/venv/bin/python manage.py collectstatic
