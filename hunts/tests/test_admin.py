@@ -840,12 +840,7 @@ class AnswerFormValidationTests(EventTestCase):
         self.team2 = TeamFactory(at_event=self.event, members={self.user2})
 
         # Generate a puzzle.
-        self.puzzle1 = PuzzleFactory(episode=self.episode)
-
-        # TODO: We always want to ensure we have a static answer, probably a
-        # better way to do this...
-        while self.puzzle1.answer_set.get().runtime != Runtime.STATIC:
-            self.puzzle1 = PuzzleFactory(episode=self.episode)
+        self.puzzle1 = PuzzleFactory(episode=self.episode, answer_set__runtime=Runtime.STATIC)
 
         # Get the answer to the puzzle to provide it as guesses
         self.answer1 = self.puzzle1.answer_set.get()
@@ -862,55 +857,98 @@ class AnswerFormValidationTests(EventTestCase):
         guess2.save()
 
         # Only 1 team should be finished.
-        self.assertTrue(len(self.puzzle1.finished_teams(self.event)) == 1)
+        self.assertTrue(len(self.puzzle1.finished_teams()) == 1)
 
-        # TODO: This is probably not the right way to test a form...
-        self.form1 = AnswerForm()
-        self.form1.cleaned_data = {'for_puzzle': self.answer1.for_puzzle,
-                                   'answer': self.answer1.answer,
-                                   'runtime': self.answer1.runtime,
-                                   'options': self.answer1.options,
-                                   'alter_progress': False,
-                                   'DELETE': False,
-                                   }
-        self.form1.instance = self.answer1
+        # We need a formset to test deletion
+        self.AnswerFormSet = inlineformset_factory(Puzzle, Answer, form=AnswerForm, can_delete=True)
 
     # Test that changing nothing, does nothing.
     def test_changing_nothing(self):
-        self.form1.clean()
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': self.answer1.options,
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertTrue(formset.is_valid())
 
     # Test changing answer options
-    def test_changing_answers_passes_options(self):
+    def test_changing_option_no_progress_change(self):
         # Change the options specifically to case-handling none. This should
         # be fine as it should not advance any team.
-        self.form1.cleaned_data['options'] = {'case_handling': 'none'}
-        self.form1.clean()
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': {'case_handling': 'none'},
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertTrue(formset.is_valid())
 
-        # Now, change the options specifically to case-handling lower, should
+    def test_changing_option_with_progress_change(self):
+        # Change the options specifically to case-handling lower, should
         # cause an error because this will advance team2.
-        self.form1.cleaned_data['options'] = {'case_handling': 'lower'}
-        try:
-            self.form1.clean()
-            self.fail('Changing case_handling on Answer did not attempt to advance team2')
-        except ValidationError:
-            pass
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': {'case_handling': 'lower'},
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertFalse(formset.is_valid())
 
-        # Now if we allow progress to be altered, it should be fine.
-        self.form1.cleaned_data['alter_progress'] = True
-        self.form1.clean()
+    def test_changing_option_with_progress_change_accepted(self):
+        # Change the options specifically to case-handling lower
+        # will advance team2 but we have set alter_progress to True
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': {'case_handling': 'lower'},
+            'answer_set-0-alter_progress': 'on',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertTrue(formset.is_valid())
 
     # Test deleting an answer
     def test_deleting_answers(self):
         # Deleting should cause an error because it will stop team1 having
         # a valid answer
-        self.form1.cleaned_data['DELETE'] = True
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': self.answer1.options,
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': 'on',
+        })
+        self.assertFalse(formset.is_valid())
 
-        try:
-            self.form1.clean()
-            self.fail('Deleting an Answer did not attempt to unadvance team1')
-        except ValidationError:
-            pass
+    def test_deleting_answers_with_alter_progress(self):
+        # Deleting an answer with alter_progress True should be fine.
 
-        # Now if we allow progress to be altered, it should be fine.
-        self.form1.cleaned_data['alter_progress'] = True
-        self.form1.clean()
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': self.answer1.options,
+            'answer_set-0-alter_progress': 'on',
+            'answer_set-0-DELETE': 'on',
+        })
+        self.assertTrue(formset.is_valid())
