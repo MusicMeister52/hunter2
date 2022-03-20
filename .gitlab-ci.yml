@@ -21,6 +21,7 @@ stages:
 .base_job:
   before_script:
     - export H2_IMAGE_VERSION=$([[ "${CI_COMMIT_BRANCH}" != "${CI_DEFAULT_BRANCH}" ]] && echo "${CI_COMMIT_REF_SLUG}_")$(git describe)
+    - export H2_REGISTRY="${CI_REGISTRY_IMAGE}"
     - chmod -R g-w,o-w .
     - ln -s docker-compose.prod.yml docker-compose.yml
     - ln -s docker-compose.test.yml docker-compose.override.yml
@@ -115,7 +116,7 @@ image:web:
   script:  # Web needs the build tag as an argument
     - REPO="${CI_REGISTRY_IMAGE}/web"
     - CACHE_TAG="${REPO}:cache"
-    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --build-arg BUILD_TAG="${H2_IMAGE_VERSION}" --progress plain ./images/web --push
+    - docker buildx build --platform "${PLATFORMS}" --cache-to="type=registry,ref=${CACHE_TAG},mode=max" --cache-from="type=registry,ref=${CACHE_TAG}" -t "${REPO}:${H2_IMAGE_VERSION}" --build-arg REGISTRY="${CI_REGISTRY_IMAGE}" --build-arg BUILD_TAG="${H2_IMAGE_VERSION}" --progress plain ./images/web --push
 
 doc:graph:
   extends: .base_job
