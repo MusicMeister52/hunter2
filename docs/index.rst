@@ -15,6 +15,7 @@ The app is written in python using the Django framework and set up to be quickly
     usage/first_hunt
     usage/hunt_management
     usage/tasks
+    usage/configuration
     usage/customisation
     usage/upgrading
     reference/glossary
