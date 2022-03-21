@@ -49,6 +49,8 @@ class Configuration(SingletonModel):
     script_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')
     style = models.TextField(blank=True)
     style_file = models.ForeignKey(File, blank=True, null=True, on_delete=models.PROTECT, related_name='+')
+    captcha_question = models.TextField(blank=True)
+    captcha_answer = models.TextField(blank=True)
 
     def files_map(self, request):
         if not hasattr(request, 'site_files'):

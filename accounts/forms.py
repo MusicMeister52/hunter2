@@ -13,7 +13,7 @@
 
 from django import forms
 from django.contrib.auth import get_user_model
-from django.core.exceptions import SuspiciousOperation
+from django.core.exceptions import ValidationError, SuspiciousOperation
 from django.forms.models import inlineformset_factory, modelform_factory
 from django.forms.widgets import RadioSelect
 from django.utils.safestring import mark_safe
@@ -48,11 +48,21 @@ class UserSignupForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if Configuration.get_solo().privacy_policy:
+        config = Configuration.get_solo()
+        if config.privacy_policy:
             self.fields['privacy'] = forms.BooleanField(
                 label=mark_safe('I have read and agree to <a href="/privacy">the site privacy policy</a>'),
                 required=True,
             )
+        if config.captcha_question:
+            self.fields['captcha'] = forms.CharField(
+                label=mark_safe(config.captcha_question),
+                required=True,
+            )
+
+    def clean_captcha(self):
+        if self.cleaned_data['captcha'].lower() != Configuration.get_solo().captcha_answer.lower():
+            raise ValidationError('You must correctly answer this question')
 
     def signup(self, request, user):
         if 'privacy' in self.fields and request.POST['privacy'] != "on":
