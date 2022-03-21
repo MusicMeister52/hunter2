@@ -46,6 +46,8 @@ ADMINS             = env.list      ('H2_ADMINS',        default=[])
 SENTRY_DSN         = env.url       ('H2_SENTRY_DSN',    default=None)
 SENDFILE_BACKEND   = env.str       ('H2_SENDFILE',      default='django_sendfile.backends.development')
 
+ACCOUNT_EMAIL_VERIFICATION       = env.str('H2_EMAIL_VERIFICATION', default='mandatory')
+
 try:
     DATABASES = {
         'default': env.db('H2_DATABASE_URL')
@@ -99,8 +101,6 @@ BASE_DIR = root()
 ACCOUNT_ACTIVATION_DAYS = 7
 
 ACCOUNT_EMAIL_REQUIRED = True
-
-ACCOUNT_EMAIL_VERIFICATION = 'none'
 
 ACCOUNT_SIGNUP_FORM_CLASS = 'accounts.forms.UserSignupForm'
 
@@ -274,6 +274,8 @@ SESSION_COOKIE_DOMAIN = BASE_DOMAIN
 SITE_ID = 1
 
 SOCIALACCOUNT_AUTO_SIGNUP = False
+
+SOCIALACCOUNT_EMAIL_REQUIRED = False
 
 SOCIALACCOUNT_PROVIDERS = {
     'openid': {
