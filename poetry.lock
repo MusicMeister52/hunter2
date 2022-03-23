@@ -1398,7 +1398,7 @@ rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
 
 [[package]]
 name = "rules"
-version = "3.2.1"
+version = "3.3"
 description = "Awesome Django authorization, without the database"
 category = "main"
 optional = false
@@ -1825,7 +1825,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "b145154611da5f92b14f6f3bc35b4d4189398806a3c3639f68218286b82e0e53"
+content-hash = "8ba43380fbc9ccc419f4cd3bf2bf5034376ed4f2c47408e98cb735bd28f09ae7"
 
 [metadata.files]
 aioredis = [
@@ -2760,8 +2760,8 @@ requests-oauthlib = [
     {file = "requests_oauthlib-1.3.1-py2.py3-none-any.whl", hash = "sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5"},
 ]
 rules = [
-    {file = "rules-3.2.1-py2.py3-none-any.whl", hash = "sha256:a11e61fb02f435db8dc3fe8c0aa8b8c1872c6e3a385522309be26b1327331a0e"},
-    {file = "rules-3.2.1.tar.gz", hash = "sha256:3cc8b07dd83249d176151d938ef0118ed2ee7116c08daa1807e8b805952f7dc8"},
+    {file = "rules-3.3-py2.py3-none-any.whl", hash = "sha256:12c8bbab5f54560e68528fcca7abc0e162c35ac882e3cc0daed40ac49c963070"},
+    {file = "rules-3.3.tar.gz", hash = "sha256:bf7bea8b724b73c36a622714c1b3557620c187a2ee05321a2ac8ab7472dc4464"},
 ]
 schema = [
     {file = "schema-0.7.5-py2.py3-none-any.whl", hash = "sha256:f3ffdeeada09ec34bf40d7d79996d9f7175db93b7a5065de0faa7f41083c1e6c"},
