@@ -24,7 +24,7 @@ services:
       - PYTHONFAULTHANDLER=true
       - UWSGI_THREADS
       - UWSGI_WORKERS
-    image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/app:${H2_IMAGE_VERSION:-latest}
     volumes:
       - config:/config:z
       - metrics_spool:/var/spool/django_prometheus:z
@@ -51,7 +51,7 @@ services:
       - H2_SENDFILE=django_sendfile.backends.nginx
       - H2_SENTRY_DSN
       - ASGI_THREADS
-    image: registry.gitlab.com/hunter2.app/hunter2/app:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/app:${H2_IMAGE_VERSION:-latest}
     volumes:
       - config:/config:z
       - uploads_events:/uploads/events:z
@@ -63,7 +63,7 @@ services:
       - H2_DATABASE_PASSWORD
       - H2_DB_EXPORTER_PASSWORD
       - POSTGRES_PASSWORD
-    image: registry.gitlab.com/hunter2.app/hunter2/db:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/db:${H2_IMAGE_VERSION:-latest}
     volumes:
       - db14:/var/lib/postgresql/data:Z
   db_exporter:
@@ -71,11 +71,11 @@ services:
       - db
     environment:
       - DATA_SOURCE_NAME=postgresql://postgres_exporter:${H2_DB_EXPORTER_PASSWORD}@db:5432/postgres?sslmode=disable
-    image: registry.gitlab.com/hunter2.app/hunter2/postgres_exporter:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/postgres_exporter:${H2_IMAGE_VERSION:-latest}
   metrics:
     environment:
       - H2_IMAGE_VERSION
-    image: registry.gitlab.com/hunter2.app/hunter2/metrics:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/metrics:${H2_IMAGE_VERSION:-latest}
     ports:
       - 127.0.0.1:9090:9090
     volumes:
@@ -95,7 +95,7 @@ services:
       - app
     environment:
       - H2_IMAGE_VERSION
-    image: registry.gitlab.com/hunter2.app/hunter2/web:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/web:${H2_IMAGE_VERSION:-latest}
     ports:
       - "${H2_LISTEN:-8080}:8080"
     volumes:
