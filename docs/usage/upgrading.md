@@ -9,7 +9,14 @@ docker-compose up -d
 
 An `update.sh` script is provided to assist with this procedure, including reporting upgrade success/failure to Discord
 
-## Versions Requiring Manual Migration
+## Versions Requiring Manual Intervention
+
+### 2.0.0
+
+Version 2.0.0 makes email confirmation mandatory by default.
+This means that when upgrading to 2.0.0 you need to do one of the following two things:
+- Disable email verification with the environment variable `H2_EMAIL_VERIFICATION=none`
+- Ensure a working email sending service is configured using `H2_EMAIL_URL`
 
 ### 1.0.0
 
