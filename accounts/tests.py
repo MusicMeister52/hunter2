@@ -75,16 +75,18 @@ class AdminRegistrationTests(TestCase):
 
 
 class SignupTests(TestCase):
+    def setUp(self):
+        self.fake = Faker()
+        self.password = self.fake.password()
+
     def test_signup_saves_contact_choice(self):
-        fake = Faker()
-        password = fake.password()
         response = self.client.post(
             reverse('account_signup'),
             {
-                'username': fake.user_name(),
-                'email': fake.email(),
-                'password1': password,
-                'password2': password,
+                'username': self.fake.user_name(),
+                'email': self.fake.email(),
+                'password1': self.password,
+                'password2': self.password,
                 'contact': 'False',  # False is more likely to be translated to None by accident than True
                 'privacy': 'on',
             },
@@ -94,20 +96,73 @@ class SignupTests(TestCase):
         self.assertIsNotNone(User.objects.get().contact)
 
     def test_signup_without_privacy(self):
-        fake = Faker()
         config = Configuration.get_solo()
-        config.privacy_policy = fake.paragraph()
+        config.privacy_policy = self.fake.paragraph()
         config.save()
-        password = fake.password()
         response = self.client.post(
             reverse('account_signup'),
             {
-                'username': fake.user_name(),
-                'email': fake.email(),
-                'password1': password,
-                'password2': password,
-                'contact': fake.boolean(),
+                'username': self.fake.user_name(),
+                'email': self.fake.email(),
+                'password1': self.password,
+                'password2': self.password,
+                'contact': self.fake.boolean(),
                 'privacy': 'off',
             },
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_signup_with_missing_captcha(self):
+        config = Configuration.get_solo()
+        config.captcha_question = self.fake.paragraph()
+        config.captcha_answer = self.fake.paragraph()
+        config.save()
+        response = self.client.post(
+            reverse('account_signup'),
+            {
+                'username': self.fake.user_name(),
+                'email': self.fake.email(),
+                'password1': self.password,
+                'password2': self.password,
+                'contact': self.fake.boolean(),
+            },
+        )
+        self.assertEqual(response.status_code, 200)  # 200, strangely, indicates the form was rejected
+        self.assertInHTML('<li>This field is required.</li>', response.content.decode('utf-8'))
+
+    def test_signup_with_wrong_captcha(self):
+        config = Configuration.get_solo()
+        config.captcha_question = self.fake.paragraph()
+        config.captcha_answer = self.fake.paragraph()
+        config.save()
+        response = self.client.post(
+            reverse('account_signup'),
+            {
+                'username': self.fake.user_name(),
+                'email': self.fake.email(),
+                'password1': self.password,
+                'password2': self.password,
+                'contact': self.fake.boolean(),
+                'captcha': self.fake.paragraph(),
+            },
+        )
+        self.assertEqual(response.status_code, 200)  # 200, strangely, indicates the form was rejected
+        self.assertInHTML('<li>You must correctly answer this question</li>', response.content.decode('utf-8'))
+
+    def test_signup_with_right_captcha(self):
+        config = Configuration.get_solo()
+        config.captcha_question = self.fake.paragraph()
+        config.captcha_answer = self.fake.paragraph().lower()
+        config.save()
+        response = self.client.post(
+            reverse('account_signup'),
+            {
+                'username': self.fake.user_name(),
+                'email': self.fake.email(),
+                'password1': self.password,
+                'password2': self.password,
+                'contact': self.fake.boolean(),
+                'captcha': config.captcha_answer.title(),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
