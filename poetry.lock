@@ -377,7 +377,7 @@ bcrypt = ["bcrypt"]
 
 [[package]]
 name = "django-allauth"
-version = "0.49.0"
+version = "0.50.0"
 description = "Integrated set of Django applications addressing authentication, registration, account management as well as 3rd party (social) account authentication."
 category = "main"
 optional = false
@@ -1825,7 +1825,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "8ba43380fbc9ccc419f4cd3bf2bf5034376ed4f2c47408e98cb735bd28f09ae7"
+content-hash = "f5cdb0bd93ae5f6740be97dba3855ceea223823f24d38445e311221d049c0755"
 
 [metadata.files]
 aioredis = [
@@ -2071,7 +2071,7 @@ django = [
     {file = "Django-3.2.12.tar.gz", hash = "sha256:9772e6935703e59e993960832d66a614cf0233a1c5123bc6224ecc6ad69e41e2"},
 ]
 django-allauth = [
-    {file = "django-allauth-0.49.0.tar.gz", hash = "sha256:f5fbb67376177c6a9276516dde98bcb01ac4160a5a27f7b340914dd521d04f12"},
+    {file = "django-allauth-0.50.0.tar.gz", hash = "sha256:ee3a174e249771caeb1d037e64b2704dd3c56cfec44f2058fae2214b224d35e8"},
 ]
 django-analytical = [
     {file = "django-analytical-3.1.0.tar.gz", hash = "sha256:6127c9196c8de3bcb4626f420d2ae670a7703152b1841b1b3e852b31a9a9d44b"},
