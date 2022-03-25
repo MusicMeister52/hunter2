@@ -19,35 +19,34 @@ WORKDIR /opt/hunter2/src
 FROM runtime_base AS python_build
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
-    cargo \
     gcc \
     git \
     libffi-dev \
-    libxml2-dev \
-    libxslt-dev \
     linux-headers \
     lua5.2-dev \
     musl-dev \
-    postgresql-dev \
-    rust
+    # The following packages are not required for the amd64 build but arm64 wheels are not available \
+    libxml2-dev \
+    libxslt-dev
 
 # Suppress pip version warning, we're keeping the version from the docker base image
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 
-ENV PATH "/root/.poetry/bin:${PATH}"
-ARG poetry_version=1.1.4
-RUN wget "https://raw.githubusercontent.com/python-poetry/poetry/${poetry_version}/get-poetry.py" \
- && python get-poetry.py --version "${poetry_version}" \
- && rm get-poetry.py \
- && poetry config virtualenvs.create false \
- && python -m venv /opt/hunter2/venv
+RUN
 
-ARG dev_flag=" --no-dev"
-COPY poetry.lock pyproject.toml /opt/hunter2/src/
+COPY pyproject.toml poetry.lock .
+# For now, we just have to convince `pip` that all our top level modules exist.
+# We don't want to copy everything so that we get good build cache behaviour.
+COPY hunter2/__init__.py hunter2/
+COPY accounts/__init__.py accounts/
+COPY events/__init__.py events/
+COPY hunts/__init__.py hunts/
+COPY teams/__init__.py teams/
+ARG PIP_NO_BINARY=lupa
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/root/.cargo \
-    . /opt/hunter2/venv/bin/activate \
- && poetry install${dev_flag} --no-root
+    python -m venv /opt/hunter2/venv \
+ && . /opt/hunter2/venv/bin/activate \
+ && pip install -e .
 
 
 # Build all the required Lua components
