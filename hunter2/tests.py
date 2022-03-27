@@ -238,7 +238,14 @@ class SetupSiteManagementCommandTests(TestCase):
 
 class AnonymisationCommandTests(EventTestCase):
     def setUp(self):
-        self.cutoff = timezone.now() - timedelta(days=1)
+        # When a Daylight Savings Time boundary occurs during the window in the relative time specification
+        # there's an ambiguity whether "a day ago" means the same local time on the previous calendar day
+        # or 24 hours earlier.
+        # We're choosing to interpret it as the same local time on the previous calendar day and accordingly
+        # need to craft the cutoff carefully.
+        now = timezone.localtime()
+        tz = now.tzinfo
+        self.cutoff = tz.localize(now.replace(tzinfo=None) - timedelta(days=1))
         self.user_before = TeamMemberFactory(
             username='person1',
             email='someone@somewhere.com',
