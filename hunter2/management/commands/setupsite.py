@@ -14,6 +14,7 @@
 import sys
 
 import validators
+from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.management import BaseCommand, CommandError
 
@@ -25,7 +26,7 @@ class Command(BaseCommand):
     stealth_options = ('stdin', )
 
     DEFAULT_SITE_NAME   = "Hunter 2"
-    DEFAULT_SITE_DOMAIN = "hunter2.local"
+    DEFAULT_SITE_DOMAIN = settings.BASE_DOMAIN
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
