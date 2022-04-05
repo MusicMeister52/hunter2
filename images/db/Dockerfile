@@ -1,3 +1,3 @@
-FROM postgres:14.2-alpine3.15@sha256:c4fdc2654fc5b680e29783ef919d9c71db90c0f6b45af8e84dbb2e14a82eb2b4
+FROM postgres:14.2-alpine3.15@sha256:5fe6a376aedbc6f1e7569915335c606f8b17695d1eb28157892792a4b01c6e03
 
 COPY . /
