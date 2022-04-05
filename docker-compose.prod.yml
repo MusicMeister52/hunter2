@@ -81,7 +81,7 @@ services:
     volumes:
       - metrics:/prometheus:Z
   redis:
-    image: redis:6.2.6-alpine3.15@sha256:ca7b891a380358a5f197a84884d42c3f8b441bc77761178a9743c471a0ef7367
+    image: redis:6.2.6-alpine3.15@sha256:1f9d05704e9dcbfa5a799da0e749043d08d810e6fc9bc6ece56a669780dec81f
     volumes:
       - redis:/data:Z
   redis_exporter:
