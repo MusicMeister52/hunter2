@@ -9,7 +9,7 @@ RUN /opt/hunter2/venv/bin/python manage.py collectstatic
 # https://github.com/Kong/lua-resty-dns-client/issues/136
 FROM openresty/openresty:1.19.9.1-alpine-fat@sha256:5c1bcbff5ac1f5c31dfb207f20702a375a6aba936d48fe8fb3bbdc2d510e2d2e
 
-RUN --mount=type=cache,target=/var/cache/apk apk add -t build_deps \
+RUN apk add -t build_deps \
     git \
  && opm get knyar/nginx-lua-prometheus=0.20201118 \
  && /usr/local/openresty/luajit/bin/luarocks install lua-resty-dns-client 6.0.2 \
