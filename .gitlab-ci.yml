@@ -61,9 +61,11 @@ check:eslint:
   extends: .base_job
   needs: []
   stage: build1
+  variables:
+    BUILDKIT_VERSION: v0.9.3
   before_script:
     - !reference [.base_job, before_script]
-    - docker buildx create --name hunter2 --use
+    - docker buildx create --name hunter2 --node amd64 --use
     - >
       if [[ "${CI_COMMIT_REF_PROTECTED}" == "true" ]];
       then
@@ -77,7 +79,7 @@ check:eslint:
         printenv ARM64_DOCKER_CERT | base64 -d > cert.pem;
         printenv ARM64_DOCKER_KEY | base64 -d > key.pem;
         docker context create arm64 --docker "host=tcp://arm64.build.hunter2.app:2375/,ca=/etc/ssl/cert.pem,cert=cert.pem,key=key.pem";
-        docker buildx create --name hunter2 --append --platform linux/arm64/v8 arm64;
+        docker buildx create --append --bootstrap --driver-opt "image=moby/buildkit:${BUILDKIT_VERSION}" --name hunter2 --node "arm64${BUILDKIT_VERSION}" --platform linux/arm64/v8 --use arm64;
       fi
   script:
     - REPO="${H2_REGISTRY}/${SERVICE}"
