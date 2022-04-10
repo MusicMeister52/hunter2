@@ -15,7 +15,7 @@ import datetime
 import freezegun
 from django.apps import apps
 from django.contrib import admin
-from django.core.exceptions import ValidationError
+from django.forms import inlineformset_factory
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -39,7 +39,7 @@ from ..factories import (
 from ..forms import AnswerForm
 from ..models import EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamPuzzleData, Unlock, UnlockAnswer, \
     UserPuzzleData, TeamPuzzleProgress, \
-    TeamUnlock, Guess
+    TeamUnlock, Guess, Puzzle, Answer
 from ..runtimes import Runtime
 
 
