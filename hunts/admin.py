@@ -26,9 +26,12 @@ from . import models
 from .forms import AnswerForm
 
 
-def make_textinput(field, db_field, kwdict):
+def make_textinput(field, db_field, kwdict, short=False):
     if db_field.attname == field:
-        kwdict['widget'] = forms.Textarea(attrs={'rows': 1})
+        if short:
+            kwdict['widget'] = forms.Textarea(attrs={'rows': 1, 'cols': 15})
+        else:
+            kwdict['widget'] = forms.Textarea(attrs={'rows': 1})
 
 
 @admin.register(models.Answer)
@@ -114,10 +117,11 @@ class UnlockAnswerInline(ObjectPermissionsInlineModelAdminMixin, NestedTabularIn
     readonly_fields = ('unlock',)
     form = Form
     extra = 0
+    template = 'admin/hunts/unlockanswer_inline.html'
 
     def formfield_for_dbfield(self, db_field, **kwargs):
-        make_textinput('guess', db_field, kwargs)
-        make_textinput('options', db_field, kwargs)
+        make_textinput('guess', db_field, kwargs, short=True)
+        make_textinput('options', db_field, kwargs, short=True)
         return super().formfield_for_dbfield(db_field, **kwargs)
 
 
@@ -163,6 +167,7 @@ class UnlockInline(ObjectPermissionsInlineModelAdminMixin, NestedStackedInline):
         UnlockAnswerInline,
     ]
     extra = 0
+    template = 'admin/hunts/unlock_inline.html'
 
     def formfield_for_dbfield(self, db_field, **kwargs):
         make_textinput('text', db_field, kwargs)
