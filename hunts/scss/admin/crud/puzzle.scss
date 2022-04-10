@@ -11,3 +11,69 @@
     margin: 5px;
     text-transform: uppercase;
 }
+
+.unlock-container {
+    display: flex;
+    flex-flow: row wrap;
+    margin-bottom: 2ex;
+}
+
+.unlock-container .inline-group .tabular tr td {
+    padding: 3px;
+}
+
+.unlockanswer-box {
+    flex-grow: 1;
+}
+
+.djn-group .unlockanswer-box .djn-group-nested {
+    margin: 0;
+}
+
+.unlockanswer-box .djn-items thead th {
+    background: none;
+}
+
+.unlockanswer-box .djn-items tr.add-row td {
+    background: none;
+}
+
+.unlockanswer-box .djn-items .form-row, .unlockanswer-box .djn-items td {
+    border-bottom: none;
+}
+
+.unlockanswer-box textarea {
+    width: 100%;
+    box-sizing: border-box;
+    margin-right: 12px;
+}
+
+.unlockanswer-box .delete {
+    vertical-align: middle;
+}
+
+.unlockanswer-box .delete, .unlockanswer-box .djn-th-delete {
+    text-align: center;
+}
+
+.unlock-text-box {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.unlock-text-box .form-row .field-text {
+    padding-right: 12px;
+}
+
+.unlock-text-box .form-row .field-text textarea {
+    width: 100%;
+}
+
+.unlock-text-box .form-row .field-text .help {
+    margin-left: 0;
+}
+
+.unlock-text-box .form-row .field-text label {
+    display: none;
+}
