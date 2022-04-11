@@ -345,6 +345,9 @@ WSGI_APPLICATION = 'hunter2.wsgi.application'
 
 X_FRAME_OPTIONS = 'DENY'
 
+# Default export address as of django-prometheus 2.2.0 doesn't work with prometheus_client 0.14.0+
+# https://github.com/korfuri/django-prometheus/issues/326
+PROMETHEUS_METRICS_EXPORT_ADDRESS = None if DEBUG else "0.0.0.0"
 PROMETHEUS_METRICS_EXPORT_PORT = None if DEBUG else 8001
 
 if USE_SILK:  # nocover
