@@ -12,14 +12,16 @@
 
 from datetime import timedelta
 
+from django.db.models.signals import post_save
 from django.test import SimpleTestCase
 from django.utils import timezone
 from faker import Faker
+import pytest
 from schema import Schema
+
 
 from accounts.factories import UserFactory
 from events.models import Event
-from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
 from . import PuzzleTimesGenerator, SolveDistributionGenerator
@@ -28,7 +30,24 @@ from .abstract import AbstractGenerator
 from .leaders import LeadersGenerator
 from .top_guesses import TopGuessesGenerator
 from .totals import TotalsGenerator
-from ..models import TeamPuzzleProgress
+from ..models import TeamPuzzleProgress, Answer
+
+
+@pytest.fixture
+def late_guesser(event):
+    player = TeamMemberFactory(team__role=TeamRole.PLAYER)
+
+    # every time an answer is created, guess correctly on the corresponding puzzle and flag it late.
+    # this can't be registered to puzzle creation, because when it's created it won't have any answers.
+    def create_and_guess(sender, instance, created, **kwargs):
+        if created:
+            GuessFactory(by=player, for_puzzle=instance.for_puzzle, late=True, correct=True)
+
+    post_save.connect(create_and_guess, sender=Answer, dispatch_uid=player.id)
+
+    yield
+
+    post_save.disconnect(sender=Answer, dispatch_uid=player.id)
 
 
 class MockStat(AbstractGenerator):
@@ -67,8 +86,8 @@ class StatCacheTests(SimpleTestCase):
         self.assertNotEqual(data, self.stat.data())
 
 
-class LeadersTests(EventTestCase):
-    def test_event_leaders(self):
+class TestLeaders:
+    def test_event_leaders(self, event):
         puzzle = PuzzleFactory(episode__winning=True)
         players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
         now = timezone.now()
@@ -77,20 +96,20 @@ class LeadersTests(EventTestCase):
         # Player 4 also guessed wrong
         GuessFactory(by=players[3], for_puzzle=puzzle, correct=False, given=now - timedelta(minutes=5))
 
-        data = LeadersGenerator(event=self.tenant, number=3).generate()
+        data = LeadersGenerator(event=event, number=3).generate()
         LeadersGenerator.schema.is_valid(data)
 
         # "Top" has 3 entries, in order, with the correct times
-        self.assertEqual(len(data['top']), 3)
+        assert len(data['top']) == 3
         for i, player in enumerate(players[:3]):
-            self.assertEqual(data['top'][i], (i + 1, player.team_at(self.tenant).get_display_name(), guesses[i].given))
+            assert data['top'][i] == (i + 1, player.team_at(event).get_display_name(), guesses[i].given)
         # The fourth team appears correctly in the indexed data
-        team = players[3].team_at(self.tenant).id
-        self.assertIn(team, data['by_team'])
-        self.assertEqual(data['by_team'][team]['position'], 4)
-        self.assertEqual(data['by_team'][team]['finish_time'], guesses[3].given)
+        team = players[3].team_at(event).id
+        assert team in data['by_team']
+        assert data['by_team'][team]['position'] == 4
+        assert data['by_team'][team]['finish_time'] == guesses[3].given
 
-    def test_episode_leaders(self):
+    def test_episode_leaders(self, event):
         puzzle1 = PuzzleFactory(episode__winning=False)
         puzzle2 = PuzzleFactory(episode__winning=True, episode__prequels=puzzle1.episode)
         players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
@@ -101,38 +120,38 @@ class LeadersTests(EventTestCase):
         for i, player in enumerate(reversed(players)):
             GuessFactory(by=player, for_puzzle=puzzle2, correct=True, given=now - timedelta(minutes=3 - i))
 
-        data = LeadersGenerator(event=self.tenant, episode=puzzle1.episode, number=3).generate()
+        data = LeadersGenerator(event=event, episode=puzzle1.episode, number=3).generate()
         LeadersGenerator.schema.is_valid(data)
 
         # "Top" has 3 entries, in order, with the correct times
-        self.assertEqual(len(data['top']), 3)
+        assert len(data['top']) == 3
         for i, player in enumerate(players):
-            self.assertEqual(data['top'][i], (i + 1, player.team_at(self.tenant).get_display_name(), guesses[i].given))
+            assert data['top'][i] == (i + 1, player.team_at(event).get_display_name(), guesses[i].given)
 
-    def test_leaders_not_enough_players(self):
+    def test_leaders_not_enough_players(self, event):
         puzzle = PuzzleFactory(episode__winning=True)
         players = TeamMemberFactory.create_batch(2, team__role=TeamRole.PLAYER)
         now = timezone.now()
         # Players finish the puzzle in order 1-2
         guesses = [GuessFactory(by=player, for_puzzle=puzzle, correct=True, given=now - timedelta(minutes=2-i)) for i, player in enumerate(players)]
 
-        data = LeadersGenerator(event=self.tenant, number=3).generate()
+        data = LeadersGenerator(event=event, number=3).generate()
         LeadersGenerator.schema.is_valid(data)
 
         # "Top" has 2 entries, in order, with the correct times
-        self.assertEqual(len(data['top']), 2)
+        assert len(data['top']) == 2
         for i, player in enumerate(players):
-            self.assertEqual(data['top'][i], (i + 1, player.team_at(self.tenant).get_display_name(), guesses[i].given))
+            assert data['top'][i] == (i + 1, player.team_at(event).get_display_name(), guesses[i].given)
 
-    def test_leaders_no_winning_episode(self):
+    def test_leaders_no_winning_episode(self, event):
         puzzle = PuzzleFactory(episode__winning=False)
         player = TeamMemberFactory(team__role=TeamRole.PLAYER)
         GuessFactory(by=player, for_puzzle=puzzle, correct=True)
 
-        with self.assertRaises(ValueError):
-            LeadersGenerator(event=self.tenant).generate()
+        with pytest.raises(ValueError):
+            LeadersGenerator(event=event).generate()
 
-    def test_admin_excluded(self):
+    def test_admin_excluded(self, event):
         puzzle = PuzzleFactory(episode__winning=True)
         admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
         players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
@@ -142,19 +161,19 @@ class LeadersTests(EventTestCase):
         # Players finish the puzzle in order 1-3
         guesses = [GuessFactory(by=player, for_puzzle=puzzle, correct=True, given=now - timedelta(minutes=3-i)) for i, player in enumerate(players)]
 
-        data = LeadersGenerator(event=self.tenant, number=3).generate()
+        data = LeadersGenerator(event=event, number=3).generate()
         LeadersGenerator.schema.is_valid(data)
 
         # "Top" has 3 entries
-        self.assertEqual(len(data['top']), 3)
+        assert len(data['top']) == 3
         for i, player in enumerate(players):
-            self.assertEqual(data['top'][i], (i + 1, player.team_at(self.tenant).get_display_name(), guesses[i].given))
+            assert data['top'][i] == (i + 1, player.team_at(event).get_display_name(), guesses[i].given)
         # Admin team is not in the indexed data
-        self.assertNotIn(admin.team_at(self.tenant).id, data['by_team'])
+        assert admin.team_at(event).id not in data['by_team']
 
 
-class TopGuessesTests(EventTestCase):
-    def test_event_top_guesses(self):
+class TestTopGuesses:
+    def test_event_top_guesses(self, event):
         puzzle = PuzzleFactory()
         players = (  # Not using create_batch because we want some of the middle ones to not be on teams
             TeamMemberFactory(team__role=TeamRole.PLAYER),
@@ -167,28 +186,28 @@ class TopGuessesTests(EventTestCase):
         for i, player in enumerate(players):
             GuessFactory.create_batch(5 - i, by=player, for_puzzle=puzzle)
 
-        data = TopGuessesGenerator(event=self.tenant, number=3).generate()
+        data = TopGuessesGenerator(event=event, number=3).generate()
         TopGuessesGenerator.schema.is_valid(data)
 
         # Player 2 and 4 are on the same team, so they win by team
-        self.assertEqual(len(data['top_teams']), 3)
-        self.assertEqual(data['top_teams'][0], (1, team2.get_display_name(), 6))
-        self.assertEqual(data['top_teams'][1], (2, players[0].team_at(self.tenant).get_display_name(), 5))
-        self.assertEqual(data['top_teams'][2], (3, players[2].team_at(self.tenant).get_display_name(), 3))
-        self.assertEqual(len(data['top_users']), 3)
+        assert len(data['top_teams']) == 3
+        assert data['top_teams'][0] == (1, team2.get_display_name(), 6)
+        assert data['top_teams'][1] == (2, players[0].team_at(event).get_display_name(), 5)
+        assert data['top_teams'][2] == (3, players[2].team_at(event).get_display_name(), 3)
+        assert len(data['top_users']) == 3
         for i, player in enumerate(players[:3]):
-            self.assertEqual(data['top_users'][i], (i + 1, player.get_display_name(), 5 - i))
+            assert data['top_users'][i] == (i + 1, player.get_display_name(), 5 - i)
         # The fourth and fifth users, and fourth team appear correctly in the indexed data
-        team5 = players[4].team_at(self.tenant).id
-        self.assertIn(team5, data['by_team'])
-        self.assertEqual(data['by_team'][team5]['position'], 4)
-        self.assertEqual(data['by_team'][team5]['guess_count'], 1)
+        team5 = players[4].team_at(event).id
+        assert team5 in data['by_team']
+        assert data['by_team'][team5]['position'] == 4
+        assert data['by_team'][team5]['guess_count'] == 1
         for i, player in enumerate(players[3:]):
-            self.assertIn(player.id, data['by_user'])
-            self.assertEqual(data['by_user'][player.id]['position'], i + 4)
-            self.assertEqual(data['by_user'][player.id]['guess_count'], 2 - i)
+            assert player.id in data['by_user']
+            assert data['by_user'][player.id]['position'] == i + 4
+            assert data['by_user'][player.id]['guess_count'] == 2 - i
 
-    def test_episode_top_guesses(self):
+    def test_episode_top_guesses(self, event):
         puzzles = PuzzleFactory.create_batch(2)
         players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
         # Create guesses such that players won episode 1 in order 1-3 but episode 2 in order 3-1
@@ -196,33 +215,33 @@ class TopGuessesTests(EventTestCase):
             GuessFactory.create_batch(3 - i, by=player, for_puzzle=puzzles[0])
             GuessFactory.create_batch(i * 2 + 1, by=player, for_puzzle=puzzles[1])
 
-        data = TopGuessesGenerator(event=self.tenant, episode=puzzles[0].episode, number=3).generate()
+        data = TopGuessesGenerator(event=event, episode=puzzles[0].episode, number=3).generate()
         TopGuessesGenerator.schema.is_valid(data)
 
         # "Top" has 3 entries, in order
-        self.assertEqual(len(data['top_users']), 3)
+        assert len(data['top_users']) == 3
         for i, player in enumerate(players):
-            self.assertEqual(data['top_users'][i], (i + 1, player.get_display_name(), 3 - i))
+            assert data['top_users'][i] == (i + 1, player.get_display_name(), 3 - i)
 
-    def test_top_guesses_not_enough_players(self):
+    def test_top_guesses_not_enough_players(self, event):
         puzzle = PuzzleFactory()
         players = UserFactory.create_batch(2)
         team = TeamFactory(members=players, role=TeamRole.PLAYER)
         for i, player in enumerate(players):
             GuessFactory.create_batch(2 - i, by=player, for_puzzle=puzzle)
 
-        data = TopGuessesGenerator(event=self.tenant, number=3).generate()
+        data = TopGuessesGenerator(event=event, number=3).generate()
         TopGuessesGenerator.schema.is_valid(data)
 
         # "Top Users" has 2 entries, in order
-        self.assertEqual(len(data['top_users']), 2)
+        assert len(data['top_users']) == 2
         for i, player in enumerate(players):
-            self.assertEqual(data['top_users'][i], (i + 1, player.get_display_name(), 2 - i))
+            assert data['top_users'][i] == (i + 1, player.get_display_name(), 2 - i)
         # "Top Teams" has 1 entry
-        self.assertEqual(len(data['top_teams']), 1)
-        self.assertEqual(data['top_teams'][0], (1, team.get_display_name(), 3))
+        assert len(data['top_teams']) == 1
+        assert data['top_teams'][0] == (1, team.get_display_name(), 3)
 
-    def test_admin_excluded(self):
+    def test_admin_excluded(self, event):
         puzzle = PuzzleFactory()
         admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
         players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
@@ -230,20 +249,20 @@ class TopGuessesTests(EventTestCase):
         for i, player in enumerate(players):
             GuessFactory.create_batch(3 - i, by=player, for_puzzle=puzzle)
 
-        data = TopGuessesGenerator(event=self.tenant, number=3).generate()
+        data = TopGuessesGenerator(event=event, number=3).generate()
         TopGuessesGenerator.schema.is_valid(data)
 
-        self.assertEqual(len(data['top_teams']), 3)
+        assert len(data['top_teams']) == 3
         for i, player in enumerate(players):
-            self.assertEqual(data['top_teams'][i], (i + 1, player.team_at(self.tenant).get_display_name(), 3 - i))
-        self.assertEqual(len(data['top_users']), 3)
+            assert data['top_teams'][i] == (i + 1, player.team_at(event).get_display_name(), 3 - i)
+        assert len(data['top_users']) == 3
         for i, player in enumerate(players):
-            self.assertEqual(data['top_users'][i], (i + 1, player.get_display_name(), 3 - i))
+            assert data['top_users'][i] == (i + 1, player.get_display_name(), 3 - i)
         # Admin team/user is not in the indexed data
-        self.assertNotIn(admin.team_at(self.tenant).id, data['by_team'])
-        self.assertNotIn(admin.id, data['by_user'])
+        assert admin.team_at(event).id not in data['by_team']
+        assert admin.id not in data['by_user']
 
-    def test_render_extra_data(self):
+    def test_render_extra_data(self, event):
         team = TeamFactory.build(name='Team 4')
         team.id = 4
         user = UserFactory.build(username='User 4')
@@ -273,12 +292,12 @@ class TopGuessesTests(EventTestCase):
             ],
         }
 
-        render = TopGuessesGenerator(event=self.tenant, number=3).render_data(data, team=team, user=user)
+        render = TopGuessesGenerator(event=event, number=3).render_data(data, team=team, user=user)
 
-        self.assertIn('Team 4', render)
-        self.assertIn('User 4', render)
+        assert 'Team 4' in render
+        assert 'User 4' in render
 
-    def test_render_no_duplicate(self):
+    def test_render_no_duplicate(self, event):
         team = TeamFactory.build(name='Team 3')
         team.id = 3
         user = UserFactory.build(username='User 3')
@@ -309,14 +328,15 @@ class TopGuessesTests(EventTestCase):
             ],
         }
 
-        render = TopGuessesGenerator(event=self.tenant, number=3).render_data(data, team=team, user=user)
+        render = TopGuessesGenerator(event=event, number=3).render_data(data, team=team, user=user)
 
-        self.assertEqual(1, render.count('Team 3'))
-        self.assertEqual(1, render.count('User 3'))
+        assert 1 == render.count('Team 3')
+        assert 1 == render.count('User 3')
 
 
-class TotalsTests(EventTestCase):
-    def test_event_totals(self):
+@pytest.mark.usefixtures("late_guesser")
+class TestTotals:
+    def test_event_totals(self, event):
         puzzle = PuzzleFactory(episode__winning=True)
         puzzle2 = PuzzleFactory(episode__winning=True)
         puzzle3 = PuzzleFactory(episode__winning=False)
@@ -330,17 +350,17 @@ class TotalsTests(EventTestCase):
         GuessFactory(by=players[3], for_puzzle=puzzle2, correct=True)
         GuessFactory(by=players[4], for_puzzle=puzzle3, correct=True)
 
-        data = TotalsGenerator(event=self.tenant).generate()
+        data = TotalsGenerator(event=event).generate()
         TotalsGenerator.schema.is_valid(data)
 
-        self.assertEqual(data['active_players'], 4)
-        self.assertEqual(data['active_teams'], 3)
-        self.assertEqual(data['correct_teams'], 2)
-        self.assertEqual(data['finished_teams'], 1)
-        self.assertEqual(data['puzzles_solved'], 4)
-        self.assertEqual(data['guess_count'], 9)
+        assert data['active_players'] == 4
+        assert data['active_teams'] == 3
+        assert data['correct_teams'] == 2
+        assert data['finished_teams'] == 1
+        assert data['puzzles_solved'] == 4
+        assert data['guess_count'] == 9
 
-    def test_episode_totals(self):
+    def test_episode_totals(self, event):
         episode = EpisodeFactory(winning=False)
         puzzles = PuzzleFactory.create_batch(2, episode=episode)
         irrelevant_puzzle = PuzzleFactory()
@@ -351,67 +371,69 @@ class TotalsTests(EventTestCase):
         GuessFactory(by=players[1], for_puzzle=puzzles[1], correct=True)
         GuessFactory(by=players[1], for_puzzle=irrelevant_puzzle, correct=True)
 
-        data = TotalsGenerator(event=self.tenant, episode=puzzles[0].episode).generate()
+        data = TotalsGenerator(event=event, episode=puzzles[0].episode).generate()
         TotalsGenerator.schema.is_valid(data)
 
-        self.assertEqual(data['active_players'], 2)
-        self.assertEqual(data['active_teams'], 2)
-        self.assertEqual(data['correct_teams'], 2)
-        self.assertEqual(data['finished_teams'], 1)
-        self.assertEqual(data['puzzles_solved'], 3)
-        self.assertEqual(data['guess_count'], 3)
+        assert data['active_players'] == 2
+        assert data['active_teams'] == 2
+        assert data['correct_teams'] == 2
+        assert data['finished_teams'] == 1
+        assert data['puzzles_solved'] == 3
+        assert data['guess_count'] == 3
 
-    def test_admin_excluded(self):
+    def test_admin_excluded(self, event):
         puzzle = PuzzleFactory()
         admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
         player = TeamMemberFactory(team__role=TeamRole.PLAYER)
         GuessFactory(by=admin, for_puzzle=puzzle, correct=True)
         GuessFactory(by=player, for_puzzle=puzzle, correct=True)
 
-        data = TotalsGenerator(event=self.tenant).generate()
+        data = TotalsGenerator(event=event).generate()
         TotalsGenerator.schema.is_valid(data)
 
-        self.assertEqual(data['active_players'], 1)
-        self.assertEqual(data['active_teams'], 1)
-        self.assertEqual(data['correct_teams'], 1)
-        self.assertEqual(data['finished_teams'], 0)  # There is no winning episode
-        self.assertEqual(data['puzzles_solved'], 1)
-        self.assertEqual(data['guess_count'], 1)
+        assert data['active_players'] == 1
+        assert data['active_teams'] == 1
+        assert data['correct_teams'] == 1
+        assert data['finished_teams'] == 0  # There is no winning episode
+        assert data['puzzles_solved'] == 1
+        assert data['guess_count'] == 1
 
 
-class PuzzleTimesTests(EventTestCase):
-    def test_event_puzzle_times(self):
+@pytest.mark.usefixtures("late_guesser")
+class TestPuzzleTimes:
+    def test_event_puzzle_times(self, event):
         puzzle = PuzzleFactory(episode__winning=True)
         players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
         now = timezone.now()
         # All teams started at the same time
         for player in players:
-            TeamPuzzleProgressFactory(team=player.team_at(self.tenant), puzzle=puzzle, start_time=now - timedelta(hours=1))
+            TeamPuzzleProgressFactory(team=player.team_at(event), puzzle=puzzle, start_time=now - timedelta(hours=1))
         # Players finish the puzzle in order 1-4
         guesses = [GuessFactory(by=player, for_puzzle=puzzle, correct=True, given=now - timedelta(minutes=4 - i)) for i, player in enumerate(players)]
         # Player 4 also guessed wrong
         GuessFactory(by=players[3], for_puzzle=puzzle, correct=False, given=now - timedelta(minutes=5))
 
-        data = PuzzleTimesGenerator(event=self.tenant, number=3).generate()
+        data = PuzzleTimesGenerator(event=event, number=3).generate()
         PuzzleTimesGenerator.schema.is_valid(data)
 
         # "Top" has 3 entries, in order, with the correct times
-        self.assertEqual(len(data[0]['puzzles'][0]['top']), 3)
+        assert len(data[0]['puzzles'][0]['top']) == 3
         for i, player in enumerate(players[:3]):
-            team = player.team_at(self.tenant)
+            team = player.teams.get()
             tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=team)
-            self.assertEqual(
-                data[0]['puzzles'][0]['top'][i],
-                (i + 1, team.get_display_name(), PuzzleTimesGenerator.format_solve_time(guesses[i].given - tpp.start_time)),
+            assert data[0]['puzzles'][0]['top'][i] == (
+                i + 1,
+                team.get_display_name(),
+                PuzzleTimesGenerator.format_solve_time(guesses[i].given - tpp.start_time)
             )
         # The fourth team appears correctly in the indexed data
-        team = players[3].team_at(self.tenant)
+        team = players[3].teams.get()
         tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=team)
-        self.assertIn(team.id, data[0]['puzzles'][0]['by_team'])
-        self.assertEqual(data[0]['puzzles'][0]['by_team'][team.id]['position'], 4)
-        self.assertEqual(data[0]['puzzles'][0]['by_team'][team.id]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
+        assert team.id in data[0]['puzzles'][0]['by_team']
+        assert data[0]['puzzles'][0]['by_team'][team.id]['position'] == 4
+        assert data[0]['puzzles'][0]['by_team'][team.id]['solve_time'] == PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time)
 
-    def test_episode_puzzle_times(self):
+    def test_episode_puzzle_times(self, event):
         puzzle1 = PuzzleFactory(episode__winning=False)
         puzzle2 = PuzzleFactory(episode__winning=True, episode__prequels=puzzle1.episode)
         players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
@@ -425,68 +447,68 @@ class PuzzleTimesTests(EventTestCase):
             for i, player in enumerate(reversed(players))
         ]
 
-        data = PuzzleTimesGenerator(event=self.tenant, number=3).generate()
+        data = PuzzleTimesGenerator(event=event, number=3).generate()
         PuzzleTimesGenerator.schema.is_valid(data)
 
         # "Top" has 3 entries, in order, with the correct times
-        self.assertEqual(len(data[1]['puzzles'][0]['top']), 3)
+        assert len(data[1]['puzzles'][0]['top']) == 3
         for i, player in enumerate(players[:3]):
-            team = player.team_at(self.tenant)
+            team = player.teams.get()
             tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle1, team=team)
-            self.assertEqual(
-                data[1]['puzzles'][0]['top'][i],
-                (i + 1, team.get_display_name(), PuzzleTimesGenerator.format_solve_time(guesses[i].given - tpp.start_time)),
+            assert data[1]['puzzles'][0]['top'][i] == (
+                i + 1, team.get_display_name(), PuzzleTimesGenerator.format_solve_time(guesses[i].given - tpp.start_time)
             )
         # The fourth team appears correctly in the indexed data
-        team = players[3].team_at(self.tenant)
+        team = players[3].teams.get()
         tpp = TeamPuzzleProgress.objects.get(puzzle=puzzle1, team=team)
-        self.assertIn(team.id, data[1]['puzzles'][0]['by_team'])
-        self.assertEqual(data[1]['puzzles'][0]['by_team'][team.id]['position'], 4)
-        self.assertEqual(data[1]['puzzles'][0]['by_team'][team.id]['solve_time'], PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time))
+        assert team.id in data[1]['puzzles'][0]['by_team']
+        assert data[1]['puzzles'][0]['by_team'][team.id]['position'] == 4
+        assert data[1]['puzzles'][0]['by_team'][team.id]['solve_time'] == PuzzleTimesGenerator.format_solve_time(guesses[3].given - tpp.start_time)
 
-    def test_admin_excluded(self):
+    def test_admin_excluded(self, event):
         puzzle = PuzzleFactory()
         admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
         player = TeamMemberFactory(team__role=TeamRole.PLAYER)
         GuessFactory(by=admin, for_puzzle=puzzle, correct=True)
         GuessFactory(by=player, for_puzzle=puzzle, correct=True)
 
-        data = PuzzleTimesGenerator(event=self.tenant).generate()
+        data = PuzzleTimesGenerator(event=event).generate()
         PuzzleTimesGenerator.schema.is_valid(data)
 
-        self.assertEqual(len(data[0]['puzzles'][0]['top']), 1)
-        self.assertNotIn(admin.team_at(self.tenant).get_display_name(), data[0]['puzzles'][0]['by_team'])
+        assert len(data[0]['puzzles'][0]['top']) == 1
+        assert admin.teams.get().get_display_name() not in data[0]['puzzles'][0]['by_team']
 
 
-class SolveDistributionTests(EventTestCase):
-    def test_episode_puzzle_times(self):
+@pytest.mark.usefixtures("late_guesser")
+class TestSolveDistribution:
+    def test_episode_puzzle_times(self, event):
         puzzle1 = PuzzleFactory(episode__winning=False)
         puzzle2 = PuzzleFactory(episode__winning=True, episode__prequels=puzzle1.episode)
         players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
-        teams = [player.team_at(self.tenant) for player in players]
+        teams = [player.team_at(event) for player in players]
         now = timezone.now()
         for i, (player, team) in enumerate(zip(players, teams)):
-            TeamPuzzleProgress(puzzle=puzzle1, team=team, start_time=now - timedelta(minutes=5)).save()
-            TeamPuzzleProgress(puzzle=puzzle2, team=team, start_time=now - timedelta(minutes=5)).save()
+            TeamPuzzleProgressFactory(puzzle=puzzle1, team=team, start_time=now - timedelta(minutes=5))
+            TeamPuzzleProgressFactory(puzzle=puzzle2, team=team, start_time=now - timedelta(minutes=5))
             GuessFactory(by=player, for_puzzle=puzzle1, correct=True, given=now - timedelta(minutes=4 - i))
             GuessFactory(by=player, for_puzzle=puzzle2, correct=True, given=now - timedelta(minutes=3))
 
-        data = SolveDistributionGenerator(event=self.tenant).generate()
-        self.assertTrue(SolveDistributionGenerator.schema.is_valid(data))
+        data = SolveDistributionGenerator(event=event).generate()
+        assert SolveDistributionGenerator.schema.is_valid(data)
         ep1 = 0 if data['episodes'][0]['id'] == puzzle1.episode.id else 1
         ep2 = 1 - ep1
-        self.assertGreaterEqual(data['episodes'][ep1]['max_q3'], 180.0)
-        self.assertLessEqual(data['episodes'][ep1]['max_q3'], 240.0)
-        self.assertEqual(len(data['episodes'][ep1]['puzzles']), 1)
-        self.assertEqual(
-            data['episodes'][ep1]['puzzles'][0]['solve_times'],
+        assert data['episodes'][ep1]['max_q3'] >= 180.0
+        assert data['episodes'][ep1]['max_q3'] <= 240.0
+        assert len(data['episodes'][ep1]['puzzles']) == 1
+        assert (
+            data['episodes'][ep1]['puzzles'][0]['solve_times'] ==
             {team.id: 60 * (i+1) for i, team in enumerate(teams)}
         )
-        self.assertGreaterEqual(data['episodes'][ep1]['puzzles'][0]['90%'], data['episodes'][ep1]['max_q3'])
-        self.assertLessEqual(data['episodes'][ep1]['puzzles'][0]['90%'], 240.0)
-        self.assertEqual(data['episodes'][ep2]['max_q3'], 120.0)
-        self.assertEqual(len(data['episodes'][ep2]['puzzles']), 1)
-        self.assertEqual(
-            data['episodes'][ep2]['puzzles'][0]['solve_times'],
+        assert data['episodes'][ep1]['puzzles'][0]['90%'] >= data['episodes'][ep1]['max_q3']
+        assert data['episodes'][ep1]['puzzles'][0]['90%'] <= 240.0
+        assert data['episodes'][ep2]['max_q3'] == 120.0
+        assert len(data['episodes'][ep2]['puzzles']) == 1
+        assert (
+            data['episodes'][ep2]['puzzles'][0]['solve_times'] ==
             {team.id: 60 * 2 for team in teams}
         )

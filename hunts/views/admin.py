@@ -701,12 +701,20 @@ class ResetProgress(EventAdminMixin, View):
         # Gather some information for the admin to sanity check
         guesses = models.Guess.objects.filter(by_team=self.team)
         if self.puzzle:
-            tpp, _ = models.TeamPuzzleProgress.objects.get_or_create(team=self.team, puzzle=self.puzzle)
-            info = {
-                'guesses': guesses.filter(for_puzzle=self.puzzle).count(),
-                'solved': tpp.solved_by_id is not None,
-                'opened': tpp.start_time is not None,
-            }
+            try:
+                tpp = models.TeamPuzzleProgress.objects.get(team=self.team, puzzle=self.puzzle)
+            except models.TeamPuzzleProgress.DoesNotExist:
+                info = {
+                    'guesses': 0,
+                    'solved': False,
+                    'opened': False,
+                }
+            else:
+                info = {
+                    'guesses': guesses.filter(for_puzzle=self.puzzle).count(),
+                    'solved': tpp.solved_by_id is not None,
+                    'opened': tpp.start_time is not None,
+                }
         else:
             info = {
                 'guesses': guesses.count(),

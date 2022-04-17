@@ -45,7 +45,7 @@ $ h2-test
 ```
 
 This is a wrapper around pytest. You can also use the normal django `manage.py test` command,
-but pytest has features which are not supported by that method.
+but pytest has features like advanced test selection and sharding which are not supported by that method.
 
 ### Writing Tests
 
@@ -127,8 +127,8 @@ Note the inclusion of the override `yaml`. This should allow PyCharm to find the
 enabling completion. You can then add run configurations with this interpreter to enable interactive debugging and easy
 running of individual tests.
 
-Enable the "Do not use Django test runner" and set the default test runner to "pytest" for best integration of 
-PyCharm and the test suite.
+In the PyCharm settings go to "Languages & Frameworks > Django" and enable the "Do not use Django test runner" and set
+the default test runner to "pytest" for best integration of PyCharm and the test suite.
 
 Common Tasks
 ------------

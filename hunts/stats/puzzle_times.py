@@ -38,6 +38,7 @@ def solve_time_tpps_for_puzzle(puzzle):
         puzzle=puzzle,
         start_time__isnull=False,
         solved_by__isnull=False,
+        late=False,
         team__role=TeamRole.PLAYER,
     ).select_related(
         'puzzle',

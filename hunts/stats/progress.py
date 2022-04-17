@@ -67,6 +67,7 @@ class ProgressGenerator(AbstractGenerator):
                 team__role=TeamRole.PLAYER,
                 puzzle__episode=episode,
                 start_time__isnull=False,
+                late=False,
             ).annotate(
                 completion_time=F('solved_by__given')
             ).order_by(

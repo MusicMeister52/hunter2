@@ -249,6 +249,7 @@ class GuessFactory(factory.django.DjangoModelFactory):
     by = factory.LazyAttribute(lambda o: TeamMemberFactory(team__at_event=activated_event()))
     guess = factory.Faker('sentence')
     given = factory.LazyFunction(timezone.now)
+    late = factory.LazyAttribute(lambda o: timezone.now() > o.for_puzzle.episode.event.end_date)
     # by_team, correct_for and correct_current are all handled internally.
 
 
@@ -260,6 +261,7 @@ class TeamPuzzleProgressFactory(factory.django.DjangoModelFactory):
     start_time = factory.Faker('past_datetime', start_date='-1h', tzinfo=pytz.utc)
     puzzle = factory.SubFactory(PuzzleFactory)
     team = factory.SubFactory(TeamFactory)
+    late = factory.LazyAttribute(lambda o: timezone.now() > o.puzzle.episode.event.end_date)
 
 
 class DataFactory(factory.django.DjangoModelFactory):

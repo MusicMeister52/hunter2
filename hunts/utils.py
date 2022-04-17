@@ -40,14 +40,14 @@ def event_episode_puzzle(event, episode_number, puzzle_number):
         raise Http404 from e
 
 
-def finishing_positions(event):
+def finishing_positions(event, include_late=False):
     """Get an iterable of teams in the order in which they finished the whole Event"""
     from .models import Episode
     winning_episodes = Episode.objects.filter(event=event, winning=True)
 
     team_times = defaultdict(list)
     for ep in winning_episodes:
-        for team, time in ep.finished_times():
+        for team, time in ep.finished_times(include_late=include_late):
             team_times[team].append(time)
 
     num_winning_episodes = len(winning_episodes)

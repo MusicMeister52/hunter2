@@ -76,7 +76,9 @@ class EpisodeContent(LoginRequiredMixin, EpisodeUnlockedMixin, View):
                     break
         upcoming_time = upcoming_puzzle.start_date - headstart if upcoming_puzzle and upcoming_puzzle.start_date else None
 
-        positions = request.episode.finished_positions()
+        # Anyone who finishes the hunt late finishes it after anyone who finished it on time, so it is fine to
+        # include late teams here.
+        positions = request.episode.finished_positions(include_late=True)
         if request.team in positions:
             position = positions.index(request.team)
             position, position_text = utils.position_for_display(position)
@@ -119,7 +121,7 @@ class EventIndex(LoginRequiredMixin, View):
 
         event = request.tenant
 
-        positions = utils.finishing_positions(event)
+        positions = utils.finishing_positions(event, include_late=True)
         if request.team in positions:
             position = positions.index(request.team)
             position, position_text = utils.position_for_display(position)
@@ -155,6 +157,8 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
 
         data = models.PuzzleData(puzzle, request.team, request.user)
 
+        now = timezone.now()
+
         progress, _ = request.puzzle.teampuzzleprogress_set.select_related(
             'solved_by',
             'solved_by__by',
@@ -170,13 +174,14 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
                     'unlockanswer__unlock',
                 )
             ),
-        ).seal().get_or_create(puzzle=request.puzzle, team=request.team)
-
-        now = timezone.now()
-
-        if not progress.start_time:
-            progress.start_time = now
-            progress.save()
+        ).seal().get_or_create(
+            puzzle=request.puzzle,
+            team=request.team,
+            defaults={
+                'start_time': now,
+                'late': now > request.tenant.end_date,
+            },
+        )
 
         correct_guess = progress.solved_by
         hints = progress.hints()
@@ -325,14 +330,14 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         if len(given_answer) > 512:
             return JsonResponse({'error': 'answer too long'}, status=400)
 
-        if request.tenant.end_date < now:
-            return JsonResponse({'error': 'event is over'}, status=400)
+        late = request.tenant.end_date < now
 
         # Put answer in DB
         guess = models.Guess(
             guess=given_answer,
             for_puzzle=request.puzzle,
-            by=request.user
+            by=request.user,
+            late=late,
         )
         guess.save()
 
@@ -360,9 +365,6 @@ class Callback(LoginRequiredMixin, PuzzleUnlockedMixin, View):
             return HttpResponse(status=415)
         if 'application/json' not in request.META['HTTP_ACCEPT']:
             return HttpResponse(status=406)
-
-        if request.tenant.end_date < timezone.now():
-            return JsonResponse({'error': 'event is over'}, status=400)
 
         data = models.PuzzleData(request.puzzle, request.team, request.user)
 
