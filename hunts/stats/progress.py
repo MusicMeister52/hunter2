@@ -13,7 +13,7 @@
 import json
 from datetime import datetime
 
-from django.db.models import F, Min, Q
+from django.db.models import F
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from schema import And, Schema
@@ -68,11 +68,7 @@ class ProgressGenerator(AbstractGenerator):
                 puzzle__episode=episode,
                 start_time__isnull=False,
             ).annotate(
-                completion_time=Min('puzzle__guess__given', filter=Q(
-                    puzzle__guess__by_team=F('team'),
-                    puzzle__guess__correct_current=True,
-                    puzzle__guess__correct_for__isnull=False,
-                ))
+                completion_time=F('solved_by__given')
             ).order_by(
                 'completion_time',
             ).select_related(
