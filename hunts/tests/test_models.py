@@ -16,6 +16,7 @@ import random
 import factory
 import freezegun
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -521,8 +522,17 @@ class EpisodeBehaviourTests(EventTestCase):
                 'Episode content should not set the upcoming puzzle time when all puzzles are solved'
             )
 
+    def test_episode_prequel_validation(self):
+        episode1 = EpisodeFactory()
+        episode2 = EpisodeFactory(event=episode1.event, prequels=episode1)
+        # Because we intentionally throw exceptions we need to use transaction.atomic() to avoid a TransactionManagementError
+        with self.assertRaises(ValidationError), transaction.atomic():
+            episode1.add_parent(episode1)
+        with self.assertRaises(ValidationError), transaction.atomic():
+            episode1.add_parent(episode2)
 
-class ClueDisplayTests(EventTestCase):
+
+class ClueTests(EventTestCase):
     def setUp(self):
         self.episode = EpisodeFactory()
         self.user = UserFactory()
@@ -530,7 +540,7 @@ class ClueDisplayTests(EventTestCase):
         self.team = TeamFactory(at_event=self.episode.event, members={self.user})
         self.progress = TeamPuzzleProgressFactory(puzzle=self.puzzle, team=self.team)
 
-    def test_hint_display(self):
+    def test_hint_unlocked_by(self):
         hint = HintFactory(puzzle=self.puzzle)
 
         with freezegun.freeze_time() as frozen_datetime:
@@ -600,7 +610,7 @@ class ClueDisplayTests(EventTestCase):
             self.assertTrue(hint.unlocked_by(self.team, self.progress),
                             "Hint re-locked by subsequent non-unlock-validating guess!")
 
-    def test_unlock_display(self):
+    def test_unlock_unlocked_by(self):
         other_team = TeamFactory(at_event=self.episode.event)
 
         unlock = UnlockFactory(puzzle=self.puzzle)

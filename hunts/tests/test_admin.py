@@ -19,7 +19,6 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.factories import UserFactory
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
@@ -128,10 +127,18 @@ class AdminPuzzleFormPopupTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class AdminPuzzleAccessTests(EventTestCase):
+class AdminExtraAccessTests(EventTestCase):
     def setUp(self):
         self.user = TeamMemberFactory(team__at_event=self.tenant, team__role=TeamRole.ADMIN)
         self.client.force_login(self.user)
+
+    def test_can_view_episode_normally(self):
+        self.client.force_login(self.user)
+        episode = EpisodeFactory(event=self.tenant)
+        response = self.client.get(
+            reverse('episode_content', kwargs={'episode_number': episode.get_relative_id()}),
+        )
+        self.assertEqual(response.status_code, 200)
 
     def test_admin_overrides_episode_start_time(self):
         now = timezone.now()  # We need the non-naive version of the frozen time for object creation
@@ -159,31 +166,6 @@ class AdminPuzzleAccessTests(EventTestCase):
                 'puzzle_number': puzzle.get_relative_id(),
             }))
             self.assertEqual(resp.status_code, 200)
-
-
-class AdminTeamTests(EventTestCase):
-    def setUp(self):
-        self.event = self.tenant
-        self.episode = EpisodeFactory(event=self.event)
-        self.admin_user = UserFactory()
-        self.admin_team = TeamFactory(at_event=self.event, role=TeamRole.ADMIN, members={self.admin_user})
-
-    def test_can_view_episode(self):
-        self.client.force_login(self.admin_user)
-        response = self.client.get(
-            reverse('episode_content', kwargs={'episode_number': self.episode.get_relative_id()}),
-        )
-        self.assertEqual(response.status_code, 200)
-
-    def test_can_view_guesses(self):
-        self.client.force_login(self.admin_user)
-        response = self.client.get(reverse('admin_guesses'))
-        self.assertEqual(response.status_code, 200)
-
-    def test_can_view_stats(self):
-        self.client.force_login(self.admin_user)
-        response = self.client.get(reverse('admin_guesses'))
-        self.assertEqual(response.status_code, 200)
 
 
 class AdminContentTests(EventTestCase):
@@ -234,6 +216,8 @@ class AdminContentTests(EventTestCase):
 
     def test_can_view_guesses(self):
         self.client.force_login(self.admin_user)
+        response = self.client.get(reverse('admin_guesses'))
+        self.assertEqual(response.status_code, 200)
         response = self.client.get(self.guesses_url)
         self.assertEqual(response.status_code, 200)
 

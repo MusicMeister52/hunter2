@@ -14,8 +14,6 @@
 import datetime
 
 import freezegun
-from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -42,13 +40,6 @@ class EpisodeSequenceTests(EventTestCase):
         self.episode1 = EpisodeFactory(event=self.event)
         self.episode2 = EpisodeFactory(event=self.event, prequels=self.episode1)
         self.user = TeamMemberFactory(team__at_event=self.event)
-
-    def test_episode_prequel_validation(self):
-        # Because we intentionally throw exceptions we need to use transaction.atomic() to avoid a TransactionManagementError
-        with self.assertRaises(ValidationError), transaction.atomic():
-            self.episode1.add_parent(self.episode1)
-        with self.assertRaises(ValidationError), transaction.atomic():
-            self.episode1.add_parent(self.episode2)
 
     def test_episode_unlocking(self):
         puzzle = PuzzleFactory(episode=self.episode1)
@@ -381,9 +372,7 @@ class ProgressSignalTests(EventTestCase):
         self.assertFalse(TeamUnlock.objects.filter(team_puzzle_progress=self.progress).exists(),
                          'Non-unlocking guess resulted in a TeamUnlock being created')
 
-
-class PuzzleStartTimeTests(EventTestCase):
-    def test_start_times(self):
+    def test_start_times_recorded_correctly(self):
         self.puzzle = PuzzleFactory()
         self.episode = self.puzzle.episode
         self.event = self.episode.event
@@ -404,8 +393,7 @@ class PuzzleStartTimeTests(EventTestCase):
         self.assertEqual(first_time, second_time, msg='Start time does not alter on subsequent access')
 
 
-# TODO
-class ProgressionTests(EventTestCase):
+class ProgressionMethodTests(EventTestCase):
     def setUp(self):
         self.episode = EpisodeFactory()
         self.event = self.episode.event
@@ -414,7 +402,7 @@ class ProgressionTests(EventTestCase):
         self.team1 = TeamFactory(at_event=self.event, members={self.user1})
         self.team2 = TeamFactory(at_event=self.event, members={self.user2})
 
-    def test_episode_finishing(self):
+    def test_episode_available(self):
         # Ensure at least one puzzle in episode.
         puzzles = PuzzleFactory.create_batch(3, episode=self.episode)
         sequel = EpisodeFactory(prequels=[self.episode])
@@ -430,7 +418,7 @@ class ProgressionTests(EventTestCase):
         # Ensure this team has finished the episode (i.e. can guess on the next one)
         self.assertTrue(sequel.available(self.team1))
 
-    def test_finish_positions(self):
+    def test_finished_positions(self):
         puzzle1, puzzle2, puzzle3 = PuzzleFactory.create_batch(3, episode=self.episode)
 
         # Check there are no winners to begin with
@@ -463,7 +451,7 @@ class ProgressionTests(EventTestCase):
         self.assertEqual(self.episode.finished_positions()[0], self.team2)
         self.assertEqual(self.episode.finished_positions()[1], self.team1)
 
-    def test_guesses(self):
+    def test_first_correct_guesses(self):
         puzzle1 = PuzzleFactory(episode=self.episode)
 
         # Single incorrect guess

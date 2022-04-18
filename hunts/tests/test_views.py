@@ -382,7 +382,7 @@ class PuzzleAccessTests(EventTestCase):
             _check_load_callback_answer(self.puzzles[2], 200)
 
 
-class FileUploadTests(EventTestCase):
+class FileTests(EventTestCase):
     def setUp(self):
         self.eventfile = EventFileFactory()
         self.user = UserFactory()
