@@ -98,8 +98,6 @@ class EpisodeSequenceTests(EventTestCase):
 
 
 class EventWinningTests(EventTestCase):
-    fixtures = ["teams_test"]
-
     def setUp(self):
         self.ep1 = EpisodeFactory(winning=True)
         self.ep2 = EpisodeFactory(winning=False)
@@ -373,23 +371,20 @@ class ProgressSignalTests(EventTestCase):
                          'Non-unlocking guess resulted in a TeamUnlock being created')
 
     def test_start_times_recorded_correctly(self):
-        self.puzzle = PuzzleFactory()
-        self.episode = self.puzzle.episode
-        self.event = self.episode.event
-        self.user = TeamMemberFactory(team__at_event=self.event)
+        puzzle = PuzzleFactory()
 
         self.client.force_login(self.user)
 
-        response = self.client.get(self.puzzle.get_absolute_url())
+        response = self.client.get(puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
 
-        first_time = TeamPuzzleProgress.objects.get().start_time
+        first_time = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=self.team).start_time
         self.assertIsNot(first_time, None, msg='Start time is set on first access to a puzzle')
 
-        response = self.client.get(self.puzzle.get_absolute_url())
+        response = self.client.get(puzzle.get_absolute_url())
         self.assertEqual(response.status_code, 200, msg='Puzzle is accessible on absolute url')
 
-        second_time = TeamPuzzleProgress.objects.get().start_time
+        second_time = TeamPuzzleProgress.objects.get(puzzle=puzzle, team=self.team).start_time
         self.assertEqual(first_time, second_time, msg='Start time does not alter on subsequent access')
 
 
