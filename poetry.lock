@@ -420,13 +420,24 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "django-formtools"
+version = "2.2"
+description = "A set of high-level abstractions for Django forms"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+Django = ">=1.11"
+
+[[package]]
 name = "django-fullclean"
 version = "0.0.4"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
-develop = false
+develop = true
 
 [package.dependencies]
 django = "*"
@@ -435,7 +446,6 @@ django = "*"
 type = "git"
 url = "https://github.com/riconnon/django-fullclean.git"
 reference = "0.0.4+whitelist"
-resolved_reference = "a789c23ff13c52dc061b08c9215e57c909260b24"
 
 [[package]]
 name = "django-nested-admin"
@@ -456,13 +466,12 @@ description = "Allows Django models to be ordered and provides a simple admin in
 category = "main"
 optional = false
 python-versions = "*"
-develop = false
+develop = true
 
 [package.source]
 type = "git"
 url = "https://github.com/fish-face/django-ordered-model.git"
 reference = "8a2908472b7bfbedb530a845f6c18fc86da7b750"
-resolved_reference = "8a2908472b7bfbedb530a845f6c18fc86da7b750"
 
 [[package]]
 name = "django-prometheus"
@@ -1331,7 +1340,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.9"
-content-hash = "6690a99a02542da0197fb1860c02c6cb6da5742a1cd2013e60b44f40a513226c"
+content-hash = "23c84c1abe94a555229708e4608c7780c64325ca651aa41fd6e08582b3ec4f0f"
 
 [metadata.files]
 aioredis = [
@@ -1564,6 +1573,10 @@ django-environ = [
 django-extensions = [
     {file = "django-extensions-3.1.1.tar.gz", hash = "sha256:674ad4c3b1587a884881824f40212d51829e662e52f85b012cd83d83fe1271d9"},
     {file = "django_extensions-3.1.1-py3-none-any.whl", hash = "sha256:9507f8761ee760748938fd8af766d0608fb2738cf368adfa1b2451f61c15ae35"},
+]
+django-formtools = [
+    {file = "django-formtools-2.2.tar.gz", hash = "sha256:c5272c03c1cd51b2375abf7397a199a3148a9fbbf2f100e186467a84025d13b2"},
+    {file = "django_formtools-2.2-py2.py3-none-any.whl", hash = "sha256:304fa777b8ef9e0693ce7833f885cb89ba46b0e46fc23b01176900a93f46742f"},
 ]
 django-fullclean = []
 django-nested-admin = [

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+{% load bootstrap4 %}
+
+{% block page_header %}
+<h1>Hunter2 Setup</h1>
+{% endblock %}
+
+{% block content %}
+	<div class="col-md-6 mx-auto">
+		<div class="card">
+			<form action="" method="POST">
+				<div class="card-header">
+			        <ol id="setup-progress">
+				        {% for step in wizard.steps.all %}
+					        <li {% if wizard.steps.step1 >= forloop.counter %}class="active" {% endif %}id="{{ step }}"><strong>{{ step | title }}</strong></li>
+				        {% endfor %}
+			        </ol>
+				</div>
+				<div class="card-body clearfix">
+					<div class="">
+						{% csrf_token %}
+						{{ wizard.management_form }}
+						{% if wizard.form.forms %}
+						    {{ wizard.form.management_form }}
+						    {% for form in wizard.form.forms %}
+							    {% bootstrap_form form placeholder="testff" %}
+						    {% endfor %}
+						{% else %}
+							{% bootstrap_form wizard.form %}
+						{% endif %}
+
+						{% buttons %}
+							{% if wizard.steps.prev %}
+								<!--<button name="wizard_goto_step" class="btn btn-secondary" type="submit" value="{{ wizard.steps.first }}">{% trans "first step" %}</button>-->
+								<button name="wizard_goto_step" class="btn btn-secondary" formnovalidate value="{{ wizard.steps.prev }}">{% trans "Previous" %}</button>
+							{% endif %}
+							<button name="wizard_goto_step" class="btn btn-primary float-right" type="submit">{% trans "Next" %}</button>
+						{% endbuttons %}
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+{% endblock %}

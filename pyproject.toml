@@ -22,6 +22,7 @@ django-debug-toolbar = "==3.2"
 django-enumfields = "2.0.0"
 django-environ = "0.4.5"
 django-extensions = "==3.1.1"
+django-formtools = "^2.2"
 django-fullclean = { git = "https://github.com/riconnon/django-fullclean.git", tag = "0.0.4+whitelist" }
 django-nested-admin = "==3.3.3"
 django-ordered-model = { git = "https://github.com/fish-face/django-ordered-model.git", rev = "8a2908472b7bfbedb530a845f6c18fc86da7b750" }

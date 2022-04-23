@@ -13,7 +13,7 @@
 
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views.defaults import page_not_found, server_error, bad_request, permission_denied
 from django.views.csrf import csrf_failure
 from django_prometheus.urls import urlpatterns as prometheus_patterns
@@ -21,9 +21,14 @@ from django_prometheus.urls import urlpatterns as prometheus_patterns
 from accounts.urls import urlpatterns as accounts_patterns
 
 from . import settings
-from .views import DefaultAdminView, DefaultIndexView, PrivacyView
+from .views import DefaultAdminView, DefaultIndexView, PrivacyView, SETUP_FORMS, SetupWizardView
+
+
+SETUP_WIZARD = SetupWizardView.as_view(SETUP_FORMS, url_name='step', done_step_name='complete')
 
 urlpatterns = [
+    re_path(r'^setup/(?P<step>.+)/$', SETUP_WIZARD, name='step'),
+    path('setup/', SETUP_WIZARD, name='contact'),
     path('admin/', DefaultAdminView.as_view(), name='admin'),
     path('', DefaultIndexView.as_view(), name='index'),
     path('privacy', PrivacyView.as_view(), name='privacy'),

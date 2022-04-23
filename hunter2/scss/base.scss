@@ -174,3 +174,91 @@ main {
         }
     }
 }
+
+$setup_circle_radius: 50px;
+$setup_line_height: 10px;
+$setup_active_color: #673ab7;
+$setup_inactive_color: #e0e0e0;
+$setup_active_text_color: #ffffff;
+$setup_inactive_text_color: #aaaaaa;
+
+#setup-progress {
+    display: flex;
+    padding: 0;
+    margin-top:10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    color: #aaaaaa;
+    text-align: center;
+}
+
+#setup-progress .active {
+    color: $setup_active_color;
+}
+
+#setup-progress li {
+    flex: 1;
+    list-style-type: none;
+    font-size: 15px;
+    float: left;
+    position: relative;
+    font-weight: 400;
+}
+
+#setup-progress li:before {
+    content: '';
+}
+
+#setup-progress #account:before {
+    content: "A";
+}
+
+#setup-progress #personal:before {
+    content: "B";
+}
+
+#setup-progress #payment:before {
+    content: "C";
+}
+
+#setup-progress #confirm:before {
+    content: "D";
+}
+
+#setup-progress li:before {
+    width: $setup_circle_radius;
+    height: $setup_circle_radius;
+    line-height: $setup_circle_radius - (2 * 2px);
+    display: block;
+    font-size: 20px;
+    border-radius: 50%;
+    margin: auto;
+    padding: 2px;
+    background: $setup_inactive_color;
+}
+
+#setup-progress li:after {
+    content: '';
+    width: 100%;
+    height: $setup_line_height;
+    position: absolute;
+    left: 0;
+    top: ($setup_circle_radius - $setup_line_height) / 2;
+    //z-index: -1;
+    background: $setup_inactive_color;
+}
+
+#setup-progress li:last-child:after {
+    border-top-right-radius: $setup_line_height;
+    border-bottom-right-radius: $setup_line_height;
+}
+
+#setup-progress li:first-child:after {
+    border-top-left-radius: $setup_line_height;
+    border-bottom-left-radius: $setup_line_height;
+}
+
+#setup-progress li.active:before,
+#setup-progress li.active:after {
+    background: $setup_active_color;
+}
