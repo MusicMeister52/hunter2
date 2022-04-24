@@ -36,7 +36,8 @@ def announcements(request):
             no_seat = models.Announcement(
                 id='no_seat',
                 title='No Seat Set',
-                message="You don't have a seat set at this event. Set your seat on the account page.",
+                message="You don't have a seat set at this event so we can find you if you're stuck. "
+                        f"Please set your seat on the <a href={account_href}>account page</a>.",
                 type=models.AnnouncementType.WARNING,
             )
             no_seat.special = True
@@ -46,8 +47,8 @@ def announcements(request):
                 id='no_contact',
                 title='Can we contact you?',
                 message="We'd like to contact you occasionally about this and future events. "
-                        f"Please let us know whether we can on the <a href={account_href}>account page</a>",
-                type=models.AnnouncementType.WARNING,
+                        f"Please let us know whether we can on the <a href={account_href}>account page</a>.",
+                type=models.AnnouncementType.INFO,
             )
             no_contact.special = True
             current_announcements = list(current_announcements) + [no_contact]
