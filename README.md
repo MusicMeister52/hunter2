@@ -16,9 +16,9 @@ Ensure you have recent `docker-compose`, clone the repository, link the developm
 ln -s docker-compose.dev.yml docker-compose.yml
 ```
 
-Configure some hosts file entries:
+Configure some hosts file entries (not always required depending on your system):
 ```shell
-echo 127.0.0.1 hunter2.local www.hunter2.local dev.hunter2.local >> /etc/hosts
+echo 127.0.0.1 hunter2.localhost www.hunter2.localhost dev.hunter2.localhost >> /etc/hosts
 ```
 
 Build and launch containers:
