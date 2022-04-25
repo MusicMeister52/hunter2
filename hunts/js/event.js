@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
     item.addEventListener('shown.bs.tab', function (event) {
       const targetPaneID = event.target.dataset.bsTarget
       history.pushState({}, '', targetPaneID)
-      window.document.title = event.target.text + ' - ' + eventTitle
+      window.document.title = event.target.innerHTML.trim() + ' - ' + eventTitle
     })
   })
 
