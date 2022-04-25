@@ -26,6 +26,6 @@ document.addEventListener('DOMContentLoaded', function () {
   })
 
   const hash = window.location.hash ? window.location.hash : '#episode-1'
-  const tab = new Tab(document.getElementById(`${hash.substr(1)}-tab`))
+  const tab = new Tab(document.getElementById(`${hash.substring(1)}-tab`))
   tab.show()
 })
