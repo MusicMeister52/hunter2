@@ -1,7 +1,5 @@
 version: '3.5'
 
 services:
-    app:
-        entrypoint: []
-        environment:
-            - H2_DATABASE_USER=postgres
+  app:
+    entrypoint: []

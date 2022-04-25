@@ -40,6 +40,7 @@ services:
       - db
       - redis
     environment:
+      - H2_DATABASE_USER=postgres
       - H2_DATABASE_PASSWORD=hunter2
       - H2_DEBUG=True
       - H2_DOMAIN
