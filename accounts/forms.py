@@ -62,10 +62,10 @@ class UserSignupForm(forms.ModelForm):
 
     def clean_captcha(self):
         if self.cleaned_data['captcha'].lower() != Configuration.get_solo().captcha_answer.lower():
-            raise ValidationError('You must correctly answer this question')
+            raise ValidationError('You must correctly answer this question.')
 
     def signup(self, request, user):
         if 'privacy' in self.fields and request.POST['privacy'] != "on":
-            raise SuspiciousOperation("You must accept the privacy policy")
+            raise SuspiciousOperation("You must accept the privacy policy.")
         user.contact = request.POST['contact']
         user.save()
