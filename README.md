@@ -45,7 +45,7 @@ Documentation
 =============
 
 More complete documentation for hunt organisers and potential contributors is available at
-[https://docs.hunter2.app](docs.hunter2.app)
+[docs.hunter2.app](https://docs.hunter2.app)
 
 Development
 ===========
