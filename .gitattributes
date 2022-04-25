@@ -1,8 +1,8 @@
+* text eol=lf
+
 *.gif filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
 *.ico filter=lfs diff=lfs merge=lfs -text
 *.ogg filter=lfs diff=lfs merge=lfs -text
 *.mp3 filter=lfs diff=lfs merge=lfs -text
-hunter2/static/ping.ogg filter=lfs diff=lfs merge=lfs -text
-hunter2/static/ping.mp3 filter=lfs diff=lfs merge=lfs -text
