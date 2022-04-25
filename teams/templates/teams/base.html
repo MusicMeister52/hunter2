@@ -1,9 +1,13 @@
 {% extends "events/base.html" %}
 
 {% block topbar_right %}{% spaceless %}
-	{% if is_admin %}
+	{% if is_admin or user.is_superuser %}
 	{% block topbar_admin %}
-		<li class="nav-item"><a class="btn btn-secondary" href="{% url 'admin_index' %}">Admin Site</a></li>
+		{% if is_admin %}
+			<li class="nav-item"><a class="btn btn-secondary" href="{% url 'admin_index' %}">Admin Site</a></li>
+		{% elif user.is_superuser %}
+			<li class="nav-item"><a class="btn btn-primary" href="{% url 'admin:index' %}">Super Admin</a></li>
+		{% endif %}
 	{% endblock %}
 	{% endif %}
 	{% if event %}
