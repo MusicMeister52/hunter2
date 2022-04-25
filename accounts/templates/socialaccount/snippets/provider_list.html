@@ -3,31 +3,22 @@
 {% load wwwize %}
 
 {% get_providers as socialaccount_providers %}
-
 {% for provider in socialaccount_providers %}
-{% if provider.id == "openid" %}
-{% for brand in provider.get_brands %}
-<li>
-{% spaceless %}
-{% captureas login_url %}{% provider_login_url provider.id openid=brand.openid_url process=process next='/' %}{% endcaptureas %}
-  <a title="{{brand.name}}" 
-     class="socialaccount_provider {{provider.id}} {{brand.id}}" 
-     href="{{ login_url | wwwize:request }}"
-     >
-{% if brand.id == "steam" %}
-<img src="https://steamcommunity-a.akamaihd.net/public/images/signinthroughsteam/sits_01.png" alt="{{brand.name}}" />
-{% else %}
-{{brand.name}}
-{% endif %}
-  </a>
-{% endspaceless %}
-</li>
-{% endfor %}
-{% else %}
-{% captureas login_url %}{% provider_login_url provider.id process=process scope=scope auth_params=auth_params %}{% endcaptureas %}
-<li>
-  <a title="{{provider.name}}" class="socialaccount_provider {{provider.id}}" 
-     href="{{ login_url | wwwize:request }}">{{provider.name}}</a>
-</li>
-{% endif %}
+	{% if provider.id == "openid" %}
+		{% for brand in provider.get_brands %}
+			<li>
+				{% spaceless %}
+				{% captureas login_url %}{% provider_login_url provider.id openid=brand.openid_url process=process next='/' %}{% endcaptureas %}
+				<a title="{{brand.name}}" class="btn btn-dark socialaccount_provider {{provider.id}} {{brand.id}}" href="{{ login_url | wwwize:request }}">
+					{{ brand.name }}
+				</a>
+				{% endspaceless %}
+			</li>
+		{% endfor %}
+	{% else %}
+		{% captureas login_url %}{% provider_login_url provider.id process=process scope=scope auth_params=auth_params %}{% endcaptureas %}
+		<li>
+		  <a title="{{provider.name}}" class="socialaccount_provider {{provider.id}}" href="{{ login_url | wwwize:request }}">{{provider.name}}</a>
+		</li>
+	{% endif %}
 {% endfor %}
