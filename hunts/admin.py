@@ -68,6 +68,7 @@ class PuzzleFileInline(ObjectPermissionsInlineModelAdminMixin, NestedTabularInli
 
 class SolutionFileInline(ObjectPermissionsInlineModelAdminMixin, NestedTabularInline):
     model = models.SolutionFile
+    fields = ('file', 'url_path', 'slug')
     extra = 0
 
 
