@@ -308,7 +308,7 @@ function newUnlock(content) {
   }
   let unlockInfo = this.unlocks.get(content.unlock_uid)
   unlockInfo.unlock = content.unlock
-  unlockInfo.guesses.add(encode(content.guess))
+  unlockInfo.guesses.add(content.guess)
 }
 
 function changeUnlock(content) {
@@ -323,11 +323,10 @@ function deleteUnlockGuess(content) {
     throw `WebSocket deleted guess for invalid unlock: ${content.unlock_uid}`
   }
   let unlock = this.unlocks.get(content.unlock_uid)
-  let encodedGuess = encode(content.guess)
-  if (!(unlock.guesses.has(encodedGuess))) {
+  if (!(unlock.guesses.has(content.guess))) {
     throw `WebSocket deleted invalid guess (can happen if team made identical guesses): ${content.guess}`
   }
-  unlock.guesses.delete(encodedGuess)
+  unlock.guesses.delete(content.guess)
   if (unlock.guesses.size === 0) {
     this.unlocks.delete(content.unlock_uid)
   }
