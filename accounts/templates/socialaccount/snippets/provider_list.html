@@ -10,7 +10,7 @@
 				{% spaceless %}
 				{% captureas login_url %}{% provider_login_url provider.id openid=brand.openid_url process=process next='/' %}{% endcaptureas %}
 				<a title="{{brand.name}}" class="btn btn-dark socialaccount_provider {{provider.id}} {{brand.id}}" href="{{ login_url | wwwize:request }}">
-					{{ brand.name }}
+					<i class="bi bi-steam"></i> {{ brand.name }}
 				</a>
 				{% endspaceless %}
 			</li>
