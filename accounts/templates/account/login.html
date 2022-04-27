@@ -24,13 +24,20 @@
 						<form class="login" method="POST" action="{% url 'account_login' %}">
 							{% url 'account_reset_password' as reset_url %}
 							{% csrf_token %}
-							{% bootstrap_form form layout="floating" %}
+							{% bootstrap_form form layout="floating" exclude="remember" %}
 							{% if redirect_field_value %}
 								<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
 							{% endif %}
-							<div class="d-grid gap-2">
-								{% bootstrap_button _("Sign In") button_class="btn-primary" button_type="submit" %}
-								{% bootstrap_button _("Forgot Password?") button_class="btn-secondary" href=reset_url %}
+							<div class="row">
+								<div class="col">
+									{% bootstrap_field form.remember %}
+								</div>
+								<div class="col text-end" aria-label="Reset password">
+									<a href="{{ reset_url }}">{% trans "Forgot Password?" %}</a>
+								</div>
+							</div>
+							<div class="d-grid">
+								{% bootstrap_button _("Sign In") button_class="btn-primary btn-lg" button_type="submit" %}
 							</div>
 						</form>
 					</div>
@@ -40,7 +47,7 @@
 							<h3 class="card-title">Third Party</h3>
 							<p class="card-subtitle text-muted">
 								{% blocktrans with site.name as site_name %}
-									Use one of your existing third party accounts:
+									Use one of your existing third party accounts
 								{% endblocktrans %}
 							</p>
 							<div class="socialaccount_ballot my-3"">
