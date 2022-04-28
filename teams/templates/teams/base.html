@@ -6,7 +6,7 @@
 		{% if is_admin %}
 			<li class="nav-item"><a class="btn btn-secondary" href="{% url 'admin_index' %}">Admin Site</a></li>
 		{% elif user.is_superuser %}
-			<li class="nav-item"><a class="btn btn-primary" href="{% url 'admin:index' %}">Super Admin</a></li>
+			<li class="nav-item"><a class="btn btn-secondary" href="{% url 'admin:index' %}">Super Admin</a></li>
 		{% endif %}
 	{% endblock %}
 	{% endif %}
