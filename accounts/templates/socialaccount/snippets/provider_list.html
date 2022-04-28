@@ -1,24 +1,25 @@
 {% load captureas %}
 {% load socialaccount %}
 {% load wwwize %}
+{% load django_bootstrap5 %}
 
 {% get_providers as socialaccount_providers %}
 {% for provider in socialaccount_providers %}
+	<li>
 	{% if provider.id == "openid" %}
 		{% for brand in provider.get_brands %}
-			<li>
-				{% spaceless %}
-				{% captureas login_url %}{% provider_login_url provider.id openid=brand.openid_url process=process next='/' %}{% endcaptureas %}
-				<a title="{{brand.name}}" class="btn btn-dark socialaccount_provider {{provider.id}} {{brand.id}}" href="{{ login_url | wwwize:request }}">
-					<i class="bi bi-steam"></i> {{ brand.name }}
+			{% spaceless %}
+			{% captureas login_url %}{% provider_login_url provider.id openid=brand.openid_url process=process next='/' %}{% endcaptureas %}
+				<a title="{{brand.name}}" class="btn btn-dark btn-lg w-100 socialaccount_provider {{provider.id}} {{brand.id}}" href="{{ login_url | wwwize:request }}">
+					<small>Sign in with</small> <i class="bi bi-{{brand.id}} ms-1"></i> {{ brand.name }}
 				</a>
-				{% endspaceless %}
-			</li>
+			{% endspaceless %}
 		{% endfor %}
 	{% else %}
 		{% captureas login_url %}{% provider_login_url provider.id process=process scope=scope auth_params=auth_params %}{% endcaptureas %}
-		<li>
-		  <a title="{{provider.name}}" class="socialaccount_provider {{provider.id}}" href="{{ login_url | wwwize:request }}">{{provider.name}}</a>
-		</li>
+		<a title="{{provider.name}}" class="btn btn-dark btn-lg w-100 socialaccount_provider {{provider.id}}" href="{{ login_url | wwwize:request }}">
+			<small>Sign in with</small> <i class="bi bi-{{provider.id}} ms-1"></i> {{ provider.name }}
+		</a>
 	{% endif %}
+	</li>
 {% endfor %}

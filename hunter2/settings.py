@@ -361,3 +361,46 @@ PROMETHEUS_EXPORT_MIGRATIONS = False
 SILENCED_SYSTEM_CHECKS = (
     'gdpr_assist.E001',  # prevents gdpr_assist from requiring the database when apps are loaded
 )
+
+if False:
+    INSTALLED_APPS = (
+        # gdpr_assist needs to be loaded before our models are, in order to do process PrivacyMeta
+        'gdpr_assist',
+        # Our apps first to allow us to override third party templates
+        # These are in dependency order
+        'accounts',
+        'events',
+        'hunter2',
+        # Third party apps
+        # These are in alphabetical order
+        'allauth',
+        'allauth.account',
+        'allauth.socialaccount',
+        'allauth.socialaccount.providers.openid',
+        'analytical',
+        'channels',
+        'dal',
+        'dal_select2',
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.sites',
+        'django.contrib.staticfiles',
+        'django_bootstrap5',
+        'django_extensions',
+        'django_fullclean',
+        'django_postgresql_dag',
+        'django_prometheus',
+        'django_tenants',
+        'nested_admin',
+        'ordered_model',
+        'rules',
+        'solo',
+        'webpack_loader',
+        'silk',
+        'teams',
+        'hunts',
+        'django.contrib.contenttypes',
+    )

@@ -45,27 +45,27 @@
 	]
 	</script>
 	{% if sentry_dsn %}
-	<script>window.sentry_dsn = '{{ sentry_dsn }}'</script>
-	{% render_bundle 'sentry' 'js' %}
+		<script>window.sentry_dsn = '{{ sentry_dsn }}'</script>
+		{% render_bundle 'sentry' 'js' %}
 	{% endif %}
 
 	{% block script %}
-	{% render_bundle 'hunter2' 'js' attrs='defer' %}
+		{% render_bundle 'hunter2' 'js' attrs='defer' %}
 	{% endblock %}
 
 	{% if site_script %}
-	<script defer>
-		{{ site_script }}
-	</script>
+		<script defer>
+			{{ site_script }}
+		</script>
 	{% endif %}
 	{% if site_script_file %}
-	<script src="{{ site_script_file }}" defer></script>
+		<script src="{{ site_script_file }}" defer></script>
 	{% endif %}
 
 	{% cache 300 icons %}
-	{% for icon in icons %}
-	<link rel="icon" href="{{ icon.url }}" sizes="{% if icon.size == 0 %}any{% else %}{{ icon.size }}x{{ icon.size }}{% endif %}" />
-	{% endfor %}
+		{% for icon in icons %}
+			<link rel="icon" href="{{ icon.url }}" sizes="{% if icon.size == 0 %}any{% else %}{{ icon.size }}x{{ icon.size }}{% endif %}" />
+		{% endfor %}
 	{% endcache %}
 
 	{% analytical_head_bottom %}
@@ -95,10 +95,10 @@
 				{% block topbar_right %}
 					{% if user.is_authenticated %}
 						<li class="nav-item"><a class="nav-link" href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
-						<li class="nav-item"><a id="logoutLink" class="nav-link" href="#">Logout</a></li>
+						<li class="nav-item"><a id="logoutLink" class="nav-link" href="#">Log out</a></li>
 						<li class="nav-item"><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
 					{% else %}
-						<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Login</a></li>
+						<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Log in / Sign up</a></li>
 					{% endif %}
 				{% endblock %}
 			</ul>
@@ -108,32 +108,34 @@
 	{# Debugging information include #}
 	{% block debug %}{% endblock %}
 
-	{# Annoucements & Javascript Warning #}
-	<aside id="alerts" class="container-fluid pt-3">
-		<noscript>
-			<div class="alert alert-danger" role="alert">
-				<strong>You do not have JavaScript Enabled</strong> JavaScript is required to access and take part in a hunt.
-			</div>
-		</noscript>
-		<div id="alert-list" />
-	</aside>
+	<div class="container py-2">
+		{# Annoucements & Javascript Warning #}
+		<aside id="alerts">
+			<noscript>
+				<div class="alert alert-danger" role="alert">
+					<strong>You do not have JavaScript Enabled</strong> JavaScript is required to access and take part in a hunt.
+				</div>
+			</noscript>
+			<div id="alert-list" />
+		</aside>
 
-	{% comment %}
-	We have two levels of block for the top level elements. Most templates should define {% block page_header %} and {% block content %}.
-	Templates should define {% block header %} and {% block main %} only if they want to override the classes on the <header> and <main> elements.
-	{% endcomment %}
+		{% comment %}
+		We have two levels of block for the top level elements. Most templates should define {% block page_header %} and {% block content %}.
+		Templates should define {% block header %} and {% block main %} only if they want to override the classes on the <header> and <main> elements.
+		{% endcomment %}
 
-	{% block header %}
-	<header class="container pt-3">
-		{% block page_header %}{% endblock page_header %}
-	</header>
-	{% endblock %}
+		{% block header %}
+			<header>
+				{% block page_header %}{% endblock page_header %}
+			</header>
+		{% endblock %}
 
-	{% block main %}
-	<main class="d-flex flex-column flex-grow-1 flex-shrink-0 container pt-3">
-		{% block content %}If you're seeing this, contact the site administrators.{% endblock content %}
-	</main>
-	{% endblock %}
+		{% block main %}
+			<main class="d-flex flex-column flex-grow-1 flex-shrink-0 container pt-2">
+				{% block content %}If you're seeing this, contact the site administrators.{% endblock content %}
+			</main>
+		{% endblock %}
+	</div>
 
 	<footer>
 		<p class="{{ footer_column_class }} small text-muted">Built with <a href="https://gitlab.com/hunter2.app/hunter2">Hunter2</a></p>
