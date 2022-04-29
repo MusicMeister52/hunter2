@@ -1,62 +1,85 @@
 {% extends "teams/base.html" %}
 
 {% load django_bootstrap5 %}
+{% load account %}
+{% user_display user %}
+
+{% block page_header %}
+	<h1>Account Settings</h1>
+{% endblock %}
 
 {% block content %}
-	<h1>Account</h1>
-
 	<div class="row">
-		<div class="col-lg-6 mb-3">
+		<div class="col-lg-3 mb-3">
 			<div class="card">
-				<h2 class="card-header">Update your details</h2>
 				<div class="card-body">
-					<form  action="" method="post">
+					{% if user.picture %}
+						<img class="card-img-top img-fluid" src="{{ user.picture }}" alt="Profile Picture">
+					{% endif %}
+					<h1 class="card-title text-center mt-4">{{ user.get_display_name }}</h1>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-6 col-sm-9 mb-3">
+			<div class="card mb-3">
+				<div class="card-body">
+					<h2 class="card-title">Profile Information</h2>
+					<p class="card-subtitle text-muted">Your public profile information</p>
+					<div class="mb-3 form-floating">
+						<input type="text" name="username" value="{{ user.get_display_name }}" maxlength="150" class="form-control" placeholder="Username" id="id_username" disabled>
+						<label class="form-label" for="id_username">Username</label>
+						<div class="form-text">Contact the admins if you need to change your username</div>
+					</div>
+					<form action="" method="post">
 						{% csrf_token %}
-						{% bootstrap_form user_form layout='horizontal' %}
-						<h3>Details for {{ request.tenant }}</h3>
+						{% bootstrap_form user_form layout='floating' %}
+						<h2 class="card-title">{{ request.tenant }} Details</h2>
+						<p class="card-subtitle text-muted">Settings unique to {{ request.tenant }}</p>
 						{% if attendance_formset %}
-							{% bootstrap_formset attendance_formset layout='horizontal' %}
+							{% bootstrap_formset attendance_formset layout='floating' %}
 						{% endif %}
 						{% bootstrap_button "Update" %}
 					</form>
 				</div>
 			</div>
-		</div>
 
-		<div class="col-lg-6 mb-3">
-			<div class="card">
+			<div class="card mb-3">
 				{% if request.user.has_usable_password %}
-					<h2 class="card-header">Change your password</h2>
 					<div class="card-body">
-						<form action="{% url 'account_change_password' %}" method="post">
-							{% csrf_token %}
-							{% bootstrap_form password_form layout='horizontal' %}
-							{% bootstrap_button "Change Password" %}
-						</form>
+						<h3 class="card-title">Update Password</h3>
+						<div class="card-text">
+							<form action="{% url 'account_change_password' %}" method="post">
+								{% csrf_token %}
+								{% bootstrap_form password_form layout='floating' %}
+								{% bootstrap_button "Change Password" %}
+							</form>
+						</div>
 					</div>
 				{% else %}
-					<h2 class="card-title">Set a password</h2>
 					<div class="card-body">
+						<h6 class="card-title">Set a password</h6>
 						<form action="{% url 'account_set_password' %}?next={{ request.get_full_path | urlencode }}" method="post">
 							{% csrf_token %}
-							{% bootstrap_form password_form layout='horizontal' %}
+							{% bootstrap_form password_form layout='floating' %}
 							{% bootstrap_button "Set Password" %}
 						</form>
 					</div>
 				{% endif %}
 			</div>
-		</div>
 
-		<div class="col-lg-6 mb-3">
 			<div class="card">
-				<h2 class="card-header">Steam Account</h2>
 				<div class="card-body">
+					<h2 class="card-title">Steam Account</h2>
 					{% if steam_account %}
-						<p>Your account is linked to the following Steam account</p>
-						<a href="{{ steam_account }}">{{ steam_account }}</a>
+						<p class="card-subtitle text-muted">Your account is linked to the following Steam account</p>
+						<p class="card-text">
+							<a title="{{ steam_account}}" class="btn btn-dark btn text-break socialaccount_provider steam" href="{{ steam_account }}">
+								<i class="bi bi-steam"></i> {{ steam_account }}
+							</a>
+						</p>
 					{% else %}
-						<p>Link your Steam account using the link below</p>
-
+						<p class="card-subtitle text-muted">Link your account to a Steam Account</p>
 						<div class="socialaccount_ballot">
 							<ul class="socialaccount_providers">
 								{% include "socialaccount/snippets/provider_list.html" with process="connect" %}
