@@ -1,0 +1,12 @@
+@import "~bootstrap";
+
+$discord-color:#5865F2;
+$steam-color:#000000;
+
+.btn.socialaccount_provider.steam {
+    @include button-variant($steam-color, $steam-color);
+}
+
+.btn.socialaccount_provider.discord {
+   @include button-variant($discord-color, $discord-color);
+}

@@ -3,6 +3,12 @@
 {% load i18n %}
 {% load account socialaccount %}
 {% load django_bootstrap5 %}
+{% load render_bundle from webpack_loader %}
+
+{% block style %}
+{{ block.super }}
+{% render_bundle 'accounts_providers' 'css' %}
+{% endblock %}
 
 {% block head_title %}{% trans "Sign In" %}{% endblock %}
 
