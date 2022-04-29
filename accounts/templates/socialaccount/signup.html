@@ -6,17 +6,17 @@
 {% block head_title %}{% trans "Sign Up" %}{% endblock %}
 
 {% block content %}
-	{% with provider=account.get_provider brand=account.get_brand site_name=site.name %}
+	{% with provider=account.get_provider site_name=site.name %}
 	<div class="row d-flex justify-content-center align-items-center">
 		<div class="card col-12 col-md-8 col-lg-6 col-xl-5">
 			<div class="card-body">
 				<div class="card-text text-center">
-					<i class="bi bi-steam" style="font-size: 5rem"></i>
+					<i class="bi bi-{{provider.id}} text-center" style="font-size: 5rem"></i>
 				</div>
 				<h1 class="card-title text-center">Sign Up with {{provider_name}}</h1>
 				<p class="card-subtitle text-muted">
 					{% blocktrans %}
-						Please complete to use {{provider_name}} to log in to {{site_name}}:
+						Please complete to use {{provider.name}} to log in to {{site_name}}:
 					{% endblocktrans %}
 				</p>
 				<div class="mt-3">

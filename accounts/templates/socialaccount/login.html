@@ -6,25 +6,24 @@
 {% block head_title %}{% trans "Sign Up" %}{% endblock %}
 
 {% block content %}
-	{% with provider.name as provider_name %}
 	<div class="row d-flex justify-content-center align-items-center">
 		<div class="card col-12 col-md-8 col-lg-6 col-xl-5">
-			<div class="card-img-top text-center">
-				<i class="bi bi-steam" style="font-size: 5rem"></i>
-			</div>
 			<div class="card-body">
+				<div class="card-text text-center">
+					<i class="bi bi-{{ provider.id }}" style="font-size: 5rem"></i>
+				</div>
 				<h1 class="card-title text-center">
 					{% if process == "connect" %}
-						{% blocktrans %}Connect to {{ provider_name }}{% endblocktrans %}
+						{% blocktrans %}Connect to {{ provider.name }}{% endblocktrans %}
 					{% else %}
-						{% blocktrans %}Connect to {{ provider_name }}{% endblocktrans %}
+						{% blocktrans %}Connect to {{ provider.name }}{% endblocktrans %}
 					{% endif %}
 				</h1>
 				<p class="card-subtitle text-muted">
 					{% if process == "connect" %}
-						{% blocktrans %}You are about to connect a new third party account from {{ provider_name }}.{% endblocktrans %}
+						{% blocktrans %}You are about to connect a new third party account from {{ provider.name }}.{% endblocktrans %}
 					{% else %}
-						{% blocktrans %}You are about to sign in using a third party account from {{ provider_name }}.{% endblocktrans %}
+						{% blocktrans %}You are about to sign in using a third party account from {{ provider.name }}.{% endblocktrans %}
 					{% endif %}
 				</p>
 				<div class="mt-3">
@@ -36,5 +35,4 @@
 			</div>
 		</div>
 	</div>
-	{% endwith %}
 {% endblock %}
