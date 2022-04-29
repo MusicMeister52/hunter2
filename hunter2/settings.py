@@ -144,7 +144,9 @@ SHARED_APPS = (
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.openid',
+    #'allauth.socialaccount.providers.openid',
+    'allauth.socialaccount.providers.steam',
+    'allauth.socialaccount.providers.discord',
     'analytical',
     'channels',
     'dal',
@@ -277,16 +279,16 @@ SOCIALACCOUNT_AUTO_SIGNUP = False
 
 SOCIALACCOUNT_EMAIL_REQUIRED = False
 
-SOCIALACCOUNT_PROVIDERS = {
-    'openid': {
-        'SERVERS': [{
-            'id': 'steam',
-            'name': 'Steam',
-            'openid_url': 'https://steamcommunity.com/openid',
-            'stateless': True,
-        }]
-    }
-}
+# SOCIALACCOUNT_PROVIDERS = {
+#     'openid': {}
+#         'SERVERS': [{
+#             'id': 'steam',
+#             'name': 'Steam',
+#             'openid_url': 'https://steamcommunity.com/openid',
+#             'stateless': True,
+#         }]
+#     },
+# }
 
 TEMPLATES = [
     {
@@ -376,7 +378,9 @@ if False:
         'allauth',
         'allauth.account',
         'allauth.socialaccount',
-        'allauth.socialaccount.providers.openid',
+        'allauth.socialaccount.providers.openid'
+        'allauth.socialaccount.providers.steam',
+        'allauth.socialaccount.providers.discord',
         'analytical',
         'channels',
         'dal',
