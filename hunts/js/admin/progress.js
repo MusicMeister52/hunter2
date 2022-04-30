@@ -2,9 +2,11 @@ import 'bootstrap/js/dist/button'
 import 'bootstrap/js/dist/collapse'
 import ProgressState from './state.vue'
 import {DateTime, Duration} from 'luxon'
+import { ElSlider } from 'element-plus'
 
 export default {
   components: {
+    'el-slider': ElSlider,
     'progress-state': ProgressState,
   },
   computed: {
@@ -65,7 +67,7 @@ export default {
       if (this.puzzles.length === 0) {
         return Infinity
       }
-      return Math.max(
+      let oldest = Math.max(
         ...this.team_progress.map(team => {
           let val = Math.max(...team.progress.filter(
             puzzle_progress => puzzle_progress.latest_guess !== null,
@@ -75,13 +77,15 @@ export default {
           if (val === Infinity) return 0
           return val
         }),
+        0,  // If the above set was empty we want to return 0, not -Infinity
       )
+      return oldest
     },
     max_total_guesses: function () {
       if (this.puzzles.length === 0) {
         return Infinity
       }
-      return Math.max(
+      let total = Math.max(
         ...this.team_progress.map(team => team.progress.map(
           puzzle_progress => puzzle_progress.guesses,
         ).filter(
@@ -89,6 +93,11 @@ export default {
         ).reduce((a, b) => a + b, 0),
         ),
       )
+      // Math.max returns -Infinity if there are no inputs
+      if (total === -Infinity) {
+        return 0
+      }
+      return total
     },
   },
   created: function() {

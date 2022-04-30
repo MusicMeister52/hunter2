@@ -19,8 +19,9 @@ import durationFilters from './human-duration'
 import {Duration} from 'luxon'
 import RobustWebSocket from 'robust-websocket'
 import {encode} from 'html-entities'
-import Vue from 'vue'
+import {createApp, reactive} from 'vue'
 import Cookies from 'js-cookie'
+import * as Sentry from '@sentry/vue'
 
 import 'hunter2/js/base'
 
@@ -255,27 +256,105 @@ function shouldNotifyAnnouncement(announcement) {
   case 'NONE':
     return false
   case 'CREATE':
-    return !window.alertList.announcementExists(announcement.announcement_id)
+    return !window.announcements.has(announcement.announcement_id)
   case 'UPDATE':
     return true
   }
 }
 
+function addAnnouncement(announcement) {
+  announcement = {dismissible: false, ...announcement}
+  this.set(announcement.announcement_id, {
+    text: announcement.message,
+    title: announcement.title,
+    variant: announcement.variant,
+    dismissible: announcement.dismissible,
+  })
+}
+
+function deleteAnnouncement(announcement) {
+  if (!this.has(announcement.announcement_id)) {
+    throw `Deleted invalid announcement: ${announcement.announcement_id}`
+  }
+  this.delete(announcement.announcement_id)
+}
+
+function newHint(content) {
+  if (content.depends_on_unlock_uid === null) {
+    this.hints.set(content.hint_uid, {'time': content.time, 'hint': content.hint})
+  } else {
+    if (!(this.unlocks.has(content.depends_on_unlock_uid))) {
+      this.createBlankUnlock(content.depends_on_unlock_uid)
+    }
+    this.unlocks.get(content.depends_on_unlock_uid).hints.set(content.hint_uid, {'time': content.time, 'hint': content.hint})
+  }
+}
+
+function deleteHint(content) {
+  if (!(this.hints.has(content.hint_uid) || (this.unlocks.has(content.depends_on_unlock_uid) &&
+    this.unlocks.get(content.depends_on_unlock_uid).hints.has(content.hint_uid)))) {
+    throw `WebSocket deleted invalid hint: ${content.hint_uid}`
+  }
+  if (content.depends_on_unlock_uid === null) {
+    this.hints.delete(content.hint_uid)
+  } else {
+    this.unlocks.get(content.depends_on_unlock_uid).hints.delete(content.hint_uid)
+  }
+}
+
+function newUnlock(content) {
+  if (!(this.unlocks.has(content.unlock_uid))) {
+    this.createBlankUnlock(content.unlock_uid)
+  }
+  let unlockInfo = this.unlocks.get(content.unlock_uid)
+  unlockInfo.unlock = content.unlock
+  unlockInfo.guesses.add(encode(content.guess))
+}
+
+function changeUnlock(content) {
+  if (!(this.unlocks.has(content.unlock_uid))) {
+    throw `WebSocket changed invalid unlock: ${content.unlock_uid}`
+  }
+  this.unlocks.get(content.unlock_uid).unlock = content.unlock
+}
+
+function deleteUnlockGuess(content) {
+  if (!(this.unlocks.has(content.unlock_uid))) {
+    throw `WebSocket deleted guess for invalid unlock: ${content.unlock_uid}`
+  }
+  let unlock = this.unlocks.get(content.unlock_uid)
+  let encodedGuess = encode(content.guess)
+  if (!(unlock.guesses.has(encodedGuess))) {
+    throw `WebSocket deleted invalid guess (can happen if team made identical guesses): ${content.guess}`
+  }
+  unlock.guesses.delete(encodedGuess)
+  if (unlock.guesses.size === 0) {
+    this.unlocks.delete(content.unlock_uid)
+  }
+}
+
+function deleteUnlock(content) {
+  if (!(this.unlocks.has(content.unlock_uid))) {
+    throw `WebSocket deleted invalid unlock: ${content.unlock_uid}`
+  }
+  this.unlocks.delete(content.unlock_uid)
+}
+
 function openEventSocket() {
   const socketHandlers = {
-    'announcement': new SocketHandler(window.alertList.addAnnouncement, shouldNotifyAnnouncement, 'New announcement'),
-    'delete_announcement': new SocketHandler(window.alertList.deleteAnnouncement),
+    'announcement': new SocketHandler(addAnnouncement.bind(window.announcements), shouldNotifyAnnouncement, 'New announcement'),
+    'delete_announcement': new SocketHandler(deleteAnnouncement.bind(window.announcements)),
     'new_guesses': new SocketHandler(receivedNewAnswers),
     'old_guesses': new SocketHandler(receivedOldAnswers),
     'solved': new SocketHandler(receivedSolvedMsg, true, 'Puzzle solved'),
-    'new_unlock': new SocketHandler(window.clueList.newUnlock, true, 'New unlock'),
-    'old_unlock': new SocketHandler(window.clueList.newUnlock),
-    'change_unlock': new SocketHandler(window.clueList.changeUnlock, true, 'Updated unlock'),
-    'delete_unlock': new SocketHandler(window.clueList.deleteUnlock),
-    'delete_unlockguess': new SocketHandler(window.clueList.deleteUnlockGuess),
-    'new_hint': new SocketHandler(window.clueList.newHint, true, 'New hint'),
-    'old_hint': new SocketHandler(window.clueList.newHint),
-    'delete_hint': new SocketHandler(window.clueList.deleteHint),
+    'new_unlock': new SocketHandler(newUnlock.bind(window.clueData), true, 'New unlock'),
+    'old_unlock': new SocketHandler(newUnlock.bind(window.clueData)),
+    'change_unlock': new SocketHandler(changeUnlock.bind(window.clueData), true, 'Updated unlock'),
+    'delete_unlock': new SocketHandler(deleteUnlock.bind(window.clueData)),
+    'delete_unlockguess': new SocketHandler(deleteUnlockGuess.bind(window.clueData)),
+    'new_hint': new SocketHandler(newHint.bind(window.clueData), true, 'New hint'),
+    'old_hint': new SocketHandler(newHint.bind(window.clueData)),
+    'delete_hint': new SocketHandler(deleteHint.bind(window.clueData)),
     'error': new SocketHandler(receivedError),
   }
 
@@ -334,16 +413,24 @@ function openEventSocket() {
 window.addEventListener('DOMContentLoaded', function() {
   addSVG()
 
-  window.clueList = new Vue({
-    ...ClueList,
-    data: {
-      hints: window.hints,
-      unlocks: window.unlocks,
-      hintRev: 1,
-      unlockRev: 1,
+  window.clueData = reactive({
+    hints: window.hints,
+    unlocks: window.unlocks,
+
+    createBlankUnlock(uid) {
+      this.unlocks.set(uid, {'unlock': null, 'guesses': new Set(), 'hints': new Map()})
     },
-    el: '#clue-list',
   })
+
+  let clueList = createApp(
+    ClueList,
+    {
+      clueData: window.clueData,
+    },
+  )
+  clueList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
+  Sentry.attachErrorHandler(clueList, { logErrors: true })
+  clueList.mount('#clue-list')
 
   let field = document.getElementById('answer-entry')
   let button = document.getElementById('answer-button')

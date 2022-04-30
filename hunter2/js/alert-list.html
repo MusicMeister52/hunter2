@@ -1,8 +1,8 @@
 <div class="alert-list">
 	<div
-		v-for="announcement in announcements"
+		v-for="[id, announcement] in announcements"
 		:class="'alert alert-' + announcement.variant + (announcement.dismissible ? ' alert-dismissible' : '')"
-		:key="announcement.id"
+		:key="id"
 	>
 		<h2 v-html="announcement.title" /><p v-html="announcement.text" />
 		<button v-if="announcement.dismissible" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" />

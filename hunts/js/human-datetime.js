@@ -1,15 +1,15 @@
 import {format, formatDistanceToNow, isFuture} from 'date-fns'
 
 export default {
-  filters: {
-    formatLocale: function(value) {
-      return format(new Date(value), 'PPPPpppp')
+  props: ['value', 'title'],
+  computed: {
+    localeValue() {
+      return format(new Date(this.value), 'PPPPpppp')
     },
-    formatDistanceToNow: function(value) {
-      const date = new Date(value)
+    distanceToNow() {
+      const date = new Date(this.value)
       const [prefix, suffix] = isFuture(date) ? ['in ', ''] : ['', ' ago']
       return `${prefix}${formatDistanceToNow(date)}${suffix}`
     },
   },
-  props: ['value', 'title'],
 }

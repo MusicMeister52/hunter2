@@ -1,8 +1,12 @@
 const path = require('path')
+const AutoImport = require('unplugin-auto-import/webpack')
 const BundleTracker = require('webpack-bundle-tracker')
+const Components = require('unplugin-vue-components/webpack')
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
+const { DefinePlugin } = require('webpack')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
-const VueLoaderPlugin = require('vue-loader/lib/plugin')
+const { VueLoaderPlugin } = require('vue-loader')
+const { ElementPlusResolver } = require('unplugin-vue-components/resolvers')
 
 module.exports = {
   context: '/opt/hunter2/src',
@@ -46,16 +50,18 @@ module.exports = {
             cacheDirectory: '/var/cache/babel-loader',
             presets: [['@babel/preset-env', { 'targets': 'defaults' }]],
             plugins: [
-              [
-                'component',
-                {
-                  'libraryName': 'element-ui',
-                  'styleLibraryName': 'theme-chalk',
-                },
-              ],
+              'component',
             ],
           },
         },
+      },
+      {
+        test: /\.mjs$/,
+        resolve: {
+          fullySpecified: false,
+        },
+        include: /node_modules/,
+        type: 'javascript/auto',
       },
       {
         test: /\.vue$/,
@@ -99,6 +105,18 @@ module.exports = {
   },
 
   plugins: [
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+    }),
+    require('unplugin-element-plus/webpack')({
+    }),
+    new DefinePlugin({
+      __VUE_OPTIONS_API__: true,
+      __VUE_PROD_DEVTOOLS__: false,
+    }),
     new BundleTracker({filename: './webpack-stats.json'}), // Required for django-webpack-loader
     new MiniCssExtractPlugin({
       filename: '[name]/[contenthash].css',

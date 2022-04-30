@@ -1,17 +1,12 @@
-import { Pagination } from 'element-ui'
-import 'element-ui/lib/theme-chalk/index.css'
-import lang from 'element-ui/lib/locale/lang/en'
-import locale from 'element-ui/lib/locale'
+import { ElPagination } from 'element-plus'
 import URI from 'urijs'
 
 import HumanDateTime from '../human-datetime.vue'
 import HumanDuration from '../human-duration.vue'
 
-locale.use(lang)
-
 export default {
   components: {
-    'el-pagination': Pagination,
+    'el-pagination': ElPagination,
     'human-datetime': HumanDateTime,
     'human-duration': HumanDuration,
   },
