@@ -47,7 +47,7 @@
     "@popperjs/core": "2.11.5",
     "@sentry/browser": "6.19.7",
     "@sentry/integrations": "6.19.7",
-    "@sentry/vue": "6.19.6",
+    "@sentry/vue": "6.19.7",
     "@sgratzl/chartjs-chart-boxplot": "3.7.1",
     "@types/lodash-es": "4.17.6",
     "@vue/compiler-sfc": "3.2.33",
