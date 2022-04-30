@@ -52,7 +52,7 @@ django-gdpr-assist = { git = "https://github.com/wildfish/django-gdpr-assist.git
 dateparser = "==1.1.1"
 [tool.poetry.dev-dependencies]
 django-silk = "==4.3.0"
-ipython = "==8.2.0"
+ipython = "==8.3.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
 Sphinx = "==4.5.0"
