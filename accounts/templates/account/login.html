@@ -6,48 +6,27 @@
 
 {% block head_title %}{% trans "Sign In" %}{% endblock %}
 
-{% block content %}
-	<div class="row d-flex justify-content-center align-items-center">
-		<div class="card col-12 col-md-8 col-lg-6 col-xl-5">
-			<div class="card-body">
-				<h1 class="card-title">Log in or Sign Up</h1>
-				<p class="card-subtitle text-muted">Sign in using an existing account or create a new account</p>
-				<div class="my-4">
-					<div class="btn-group w-100" role="group">
-						{% bootstrap_button _("Log in") button_class="btn-secondary" %}
-						{% bootstrap_button _("Sign Up") button_class="btn-outline-secondary" href=signup_url %}
-					</div>
-				</div>
-				<div class="mt-4">
-					<form class="login" method="POST" action="{% url 'account_login' %}">
-						{% url 'account_reset_password' as reset_url %}
-						{% csrf_token %}
-						{% bootstrap_form form layout="floating" exclude="remember" %}
-						{% if redirect_field_value %}
-							<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
-						{% endif %}
-						<div class="row">
-							<div class="col">
-								{% bootstrap_field form.remember %}
-							</div>
-							<div class="col text-end" aria-label="Reset password">
-								<a href="{{ reset_url }}">{% trans "Forgot Password?" %}</a>
-							</div>
-						</div>
-						{% bootstrap_button _("Sign In") button_class="btn-primary" extra_classes="w-100" size="lg" button_type="submit" %}
-					</form>
-					{% get_providers as socialaccount_providers %}
-					{% if socialaccount_providers %}
-						<hr />
-						<div class="socialaccount_ballot">
-							<ul class="socialaccount_providers">
-								{% include "socialaccount/snippets/provider_list.html" with process="login" %}
-							</ul>
-						</div>
-						{% include "socialaccount/snippets/login_extra.html" %}
-					{% endif %}
-				</div>
+{% block accounts_buttons %}
+	{% bootstrap_button _("Log In") button_class="btn-secondary" href=login_url%}
+	{% bootstrap_button _("Sign Up") button_class="btn-outline-secondary" href=signup_url %}
+{% endblock %}
+
+{% block accounts_form %}
+	<form class="login" method="POST" action="{% url 'account_login' %}">
+		{% url 'account_reset_password' as reset_url %}
+		{% csrf_token %}
+		{% bootstrap_form form layout="floating" exclude="remember" %}
+		{% if redirect_field_value %}
+			<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+		{% endif %}
+		<div class="row">
+			<div class="col">
+				{% bootstrap_field form.remember %}
+			</div>
+			<div class="col text-end" aria-label="Reset password">
+				<a href="{{ reset_url }}">{% trans "Forgot Password?" %}</a>
 			</div>
 		</div>
-	</div>
+		{% bootstrap_button _("Log In") button_class="btn-primary" extra_classes="w-100" size="lg" button_type="submit" %}
+	</form>
 {% endblock %}

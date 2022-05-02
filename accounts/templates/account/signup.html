@@ -5,31 +5,20 @@
 
 {% block head_title %}{% trans "Sign Up" %}{% endblock %}
 
-{% block content %}
-	<div class="row d-flex justify-content-center align-items-center">
-		<div class="card col-12 col-md-8 col-lg-6 col-xl-5">
-			<div class="card-body">
-				<h1 class="card-title">Log in or Sign Up</h1>
-				<p class="card-subtitle text-muted">Sign in using an existing account or create a new account</p>
-				<div class="my-4">
-					<div class="btn-group w-100" role="group">
-						{% bootstrap_button _("Log In") button_class="btn-outline-secondary" href=login_url %}
-						{% bootstrap_button _("Sign Up") button_class="btn-secondary" %}
-					</div>
-				</div>
-				<div>
-					<form class="login my-3" method="POST" action="{% url 'account_signup' %}">
-						{% url 'account_reset_password' as reset_url %}
-						{% csrf_token %}
-						{% bootstrap_form form layout="floating" %}
-						{% if redirect_field_value %}
-							<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
-						{% endif %}
-						{% bootstrap_button _("Sign Up") button_class="btn-primary" extra_classes="w-100" size="lg" button_type="submit" %}
-					</form>
-				</div>
-			</div>
-		</div>
-	</div>
+{% block accounts_buttons %}
+	{% bootstrap_button _("Log In") button_class="btn-outline-secondary" href=login_url%}
+	{% bootstrap_button _("Sign Up") button_class="btn-secondary" href=signup_url %}
+{% endblock %}
+
+{% block accounts_form %}
+	<form class="login my-3" method="POST" action="{% url 'account_signup' %}">
+		{% url 'account_reset_password' as reset_url %}
+		{% csrf_token %}
+		{% bootstrap_form form layout="floating" %}
+		{% if redirect_field_value %}
+			<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+		{% endif %}
+		{% bootstrap_button _("Sign Up") button_class="btn-primary" extra_classes="w-100" size="lg" button_type="submit" %}
+	</form>
 {% endblock %}
 
