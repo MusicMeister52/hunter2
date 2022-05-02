@@ -128,7 +128,7 @@ class SignupTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)  # 200, strangely, indicates the form was rejected
-        self.assertInHTML('<li>This field is required.</li>', response.content.decode('utf-8'))
+        self.assertInHTML('This field is required.', response.content.decode('utf-8'))
 
     def test_signup_with_wrong_captcha(self):
         config = Configuration.get_solo()
@@ -147,7 +147,7 @@ class SignupTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)  # 200, strangely, indicates the form was rejected
-        self.assertInHTML('<li>You must correctly answer this question</li>', response.content.decode('utf-8'))
+        self.assertInHTML('You must correctly answer this question.', response.content.decode('utf-8'))
 
     def test_signup_with_right_captcha(self):
         config = Configuration.get_solo()
