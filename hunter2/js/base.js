@@ -15,7 +15,7 @@ export function formatDatesForLocalTZ() {
       throw new Error(`${fmt} is not a valid Luxon format preset`)
     }
 
-    let text = dt.toLocaleString(DateTime[fmt])
+    let text = dt.toLocaleString(DateTime[fmt]) // eslint-disable-line detect-object-injection
     elt.parentNode.replaceChild(document.createTextNode(text), elt)
   })
 }
