@@ -38,6 +38,7 @@
 					</form>
 					{% get_providers as socialaccount_providers %}
 					{% if socialaccount_providers %}
+						<hr />
 						<div class="socialaccount_ballot">
 							<ul class="socialaccount_providers">
 								{% include "socialaccount/snippets/provider_list.html" with process="login" %}
