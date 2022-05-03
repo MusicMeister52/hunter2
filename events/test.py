@@ -93,10 +93,6 @@ class AsyncEventTestCase(EventAwareTestCase):
                                'something is messing with event loop policy which probably means'
                                'tests will not run as expected.')
 
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-
     def get_communicator(self, app, url, scope=None):
         return ScopeOverrideCommunicator(app, url, scope, headers=self.headers)
 

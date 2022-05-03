@@ -11,7 +11,6 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
-import time
 
 import freezegun
 from channels.testing import WebsocketCommunicator
@@ -361,7 +360,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['unlock_uid'], ua1.unlock.compact_id)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
-        self.run_async(comm.disconnect())
+        self.run_async(comm.disconnect)()
 
     def test_websocket_receives_guess_updates(self):
         user = TeamMemberFactory()
@@ -467,116 +466,114 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.run_async(comm_eve.disconnect)()
 
     def test_websocket_receives_hints(self):
-        # It would be better to mock the asyncio event loop in order to fake advancing time
-        # but that's too much effort (and freezegun doesn't support it yet) so just use
-        # short delays and hope.
-        delay = 0.2
-
+        delay = datetime.timedelta(minutes=10)
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
         data = PuzzleData(self.pz, team, user)
         progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
         data.save()
-        hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay))
+        with freezegun.freeze_time() as frozen_datetime:
+            hint = HintFactory(puzzle=self.pz, time=delay)
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': user})
-        connected, subprotocol = self.run_async(comm.connect)()
-        self.assertTrue(connected)
+            comm = self.get_communicator(websocket_app, self.url, {'user': user})
+            connected, subprotocol = self.run_async(comm.connect)()
+            self.assertTrue(connected)
 
-        # account for delays getting started
-        remaining = hint.delay_for_team(team, progress).total_seconds()
-        if remaining < 0:
-            raise Exception('Websocket hint scheduling test took too long to start up')
+            # wait for half the remaining time for output
+            frozen_datetime.tick(delay / 2)
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
 
-        # wait for half the remaining time for output
-        self.assertTrue(self.run_async(comm.receive_nothing)(remaining / 2))
+            # advance time by all the remaining time
+            frozen_datetime.tick(delay / 2)
+            self.assertTrue(hint.unlocked_by(team, progress))
 
-        # advance time by all the remaining time
-        time.sleep(remaining / 2)
-        self.assertTrue(hint.unlocked_by(team, progress))
+            output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
-        output = self.receive_json(comm, 'Websocket did not send unlocked hint')
+            self.assertEqual(output['type'], 'new_hint')
+            self.assertEqual(output['content']['hint'], hint.text)
 
-        self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint'], hint.text)
-
-        self.run_async(comm.disconnect)()
+            self.run_async(comm.disconnect)()
 
     def test_websocket_dependent_hints(self):
-        delay = 0.3
+        delay = datetime.timedelta(minutes=10)
 
         user = TeamMemberFactory()
         team = user.team_at(self.tenant)
         progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
         unlock = UnlockFactory(puzzle=self.pz)
         unlockanswer = unlock.unlockanswer_set.get()
-        hint = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay), start_after=unlock)
+        hint = HintFactory(puzzle=self.pz, time=delay, start_after=unlock)
 
-        comm = self.get_communicator(websocket_app, self.url, {'user': user})
-        connected, subprotocol = self.run_async(comm.connect)()
-        self.assertTrue(connected)
+        with freezegun.freeze_time() as frozen_datetime:
+            comm = self.get_communicator(websocket_app, self.url, {'user': user})
+            connected, subprotocol = self.run_async(comm.connect)()
+            self.assertTrue(connected)
 
-        # wait for the remaining time for output
-        self.assertTrue(self.run_async(comm.receive_nothing)(delay))
+            # wait for the remaining time for output
+            frozen_datetime.tick(delay)
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
 
-        guess = GuessFactory(for_puzzle=self.pz, by=user, guess=unlockanswer.guess)
-        self.receive_json(comm, 'Websocket did not send unlock')
-        self.receive_json(comm, 'Websocket did not send guess')
-        remaining = hint.delay_for_team(team, progress).total_seconds()
-        self.assertFalse(hint.unlocked_by(team, progress))
-        self.assertTrue(self.run_async(comm.receive_nothing)(remaining / 2))
+            guess = GuessFactory(for_puzzle=self.pz, by=user, guess=unlockanswer.guess)
+            self.receive_json(comm, 'Websocket did not send unlock')
+            self.receive_json(comm, 'Websocket did not send guess')
+            # We will need another, different guess later
+            guess2 = GuessFactory(for_puzzle=self.pz, by=user, guess='__DIFFERENT__')
+            self.receive_json(comm, 'Websocket did not receive new guess')
+            self.assertFalse(hint.unlocked_by(team, progress))
+            frozen_datetime.tick(delay / 2)
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
 
-        # advance time by all the remaining time
-        time.sleep(remaining / 2)
-        self.assertTrue(hint.unlocked_by(team, progress))
+            # advance time by all the remaining time. Unlocked_by checks < (not <=) so advance a bit extra.
+            frozen_datetime.tick(delay / 1.99)
+            self.assertTrue(hint.unlocked_by(team, progress))
 
-        output = self.receive_json(comm, 'Websocket did not send unlocked hint')
+            output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
-        self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint'], hint.text)
-        self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
+            self.assertEqual(output['type'], 'new_hint')
+            self.assertEqual(output['content']['hint'], hint.text)
+            self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
 
-        # alter the unlockanswer to an already-made gss, check hint re-appears
-        GuessFactory(for_puzzle=self.pz, by=user, guess='__DIFFERENT__')
-        self.receive_json(comm, 'Websocket did not receive new guess')
-        unlockanswer.guess = '__DIFFERENT__'
-        unlockanswer.save()
-        output = self.receive_json(comm, 'Websocket did not delete unlock')
-        self.assertEqual(output['type'], 'delete_unlockguess')
-        output = self.receive_json(comm, 'Websocket did not resend unlock')
-        self.assertEqual(output['type'], 'new_unlock')
-        output = self.receive_json(comm, 'Websocket did not resend hint')
-        self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint_uid'], hint.compact_id)
+            # alter the unlockanswer to an already-made guess, check hint re-appears
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            unlockanswer.guess = guess2.guess
+            unlockanswer.save()
+            expected_types = {'new_unlock', 'delete_unlockguess', 'new_hint'}
+            for _ in range(3):
+                output = self.receive_json(comm, 'Websocket did not send enough output')
+                self.assertIn(output['type'], expected_types)
+                expected_types.remove(output['type'])
+                if output['type'] == 'new_hint':
+                    self.assertEqual(output['content']['hint_uid'], hint.compact_id)
 
-        # delete the unlockanswer, check for notification
-        unlockanswer.delete()
+            # delete the unlockanswer, check for notification
+            unlockanswer.delete()
 
-        output = self.receive_json(comm, 'Websocket did not delete unlockanswer')
-        self.assertEqual(output['type'], 'delete_unlockguess')
+            output = self.receive_json(comm, 'Websocket did not delete unlockanswer')
+            self.assertEqual(output['type'], 'delete_unlockguess')
 
-        # guesses are write-only - no notification
-        guess.delete()
+            # guesses are write-only - no notification
+            guess.delete()
 
-        # create a new unlockanswer for this unlock
-        unlockanswer = UnlockAnswerFactory(unlock=unlock)
-        guess = GuessFactory(for_puzzle=self.pz, by=user, guess='__INITIALLY_WRONG__')
-        self.receive_json(comm, 'Websocket did not send guess')
-        # update the unlockanswer to match the given guess, and check that the dependent
-        # hint is scheduled and arrives correctly
-        unlockanswer.guess = guess.guess
-        unlockanswer.save()
-        self.receive_json(comm, 'Websocket did not send unlock')
-        self.assertFalse(hint.unlocked_by(team, progress))
-        self.assertTrue(self.run_async(comm.receive_nothing)(delay / 2))
-        time.sleep(delay / 2)
-        self.assertTrue(hint.unlocked_by(team, progress))
-        output = self.receive_json(comm, 'Websocket did not send unlocked hint')
+            # create a new unlockanswer for this unlock
+            unlockanswer = UnlockAnswerFactory(unlock=unlock)
+            guess = GuessFactory(for_puzzle=self.pz, by=user, guess='__INITIALLY_WRONG__')
+            self.receive_json(comm, 'Websocket did not send guess')
+            # update the unlockanswer to match the given guess, and check that the dependent
+            # hint is scheduled and arrives correctly
+            unlockanswer.guess = guess.guess
+            unlockanswer.save()
+            self.receive_json(comm, 'Websocket did not send unlock')
+            self.assertFalse(hint.unlocked_by(team, progress))
+            frozen_datetime.tick(delay / 2)
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            frozen_datetime.tick(delay / 1.99)
+            self.assertTrue(hint.unlocked_by(team, progress))
+            output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
-        self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint'], hint.text)
-        self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
-        self.run_async(comm.disconnect)()
+            self.assertEqual(output['type'], 'new_hint')
+            self.assertEqual(output['content']['hint'], hint.text)
+            self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
+            self.run_async(comm.disconnect)()
 
     def test_websocket_receives_hint_updates(self):
         with freezegun.freeze_time() as frozen_datetime:
