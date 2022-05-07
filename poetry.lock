@@ -1770,7 +1770,7 @@ python-versions = "*"
 
 [[package]]
 name = "validators"
-version = "0.18.2"
+version = "0.19.0"
 description = "Python Data Validation for Humans™."
 category = "main"
 optional = false
@@ -1778,7 +1778,6 @@ python-versions = ">=3.4"
 
 [package.dependencies]
 decorator = ">=3.4.0"
-six = ">=1.4.0"
 
 [package.extras]
 test = ["pytest (>=2.2.3)", "flake8 (>=2.4.0)", "isort (>=4.2.2)"]
@@ -1827,7 +1826,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "e07d3e16785b36be259ab97d28382e7004d6fd6df9183d530186778476f15e08"
+content-hash = "0ae24562270369d3f548e1b67a5d712f33e1ff785cffd4ca7595de45d0de6a4c"
 
 [metadata.files]
 aioredis = [
@@ -2883,8 +2882,7 @@ uwsgi = [
     {file = "uwsgi-2.0.20.tar.gz", hash = "sha256:88ab9867d8973d8ae84719cf233b7dafc54326fcaec89683c3f9f77c002cdff9"},
 ]
 validators = [
-    {file = "validators-0.18.2-py3-none-any.whl", hash = "sha256:0143dcca8a386498edaf5780cbd5960da1a4c85e0719f3ee5c9b41249c4fefbd"},
-    {file = "validators-0.18.2.tar.gz", hash = "sha256:37cd9a9213278538ad09b5b9f9134266e7c226ab1fede1d500e29e0a8fbb9ea6"},
+    {file = "validators-0.19.0.tar.gz", hash = "sha256:dec45f4381f042f1e705cfa74949505b77f1e27e8b05409096fee8152c839cbe"},
 ]
 wait = [
     {file = "wait-0.0.3.tar.gz", hash = "sha256:0eac805979a62f1c12a325d0f99c1563ee0773be1ced2017b308629d27cc7d70"},
