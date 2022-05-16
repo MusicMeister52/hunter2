@@ -9,7 +9,7 @@ license = "AGPL-3.0-or-later"
 python = "^3.8"
 Django = "==3.2.13"
 PyYAML = "==6.0"
-asgiref = "==3.5.1"  # Not really a direct dependency, included here to provide a version pin
+asgiref = "==3.5.2"  # Not really a direct dependency, included here to provide a version pin
 channels = "2.4.0"
 channels_redis = "==3.4.0"
 daphne = "2.5.0"
