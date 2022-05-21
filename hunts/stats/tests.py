@@ -23,7 +23,7 @@ from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
 from . import PuzzleTimesGenerator, SolveDistributionGenerator
-from ..factories import GuessFactory, PuzzleFactory, EpisodeFactory
+from ..factories import GuessFactory, PuzzleFactory, EpisodeFactory, TeamPuzzleProgressFactory
 from .abstract import AbstractGenerator
 from .leaders import LeadersGenerator
 from .top_guesses import TopGuessesGenerator
@@ -384,6 +384,9 @@ class PuzzleTimesTests(EventTestCase):
         puzzle = PuzzleFactory(episode__winning=True)
         players = TeamMemberFactory.create_batch(4, team__role=TeamRole.PLAYER)
         now = timezone.now()
+        # All teams started at the same time
+        for player in players:
+            TeamPuzzleProgressFactory(team=player.team_at(self.tenant), puzzle=puzzle, start_time=now - timedelta(hours=1))
         # Players finish the puzzle in order 1-4
         guesses = [GuessFactory(by=player, for_puzzle=puzzle, correct=True, given=now - timedelta(minutes=4 - i)) for i, player in enumerate(players)]
         # Player 4 also guessed wrong

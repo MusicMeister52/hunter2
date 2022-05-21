@@ -15,10 +15,12 @@ import datetime
 import freezegun
 from django.apps import apps
 from django.contrib import admin
+from django.forms import inlineformset_factory
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.factories import UserFactory
 from events.test import EventTestCase
 from teams.factories import TeamFactory, TeamMemberFactory
 from teams.models import TeamRole
@@ -34,9 +36,11 @@ from ..factories import (
     UnlockFactory,
     UserPuzzleDataFactory,
 )
+from ..forms import AnswerForm
 from ..models import EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamPuzzleData, Unlock, UnlockAnswer, \
     UserPuzzleData, TeamPuzzleProgress, \
-    TeamUnlock, Guess
+    TeamUnlock, Guess, Puzzle, Answer
+from ..runtimes import Runtime
 
 
 class AdminRegistrationTests(TestCase):
@@ -824,3 +828,127 @@ class StatsTests(EventTestCase):
         self.client.force_login(self.admin_user)
         response = self.client.get(stats_url)
         self.assertEqual(response.status_code, 404)
+
+
+class AnswerFormValidationTests(EventTestCase):
+    def setUp(self):
+        self.episode = EpisodeFactory()
+        self.event = self.episode.event
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
+        self.team1 = TeamFactory(at_event=self.event, members={self.user1})
+        self.team2 = TeamFactory(at_event=self.event, members={self.user2})
+
+        # Generate a puzzle.
+        self.puzzle1 = PuzzleFactory(episode=self.episode, answer_set__runtime=Runtime.STATIC)
+
+        # Get the answer to the puzzle to provide it as guesses
+        self.answer1 = self.puzzle1.answer_set.get()
+
+        # Set the options on the answer, we want no case_handling, so that only
+        # one of the guesses is correct.
+        self.answer1.options = {'case_handling': 'none'}
+        self.answer1.save()
+
+        # Give each team an answer to the puzzle.
+        guess1 = GuessFactory(for_puzzle=self.puzzle1, by=self.user1, guess=str(self.answer1))
+        guess2 = GuessFactory(for_puzzle=self.puzzle1, by=self.user2, guess=str(self.answer1).upper())
+        guess1.save()
+        guess2.save()
+
+        # Only 1 team should be finished.
+        self.assertTrue(len(self.puzzle1.finished_teams()) == 1)
+
+        # We need a formset to test deletion
+        self.AnswerFormSet = inlineformset_factory(Puzzle, Answer, form=AnswerForm, can_delete=True)
+
+    # Test that changing nothing, does nothing.
+    def test_changing_nothing(self):
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': self.answer1.options,
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertTrue(formset.is_valid())
+
+    # Test changing answer options
+    def test_changing_option_no_progress_change(self):
+        # Change the options specifically to case-handling none. This should
+        # be fine as it should not advance any team.
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': {'case_handling': 'none'},
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertTrue(formset.is_valid())
+
+    def test_changing_option_with_progress_change(self):
+        # Change the options specifically to case-handling lower, should
+        # cause an error because this will advance team2.
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': {'case_handling': 'lower'},
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertFalse(formset.is_valid())
+
+    def test_changing_option_with_progress_change_accepted(self):
+        # Change the options specifically to case-handling lower
+        # will advance team2 but we have set alter_progress to True
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': {'case_handling': 'lower'},
+            'answer_set-0-alter_progress': 'on',
+            'answer_set-0-DELETE': '',
+        })
+        self.assertTrue(formset.is_valid())
+
+    # Test deleting an answer
+    def test_deleting_answers(self):
+        # Deleting should cause an error because it will stop team1 having
+        # a valid answer
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': self.answer1.options,
+            'answer_set-0-alter_progress': '',
+            'answer_set-0-DELETE': 'on',
+        })
+        self.assertFalse(formset.is_valid())
+
+    def test_deleting_answers_with_alter_progress(self):
+        # Deleting an answer with alter_progress True should be fine.
+
+        formset = self.AnswerFormSet(instance=self.puzzle1, data={
+            'answer_set-TOTAL_FORMS': 1,
+            'answer_set-INITIAL_FORMS': 1,
+            'answer_set-0-id': self.answer1.id,
+            'answer_set-0-answer': self.answer1.answer,
+            'answer_set-0-runtime': self.answer1.runtime,
+            'answer_set-0-options': self.answer1.options,
+            'answer_set-0-alter_progress': 'on',
+            'answer_set-0-DELETE': 'on',
+        })
+        self.assertTrue(formset.is_valid())
