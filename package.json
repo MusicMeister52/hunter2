@@ -29,7 +29,7 @@
     "mini-css-extract-plugin": "2.6.0",
     "postcss": "8.4.13",
     "postcss-loader": "7.0.0",
-    "sass": "1.51.0",
+    "sass": "1.52.1",
     "sass-loader": "13.0.0",
     "style-loader": "3.3.1",
     "unplugin-auto-import": "0.7.2",
