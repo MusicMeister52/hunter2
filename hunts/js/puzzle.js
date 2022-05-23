@@ -279,89 +279,11 @@ function deleteAnnouncement(announcement) {
   this.delete(announcement.announcement_id)
 }
 
-function newHint(content) {
-  let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true, 'accepted': content.accepted}
-  if (content.depends_on_unlock_uid === null) {
-    this.hints.set(content.hint_uid, hintInfo)
-  } else {
-    if (!(this.unlocks.has(content.depends_on_unlock_uid))) {
-      this.createBlankUnlock(content.depends_on_unlock_uid)
-    }
-    this.unlocks.get(content.depends_on_unlock_uid).hints.set(content.hint_uid, hintInfo)
-  }
-}
-
-function deleteHint(content) {
-  if (!(this.hints.has(content.hint_uid) || (this.unlocks.has(content.depends_on_unlock_uid) &&
-    this.unlocks.get(content.depends_on_unlock_uid).hints.has(content.hint_uid)))) {
-    throw `WebSocket deleted invalid hint: ${content.hint_uid}`
-  }
-  if (content.depends_on_unlock_uid === null) {
-    this.hints.delete(content.hint_uid)
-  } else {
-    this.unlocks.get(content.depends_on_unlock_uid).hints.delete(content.hint_uid)
-  }
-}
-
-function newUnlock(content) {
-  if (!(this.unlocks.has(content.unlock_uid))) {
-    this.createBlankUnlock(content.unlock_uid)
-  }
-  let unlockInfo = this.unlocks.get(content.unlock_uid)
-  unlockInfo.unlock = content.unlock
-  unlockInfo.guesses.add(content.guess)
-  unlockInfo.isNew = true
-}
-
-function changeUnlock(content) {
-  if (!(this.unlocks.has(content.unlock_uid))) {
-    throw `WebSocket changed invalid unlock: ${content.unlock_uid}`
-  }
-  this.unlocks.get(content.unlock_uid).unlock = content.unlock
-}
-
-function deleteUnlockGuess(content) {
-  if (!(this.unlocks.has(content.unlock_uid))) {
-    throw `WebSocket deleted guess for invalid unlock: ${content.unlock_uid}`
-  }
-  let unlock = this.unlocks.get(content.unlock_uid)
-  if (!(unlock.guesses.has(content.guess))) {
-    throw `WebSocket deleted invalid guess (can happen if team made identical guesses): ${content.guess}`
-  }
-  unlock.guesses.delete(content.guess)
-  if (unlock.guesses.size === 0) {
-    this.unlocks.delete(content.unlock_uid)
-  }
-}
-
-function deleteUnlock(content) {
-  if (!(this.unlocks.has(content.unlock_uid))) {
-    throw `WebSocket deleted invalid unlock: ${content.unlock_uid}`
-  }
-  this.unlocks.delete(content.unlock_uid)
-}
-
 function openEventSocket() {
-  const socketHandlers = {
-    'announcement': new SocketHandler(addAnnouncement.bind(window.announcements), shouldNotifyAnnouncement, 'New announcement'),
-    'delete_announcement': new SocketHandler(deleteAnnouncement.bind(window.announcements)),
-    'new_guesses': new SocketHandler(receivedNewAnswers),
-    'old_guesses': new SocketHandler(receivedOldAnswers),
-    'solved': new SocketHandler(receivedSolvedMsg, true, 'Puzzle solved'),
-    'new_unlock': new SocketHandler(newUnlock.bind(window.clueData), true, 'New unlock'),
-    'old_unlock': new SocketHandler(newUnlock.bind(window.clueData)),
-    'change_unlock': new SocketHandler(changeUnlock.bind(window.clueData), true, 'Updated unlock'),
-    'delete_unlock': new SocketHandler(deleteUnlock.bind(window.clueData)),
-    'delete_unlockguess': new SocketHandler(deleteUnlockGuess.bind(window.clueData)),
-    'new_hint': new SocketHandler(newHint.bind(window.clueData), true, 'New hint'),
-    'old_hint': new SocketHandler(newHint.bind(window.clueData)),
-    'delete_hint': new SocketHandler(deleteHint.bind(window.clueData)),
-    'error': new SocketHandler(receivedError),
-  }
-
-  var ws_scheme = (window.location.protocol == 'https:' ? 'wss' : 'ws') + '://'
-  var sock = new RobustWebSocket(
-    ws_scheme + window.location.host + '/ws' + window.location.pathname, undefined,
+  const ws_scheme = (window.location.protocol == 'https:' ? 'wss' : 'ws') + '://'
+  let sock = new RobustWebSocket(
+    `${ws_scheme}${window.location.host}/ws${window.location.pathname}`,
+    undefined,
     {
       timeout: 30000,
       shouldReconnect: function(event, ws) {
@@ -371,28 +293,36 @@ function openEventSocket() {
       },
     },
   )
-  sock.onmessage = function(e) {
-    var data = JSON.parse(e.data)
+  sock.handlers = new Map()
+  sock.handlers.set('announcement', new SocketHandler(addAnnouncement.bind(window.announcements), shouldNotifyAnnouncement, 'New announcement'))
+  sock.handlers.set('delete_announcement', new SocketHandler(deleteAnnouncement.bind(window.announcements)))
+  sock.handlers.set('new_guesses', new SocketHandler(receivedNewAnswers))
+  sock.handlers.set('old_guesses', new SocketHandler(receivedOldAnswers))
+  sock.handlers.set('solved', new SocketHandler(receivedSolvedMsg, true, 'Puzzle solved'))
+  sock.handlers.set('error', new SocketHandler(receivedError))
+
+  sock.addEventListener('message', function(event) {
+    const data = JSON.parse(event.data)
     lastUpdated = Date.now()
 
-    if (!(data.type in socketHandlers)) {
+    if (!(sock.handlers.has(data.type))) {
       throw `Invalid message type: ${data.type}, content: ${data.content}`
     } else {
-      var handler = socketHandlers[data.type]
+      const handler = sock.handlers.get(data.type)
       if (typeof handler === 'function') {
         handler(data.content)
       } else {
         handler.handle(data.content)
       }
     }
-  }
-  sock.onerror = function() {
+  })
+  sock.addEventListener('error', function() {
     let conn_status = document.getElementById('connection-status')
     conn_status.innerHTML = '<p class="connection-error">' +
       'Websocket is disconnected; attempting to reconnect. ' +
       'If the problem persists, please notify the admins.</p>'
-  }
-  sock.onopen = function() {
+  })
+  sock.addEventListener('open', function() {
     let error = document.querySelector('#connection-status > .connection-error')
     // If connecting when there is an existing error message, hide it and display a
     // message to say we reconnected.
@@ -401,28 +331,28 @@ function openEventSocket() {
       let conn_status = document.getElementById('connection-status')
       fadingMessage(conn_status, 'Websocket connection re-established', '')
     }
-    if (lastUpdated != undefined) {
-      sock.send(JSON.stringify({'type': 'guesses-plz', 'from': lastUpdated}))
-      sock.send(JSON.stringify({'type': 'hints-plz', 'from': lastUpdated}))
-      sock.send(JSON.stringify({'type': 'unlocks-plz'}))
-    } else {
-      sock.send(JSON.stringify({'type': 'guesses-plz', 'from': 'all'}))
-    }
-  }
+    sock.send(JSON.stringify({'type': 'guesses-plz', 'from': lastUpdated !== undefined ? lastUpdated : 'all'}))
+  })
+
   return sock
 }
 
 window.addEventListener('DOMContentLoaded', function() {
   addSVG()
+  setupNotifications()
+  let sock = openEventSocket()
 
-  window.clueData = reactive({
-    hints: window.hints,
-    unlocks: window.unlocks,
-
-    createBlankUnlock(uid) {
-      this.unlocks.set(uid, {'unlock': null, 'guesses': new Set(), 'hints': new Map()})
+  let clueList = createApp(
+    ClueList,
+    {
+      hints: reactive(window.hints),
+      unlocks: reactive(window.unlocks),
+      sock: sock,
     },
-  })
+  )
+  clueList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
+  Sentry.attachErrorHandler(clueList, { logErrors: true })
+  clueList.mount('#clue-list')
 
   let field = document.getElementById('answer-entry')
   let button = document.getElementById('answer-button')
@@ -437,20 +367,6 @@ window.addEventListener('DOMContentLoaded', function() {
       evaluateButtonDisabledState(button)
     })
   }
-
-  setupNotifications()
-  let sock = openEventSocket()
-
-  let clueList = createApp(
-    ClueList,
-    {
-      clueData: window.clueData,
-      socket: sock,
-    },
-  )
-  clueList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
-  Sentry.attachErrorHandler(clueList, { logErrors: true })
-  clueList.mount('#clue-list')
 
   let answerForm = document.getElementById('answer-form')
   if (answerForm !== null) {

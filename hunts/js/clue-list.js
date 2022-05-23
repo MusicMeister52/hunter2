@@ -15,17 +15,18 @@
 import Cookies from 'js-cookie'
 
 import {fadingMessage} from './puzzle'
+import {SocketHandler} from './puzzleWebsocketHandlers'
 
 export default {
   computed: {
     none() {
-      return this.clueData.hints.size === 0 && this.clueData.unlocks.size === 0 ? 'None yet' : ''
+      return this.hints.size === 0 && this.unlocks.size === 0 ? 'None yet' : ''
     },
     sortedHints() {
-      return this.hintArray(this.clueData.hints)
+      return this.hintArray(this.hints)
     },
     sortedUnlocks() {
-      return Array.from(this.clueData.unlocks.entries(), u => [u[0], {
+      return Array.from(this.unlocks.entries(), u => [u[0], {
         unlock: u[1].unlock,
         guesses: u[1].guesses,
         isNew: u[1].isNew,
@@ -33,7 +34,15 @@ export default {
       }])
     },
   },
+  data: function() {
+    return {
+      lastUpdated: Date.now(),
+    }
+  },
   methods: {
+    createBlankUnlock(uid) {
+      this.unlocks.set(uid, {'unlock': null, 'guesses': new Set(), 'hints': new Map()})
+    },
     hintArray(hintMap) {
       return Array.from(
         hintMap.entries(),
@@ -68,9 +77,9 @@ export default {
           }
           let hintData
           if (unlockId === null) {
-            hintData = this.clueData.hints.get(hintId)
+            hintData = this.hints.get(hintId)
           } else {
-            hintData = this.clueData.unlocks.get(unlockId).hints.get(hintId)
+            hintData = this.unlocks.get(unlockId).hints.get(hintId)
           }
           // if the response arrives before the websocket message, display a holding message
           if (!hintData.accepted) {
@@ -85,8 +94,78 @@ export default {
         },
       )
     },
+    newHint(content) {
+      let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true, 'accepted': content.accepted}
+      if (content.depends_on_unlock_uid === null) {
+        this.hints.set(content.hint_uid, hintInfo)
+      } else {
+        if (!(this.unlocks.has(content.depends_on_unlock_uid))) {
+          this.createBlankUnlock(content.depends_on_unlock_uid)
+        }
+        this.unlocks.get(content.depends_on_unlock_uid).hints.set(content.hint_uid, hintInfo)
+      }
+    },
+    deleteHint(content) {
+      if (!(this.hints.has(content.hint_uid) || (this.unlocks.has(content.depends_on_unlock_uid) &&
+        this.unlocks.get(content.depends_on_unlock_uid).hints.has(content.hint_uid)))) {
+        throw `WebSocket deleted invalid hint: ${content.hint_uid}`
+      }
+      if (content.depends_on_unlock_uid === null) {
+        this.hints.delete(content.hint_uid)
+      } else {
+        this.unlocks.get(content.depends_on_unlock_uid).hints.delete(content.hint_uid)
+      }
+    },
+    newUnlock(content) {
+      if (!(this.unlocks.has(content.unlock_uid))) {
+        this.createBlankUnlock(content.unlock_uid)
+      }
+      let unlockInfo = this.unlocks.get(content.unlock_uid)
+      unlockInfo.unlock = content.unlock
+      unlockInfo.guesses.add(content.guess)
+      unlockInfo.isNew = true
+    },
+    changeUnlock(content) {
+      if (!(this.unlocks.has(content.unlock_uid))) {
+        throw `WebSocket changed invalid unlock: ${content.unlock_uid}`
+      }
+      this.unlocks.get(content.unlock_uid).unlock = content.unlock
+    },
+    deleteUnlockGuess(content) {
+      if (!(this.unlocks.has(content.unlock_uid))) {
+        throw `WebSocket deleted guess for invalid unlock: ${content.unlock_uid}`
+      }
+      let unlock = this.unlocks.get(content.unlock_uid)
+      if (!(unlock.guesses.has(content.guess))) {
+        throw `WebSocket deleted invalid guess (can happen if team made identical guesses): ${content.guess}`
+      }
+      unlock.guesses.delete(content.guess)
+      if (unlock.guesses.size === 0) {
+        this.unlocks.delete(content.unlock_uid)
+      }
+    },
+    deleteUnlock(content) {
+      if (!(this.unlocks.has(content.unlock_uid))) {
+        throw `WebSocket deleted invalid unlock: ${content.unlock_uid}`
+      }
+      this.unlocks.delete(content.unlock_uid)
+    },
+  },
+  mounted() {
+    this.sock.handlers.set('new_unlock', new SocketHandler(this.newUnlock.bind(this), true, 'New unlock'))
+    this.sock.handlers.set('old_unlock', new SocketHandler(this.newUnlock.bind(this)))
+    this.sock.handlers.set('change_unlock', new SocketHandler(this.changeUnlock.bind(this), true, 'Updated unlock'))
+    this.sock.handlers.set('delete_unlock', new SocketHandler(this.deleteUnlock.bind(this)))
+    this.sock.handlers.set('delete_unlockguess', new SocketHandler(this.deleteUnlockGuess.bind(this)))
+    this.sock.handlers.set('new_hint', new SocketHandler(this.newHint.bind(this), true, 'New hint'))
+    this.sock.handlers.set('old_hint', new SocketHandler(this.newHint.bind(this)))
+    this.sock.handlers.set('delete_hint', new SocketHandler(this.deleteHint.bind(this)))
+    this.sock.send(JSON.stringify({'type': 'hints-plz', 'from': this.lastUpdated}))
+    this.sock.send(JSON.stringify({'type': 'unlocks-plz'}))
   },
   props: [
-    'clueData',
+    'hints',
+    'sock',
+    'unlocks',
   ],
 }

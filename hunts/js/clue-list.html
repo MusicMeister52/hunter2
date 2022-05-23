@@ -21,7 +21,7 @@
 			<a v-else href="#" @click.prevent="acceptHint(id, null)">show</a>
 		</li>
 	</transition-group>
-	<table v-if="this.clueData.unlocks.size > 0" id="unlocks">
+	<table v-if="this.unlocks.size > 0" id="unlocks">
 		<tr class="unlock">
 			<th class="unlock-guesses">Guesses</th>
 			<th class="unlock-clues">Clues</th>
