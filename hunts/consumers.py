@@ -379,6 +379,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
 
     @classmethod
     def send_delete_hint(cls, team_id, hint):
+        print('sending delete hint msg')
         cls._send_message(cls._puzzle_groupname(hint.puzzle, team_id), {
             'type': 'delete_hint',
             'content': {
@@ -540,6 +541,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
                 cls.send_new_hint_to_team(progress.team_id, hint)
             else:
                 if old and old.unlocked_by(progress.team, progress):
+                    print('deleting hint')
                     cls.send_delete_hint(progress.team_id, hint)
                 async_to_sync(layer.group_send)(
                     cls._puzzle_groupname(hint.puzzle, progress.team_id),
@@ -558,6 +560,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
                 continue
 
             if hint.unlocked_by(team, progress):
+                print('delete hint from signal')
                 cls.send_delete_hint(team.id, hint)
 
 

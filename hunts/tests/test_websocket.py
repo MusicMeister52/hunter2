@@ -576,6 +576,15 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             self.run_async(comm.disconnect)()
 
     def test_websocket_receives_hint_updates(self):
+        import traceback, signal, sys, threading
+        def dumpstacks(signal, frame):
+            id2name = dict([(th.ident, th.name) for th in threading.enumerate()])
+            code = []
+            for threadId, stack in sys._current_frames().items():
+                print("\n# Thread: %s(%d)" % (id2name.get(threadId, ""), threadId))
+                traceback.print_stack(stack)
+
+        signal.signal(signal.SIGUSR1, dumpstacks)
         with freezegun.freeze_time() as frozen_datetime:
             user = TeamMemberFactory()
             team = user.team_at(self.tenant)
@@ -588,7 +597,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             comm = self.get_communicator(websocket_app, self.url, {'user': user})
             connected, subprotocol = self.run_async(comm.connect)()
             self.assertTrue(connected)
-            self.assertTrue(self.run_async(comm.receive_nothing)())
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
 
             hint.text = 'different_hint_text'
             hint.save()
@@ -597,7 +606,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             self.assertEqual(output['type'], 'new_hint')
             self.assertEqual(output['content']['hint'], hint.text)
             old_id = output['content']['hint_uid']
-            self.assertTrue(self.run_async(comm.receive_nothing)())
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            print(1)
 
             delay = 0.3
             hint.time = datetime.timedelta(seconds=2 + delay)
@@ -605,7 +615,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             output = self.receive_json(comm, 'Websocket did not remove hint which went into the future')
             self.assertEqual(output['type'], 'delete_hint')
             self.assertEqual(output['content']['hint_uid'], old_id)
-            self.assertTrue(self.run_async(comm.receive_nothing)())
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            print(2)
 
             hint.time = datetime.timedelta(seconds=1)
             hint.save()
@@ -613,17 +624,24 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             self.assertEqual(output['type'], 'new_hint')
             self.assertEqual(output['content']['hint'], hint.text)
             old_id = output['content']['hint_uid']
-            self.assertTrue(self.run_async(comm.receive_nothing)())
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            print(3)
 
             hint.delete()
+            import time
+            time.sleep(0.01)
             output = self.receive_json(comm, 'Websocket did not remove hint which was deleted')
             self.assertEqual(output['type'], 'delete_hint')
             self.assertEqual(output['content']['hint_uid'], old_id)
-            self.assertTrue(self.run_async(comm.receive_nothing)())
+            print(3.5)
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            print(4)
 
             # Wait for (at most) the delay before the longer hint event would have arrived to check
             # it was correctly cancelled
-            self.assertTrue(self.run_async(comm.receive_nothing)(delay))
+            frozen_datetime.tick(delay)
+            self.assertTrue(self.run_async(comm.receive_nothing)(0))
+            print(5)
 
             self.run_async(comm.disconnect)()
 
