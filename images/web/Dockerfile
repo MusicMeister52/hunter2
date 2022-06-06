@@ -7,7 +7,7 @@ RUN /opt/hunter2/venv/bin/python manage.py collectstatic
 
 # Sadly lua-resty-dns-client is not available via OPM so we need luarocks here, which means using the fat image
 # https://github.com/Kong/lua-resty-dns-client/issues/136
-FROM openresty/openresty:1.21.4.1-alpine-fat@sha256:17f83ca0318f7fe18d939ed0f142080d13fa09623a069b3990c110eccc5fd256
+FROM openresty/openresty:1.21.4.1-alpine-fat@sha256:8cb2572858318dbc8ad26c4d9f2f91b06f929fd4d9a3b8e2d48197d8d755c0e1
 
 RUN --mount=type=cache,target=/var/cache/apk apk add -t build_deps \
     git \
