@@ -40,8 +40,12 @@ ASGI consumers for handling websockets and `signals` contains signal handlers.
 Run
 
 ```
-$ docker-compose run --rm app test
+$ . ./h2-tools.sh
+$ h2-test
 ```
+
+This is a wrapper around pytest. You can also use the normal django `manage.py test` command,
+but pytest has features which are not supported by that method.
 
 ### Writing Tests
 
@@ -122,6 +126,9 @@ Setting up an interpreter in PyCharm
 Note the inclusion of the override `yaml`. This should allow PyCharm to find the packages installed inside the container,
 enabling completion. You can then add run configurations with this interpreter to enable interactive debugging and easy
 running of individual tests.
+
+Enable the "Do not use Django test runner" and set the default test runner to "pytest" for best integration of 
+PyCharm and the test suite.
 
 Common Tasks
 ------------

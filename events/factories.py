@@ -77,12 +77,16 @@ class EventFactory(factory.django.DjangoModelFactory):
         return super()._create(*args, **kwargs)
 
 
+def activated_event():
+    return Event.objects.get(schema_name=connection.schema_name)
+
+
 class EventFileFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = 'events.EventFile'
         django_get_or_create = ('event', 'slug')
 
-    event = factory.LazyFunction(Event.objects.get)
+    event = factory.LazyFunction(activated_event)
     slug = factory.Faker('word')
     file = factory.django.FileField(
         filename=factory.Faker('file_name'),
@@ -96,5 +100,5 @@ class AttendanceFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ('event', 'user')
 
     user = factory.SubFactory(UserFactory)
-    event = factory.LazyFunction(Event.objects.get)
+    event = factory.LazyFunction(activated_event)
     seat = factory.Faker('bothify', text='??##', letters='ABCDEFGHJKLMNPQRSTUVWXYZ')

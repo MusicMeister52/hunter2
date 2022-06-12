@@ -147,7 +147,7 @@ doc:graph:
     - install -d -m 777 coverage pytest_cache reports
     - echo "POSTGRES_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 99 | head -n 1)" >> .env
     - docker-compose pull app db
-    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" -v "${PWD}/pytest_cache:/opt/hunter2/src/.pytest_cache" --entrypoint "/opt/hunter2/venv/bin/pytest" --rm -e COVERAGE_FILE="coverage/${SHARD}.data" app --tb=short --cov . --junit-xml=reports/pytest.xml --shard-id="${SHARD}" --num-shards=8
+    - docker-compose run -e H2_TEST_SEED=1 -v "${PWD}/coverage:/opt/hunter2/src/coverage" -v "${PWD}/reports:/opt/hunter2/src/reports" -v "${PWD}/pytest_cache:/opt/hunter2/src/.pytest_cache" --entrypoint "/opt/hunter2/venv/bin/python" --rm -e COVERAGE_FILE="coverage/${SHARD}.data" app -m pytest --tb=short --cov . --junit-xml=reports/pytest.xml --shard-id="${SHARD}" --num-shards=8
   after_script:
     - docker-compose logs db > db.log
     - docker-compose logs redis > redis.log

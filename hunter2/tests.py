@@ -9,8 +9,7 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
-
-
+import importlib
 import logging
 import os
 import random
@@ -42,8 +41,73 @@ from events.test import EventTestCase
 from .utils import generate_secret_key, load_or_create_secret_key
 
 
-class TestRunner(XMLTestRunner):
+class PytestTestRunner(XMLTestRunner):
+    """Runs pytest to discover and run tests.
+
+    Source: https://pytest-django.readthedocs.io/en/latest/faq.html#how-can-i-use-manage-py-test-with-pytest-django
+    """
+
+    def __init__(self, verbosity=1, failfast=False, keepdb=False, **kwargs):
+        self.verbosity = verbosity
+        self.failfast = failfast
+        self.keepdb = keepdb
+
+        super().__init__(**kwargs)
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
+
+    @staticmethod
+    def translate_module_reference(label):
+        """manage.py test expects labels of the form sub.module.Class.test_method. This translates this format to the
+        pytest format of sub/module.py::Class::test_method"""
+
+        # This logic is bad, but it's exactly what the django test runner does!
+
+        parts = label.split('.')
+        parts_left = parts[:]
+        parts_right = []
+        module = None
+        # We don't know whether the last components are parts of the submodule path or methods or what, so we have to
+        # do this by trial and error
+        while parts_left:
+            try:
+                module_name = '.'.join(parts_left)
+                module = importlib.import_module(module_name)
+                break
+            except ImportError:
+                pass
+            parts_right.insert(0, parts_left.pop())
+
+        if module:
+            return module.__file__ + '::' + '::'.join(parts_right)
+
+        # if this doesn't work, maybe the unchanged label is supported after all; return it unchanged
+        return label
+
     def run_tests(self, test_labels, extra_tests=None, **kwargs):
+        """Run pytest and return the exitcode.
+
+        It translates some of Django's test command option to pytest's.
+        """
+        import pytest
+
+        argv = []
+        if self.verbosity == 0:
+            argv.append('--quiet')
+        if self.verbosity == 2:
+            argv.append('--verbose')
+        if self.verbosity == 3:
+            argv.append('-vv')
+        if self.failfast:
+            argv.append('--exitfirst')
+        if self.keepdb:
+            argv.append('--reuse-db')
+
+        for label in test_labels:
+            argv.append(self.translate_module_reference(label))
+
         # Disable non-critial logging for test runs
         logging.disable(logging.CRITICAL)
 
@@ -54,8 +118,10 @@ class TestRunner(XMLTestRunner):
         random.seed(random_seed)
         Faker.seed(random_seed)
         print(f'Testing Seed: {random_seed}')
+        print("Run pytest directly (e.g. through the h2-test alias in h2tools.sh) for full access to pytest's command "
+              "line arguments")
 
-        return super().run_tests(test_labels, extra_tests, **kwargs)
+        return pytest.main(argv)
 
 
 # Adapted from:
