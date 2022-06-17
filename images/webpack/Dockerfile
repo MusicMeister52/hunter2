@@ -1,4 +1,4 @@
-FROM node:18.3.0-alpine3.15@sha256:7ab82182ec72ea2042e29f40fd2d7badf3023302928600803e2c158be85aee94 as webpack_build
+FROM node:18.4.0-alpine3.15@sha256:f55132b48261c7ca0394d71c204eb419db0a0209be341762390693434e4bdd92 as webpack_build
 
 COPY . /
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
