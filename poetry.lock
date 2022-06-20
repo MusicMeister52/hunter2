@@ -585,7 +585,7 @@ docs = ["sphinx", "sphinx-rtd-theme"]
 
 [[package]]
 name = "django-silk"
-version = "4.3.0"
+version = "4.4.0"
 description = "Silky smooth profiling for the Django Framework"
 category = "dev"
 optional = false
@@ -1825,7 +1825,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "cc65104ead173bdbb10f0fbe8b7ade87bce27625e844f3ab7bfda858e48ea294"
+content-hash = "2ac0f0def33c1cb2da4d485da58b4114f885d244f7a22ee5805e461e6acb3e1f"
 
 [metadata.files]
 aioredis = [
@@ -2125,8 +2125,8 @@ django-sendfile2 = [
     {file = "django_sendfile2-0.6.1-py3-none-any.whl", hash = "sha256:80cba260b4b0569dfe4bb04eed807a90765c65a200747df931e70dc22b935267"},
 ]
 django-silk = [
-    {file = "django-silk-4.3.0.tar.gz", hash = "sha256:15ce316ac56d202bc7f0edab52d90d9b5282a41cbef9e38faab27e642d8a4e2b"},
-    {file = "django_silk-4.3.0-py3-none-any.whl", hash = "sha256:b010e51d9a2408ca0471bc943941676950f1d2906af3d09f9ffcd56f232688fc"},
+    {file = "django-silk-4.4.0.tar.gz", hash = "sha256:476dac9f573bf206d34ef8a8407b51de28d4b7be8adbddcc3addcd25f2479e9b"},
+    {file = "django_silk-4.4.0-py3-none-any.whl", hash = "sha256:c3f673eef78cecc22c94a3683b0f870e6e8c7a7b79227e5568dca76b8c047278"},
 ]
 django-solo = [
     {file = "django-solo-2.0.0.tar.gz", hash = "sha256:7c6dbe04ae858a4645b580ec83a31a960a067ad4525d8227cca50b7fc5983a62"},
