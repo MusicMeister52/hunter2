@@ -17,6 +17,6 @@
     "start": "$(yarn bin nodemon) --watch /opt/hunter2/src/package.json --exec /bin/sh -- -c 'cd /opt/hunter2/src && yarn install && yarn start'"
   },
   "dependencies": {
-    "nodemon": "2.0.16"
+    "nodemon": "2.0.18"
   }
 }
