@@ -51,7 +51,7 @@ pytest-shard = "0.1.2"
 django-gdpr-assist = { git = "https://github.com/wildfish/django-gdpr-assist.git", rev = "12a8f1e8dc0"}
 dateparser = "==1.1.1"
 [tool.poetry.dev-dependencies]
-django-silk = "==4.4.1"
+django-silk = "==5.0.1"
 ipython = "==8.4.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
