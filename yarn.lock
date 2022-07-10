@@ -4204,7 +4204,7 @@ resolve-from@^5.0.0:
   resolved "https://registry.yarnpkg.com/resolve-from/-/resolve-from-5.0.0.tgz#c35225843df8f776df21c57557bc087e9dfdfc69"
   integrity sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw==
 
-resolve@^1.14.2, resolve@^1.22.0, resolve@^1.9.0:
+resolve@^1.14.2, resolve@^1.22.1, resolve@^1.9.0:
   version "1.22.1"
   resolved "https://registry.yarnpkg.com/resolve/-/resolve-1.22.1.tgz#27cb2ebb53f91abb49470a928bba7558066ac177"
   integrity sha512-nBpuuYuY5jFsli/JIs1oldw6fOQCBioohqWZg/2hiaOybXOft4lonv85uDOKXdf8rhyK159cxU5cDcK/NKk8zw==
@@ -4734,10 +4734,10 @@ unplugin-element-plus@0.4.1:
     magic-string "^0.26.2"
     unplugin "^0.7.1"
 
-unplugin-vue-components@0.19.9:
-  version "0.19.9"
-  resolved "https://registry.yarnpkg.com/unplugin-vue-components/-/unplugin-vue-components-0.19.9.tgz#87e913f3cf8cd1d36c6f5b597ca7a46cddb6229b"
-  integrity sha512-i5mZtg85euPWZrGswFkoa9pf4WjKCP5qOjnwOyg3KOKVzFjnP3osCdrunQMjtoMKehTdz1vV6baZH8bZR4PNgg==
+unplugin-vue-components@0.21.1:
+  version "0.21.1"
+  resolved "https://registry.yarnpkg.com/unplugin-vue-components/-/unplugin-vue-components-0.21.1.tgz#8ff156da1faaef368d8fad9fa7573c80ad4ccfa0"
+  integrity sha512-8MhIT323q1EUu7rz6NfQeiHqDrZKtygy6s9jzcQAuuZUM2T38SHlPT5YJjBOZmM0Bau6YuNTKfBBX4iHzeusaQ==
   dependencies:
     "@antfu/utils" "^0.5.2"
     "@rollup/pluginutils" "^4.2.1"
@@ -4747,8 +4747,8 @@ unplugin-vue-components@0.19.9:
     local-pkg "^0.4.1"
     magic-string "^0.26.2"
     minimatch "^5.1.0"
-    resolve "^1.22.0"
-    unplugin "^0.7.0"
+    resolve "^1.22.1"
+    unplugin "^0.7.1"
 
 unplugin@^0.7.0, unplugin@^0.7.1:
   version "0.7.1"
