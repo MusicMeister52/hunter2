@@ -19,7 +19,7 @@ django-autocomplete-light = "==3.9.4"
 django-bootstrap5 = "==21.3"
 django-enumfields = "==2.1.1"
 django-environ = "==0.9.0"
-django-extensions = "==3.1.5"
+django-extensions = "==3.2.0"
 django-fullclean = "0.0.5"
 django-nested-admin = "==3.4.0"
 django-ordered-model = { git = "https://github.com/fish-face/django-ordered-model.git", rev = "8a2908472b7bfbedb530a845f6c18fc86da7b750" }
