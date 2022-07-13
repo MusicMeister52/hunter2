@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
 
 import uuid
+from encodings.punycode import punycode_encode
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -47,6 +48,16 @@ class Team(SealableModel):
 
     def get_display_name(self):
         return self.name if self.is_explicit() else self.members.all()[0].username
+
+    @staticmethod
+    def _punycode(string):
+        return punycode_encode(string).decode('utf-8')
+
+    def get_unique_ascii_name(self):
+        if self.is_explicit():
+            return f'+{self._punycode(self.name)}'
+        else:
+            return f'-{self._punycode(self.members.all()[0].username)}'
 
     def get_verbose_name(self):
         if self.is_explicit():
