@@ -84,7 +84,11 @@ function fileInputChanged(e) {
   let filename = e.target.files[0].name
 
   if (!slugInput.value) {
-    slugInput.value = path.parse(filename).name.replace(/\W/g, '')
+    // slugs must be ASCII alphanumeric strings (including underscores) that
+    // start with an underscore or letter
+    slugInput.value = path.parse(filename).name
+      .replace(/[^a-zA-Z_0-9]/g, '')
+      .replace(/^(?:[0-9])/, '_')
   }
   if (!urlInput.value) {
     urlInput.value = filename
