@@ -31,6 +31,7 @@ eventpatterns = [
     path('team/create', views.CreateTeamView.as_view(), name='create_team'),
     path('team/<int:team_id>/', include(teampatterns), name='team'),
     path('teaminfo/<uuid:team_token>', views.TeamInfoView.as_view(), name='team_info'),
+    path('teamlist/', views.TeamListView.as_view(), name='team_list'),
 ]
 
 urlpatterns = [

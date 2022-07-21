@@ -15,7 +15,7 @@ from dal import autocomplete
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -396,6 +396,30 @@ class DenyRequest(LoginRequiredMixin, View):
         return JsonResponse({
             'result': 'OK',
             'message': 'Request denied',
+        })
+
+
+class TeamListView(APITokenRequiredMixin, View):
+    def get(self, request):
+        plain = False
+        # Very basic Accept header handling
+        # If the header is present and contains text/plain then return that, otherwise return JSON
+        # This can be expanded if we want to support more API paths and/or more formats or if we ever want to respect q values
+        accepts = request.META.get('HTTP_ACCEPT')
+        if accepts is not None:
+            for media in accepts.split(','):
+                if media.strip().split(';')[0].strip() == 'text/plain':
+                    plain = True
+                    break
+        teams = models.Team.objects.all().prefetch_related('members').seal()
+        if plain:
+            return HttpResponse("\n".join(t.get_unique_ascii_name() for t in teams))
+        return JsonResponse({
+            'items': [{
+                'id': t.id,
+                'type': 'team' if t.is_explicit() else 'player',
+                'name': t.get_display_name(),
+            } for t in teams],
         })
 
 

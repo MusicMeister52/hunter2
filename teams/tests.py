@@ -478,6 +478,38 @@ class NoSchemaRulesTests(EventAwareTestCase):
         self.assertFalse(permissions.is_admin_for_schema_event(user, None))
 
 
+class TeamListTests(EventTestCase):
+    def setUp(self):
+        self.team = TeamFactory()
+        self.player = UserFactory()
+        self.player_team = TeamFactory(name='', members=self.player)
+        self.url = reverse('team_list')
+        self.api_token = APIToken()
+        self.api_token.save()
+
+    def test_negative_auth(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 401)
+
+    def test_json_list(self):
+        response = self.client.get(self.url, HTTP_AUTHORIZATION=f'Bearer {self.api_token.token}')
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertEqual(response_data['items'][0]['id'], self.team.id)
+        self.assertEqual(response_data['items'][0]['type'], 'team')
+        self.assertEqual(response_data['items'][0]['name'], self.team.name)
+        self.assertEqual(response_data['items'][1]['id'], self.player_team.id)
+        self.assertEqual(response_data['items'][1]['type'], 'player')
+        self.assertEqual(response_data['items'][1]['name'], self.player.username)
+
+    def test_text_list(self):
+        response = self.client.get(self.url, HTTP_ACCEPT='text/plain', HTTP_AUTHORIZATION=f'Bearer {self.api_token.token}')
+        self.assertEqual(response.status_code, 200)
+        response_data = response.content.decode('utf-8').split('\n')
+        self.assertEqual(response_data[0], f'+{self.team.name}-')
+        self.assertEqual(response_data[1], f'-{self.player.username}-')
+
+
 class TeamInfoTests(EventTestCase):
     def test_no_api_token(self):
         team = TeamFactory()
