@@ -81,14 +81,14 @@ echo "H2_DB_EXPORTER_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 
 Launch the containers and configure the database tables:
 ```shell
 docker-compose up -d
-docker-compose run --rm app migrate_schemas
+docker-compose run --rm --entrypoint "/opt/hunter2/venv/bin/python manage.py" app migrate_schemas
 ```
 
 You can now remove the `POSTGRES_PASSWORD` from your `.env` file and store it safely for future use.
 
 To create the base objects run the following:
 ```shell
-docker-compose run --rm app setupsite
-docker-compose run --rm app createsuperuser
-docker-compose run --rm app createevent
+docker-compose run --rm --entrypoint "/opt/hunter2/venv/bin/python manage.py" app setupsite
+docker-compose run --rm --entrypoint "/opt/hunter2/venv/bin/python manage.py" app createsuperuser
+docker-compose run --rm --entrypoint "/opt/hunter2/venv/bin/python manage.py" app createevent
 ```
