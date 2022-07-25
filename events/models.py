@@ -95,6 +95,9 @@ class EventFile(models.Model):
     class Meta:
         unique_together = (('event', 'slug'), )
 
+    def __str__(self):
+        return f'{self.slug}: {self.file.name}'
+
 
 class Attendance(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

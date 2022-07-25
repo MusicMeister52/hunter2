@@ -34,6 +34,9 @@ class File(models.Model):
         help_text='The extension of the uploaded file will determine the Content-Type of the file when served',
     )
 
+    def __str__(self):
+        return f'{self.slug}: {self.file.name}'
+
 
 class Icon(models.Model):
     file = models.ForeignKey(File, on_delete=models.CASCADE)

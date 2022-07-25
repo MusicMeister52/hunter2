@@ -475,6 +475,9 @@ class PuzzleFile(models.Model):
     class Meta:
         unique_together = (('puzzle', 'slug'), ('puzzle', 'url_path'))
 
+    def __str__(self):
+        return f'{self.slug}: {self.file.name}'
+
 
 class SolutionFile(models.Model):
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
@@ -495,6 +498,9 @@ class SolutionFile(models.Model):
 
     class Meta:
         unique_together = (('puzzle', 'slug'), ('puzzle', 'url_path'))
+
+    def __str__(self):
+        return f'{self.slug}: {self.file.name}'
 
 
 class Clue(SealableModel):
