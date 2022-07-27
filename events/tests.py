@@ -207,3 +207,20 @@ class EventContentTests(EventTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '__test__')
+
+
+class EventThemeTests(EventTestCase):
+    def test_load_with_event_theme(self):
+        self.tenant.script = '// script comment'
+        self.tenant.script_file = EventFileFactory()
+        self.tenant.style = '/* style comment */'
+        self.tenant.style_file = EventFileFactory()
+        self.tenant.save()
+        url = reverse('about')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        response_html = response.content.decode('utf-8')
+        self.assertInHTML('<script defer>// script comment</script>', response_html)
+        self.assertInHTML(f'<script src="{self.tenant.script_file.file.url}" defer></script>', response_html)
+        self.assertInHTML('<style>/* style comment */</style>', response_html)
+        self.assertInHTML(f'<link href="{self.tenant.style_file.file.url}" rel="stylesheet" />', response_html)

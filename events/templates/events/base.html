@@ -3,7 +3,7 @@
 {% block style %}{% spaceless %}
 {{ block.super }}
 {% if event_style_file %}
-<link rel="style" href="{{ event_style_file }}" />
+<link href="{{ event_style_file }}" rel="stylesheet" />
 {% endif %}
 {% if event_style %}
 <style>
