@@ -11,7 +11,7 @@
 {{ title }} - {{ block.super }}
 {% endblock %}
 
-{% block script %}
+{% block webpack_script %}
 {% render_bundle 'hunts_puzzle' 'js' attrs='defer' %}
 	<script>
 		"use strict"

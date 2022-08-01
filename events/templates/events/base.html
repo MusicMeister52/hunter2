@@ -14,14 +14,14 @@
 
 {% block title %}{{ event.name }}{% endblock %}
 
-{% block script %}{% spaceless %}
-{{ block.super }}
-{% if event_script_file %}
-<script src="{{ event_script_file }}" defer></script>
-{% endif %}
-{% if event_script %}
-<script defer>{{ event_script | safe }}</script>
-{% endif %}
+{% block site_script %}{% spaceless %}
+	{{ block.super }}
+	{% if event_script_file %}
+		<script src="{{ event_script_file }}" defer></script>
+	{% endif %}
+	{% if event_script %}
+		<script defer>{{ event_script | safe }}</script>
+	{% endif %}
 {% endspaceless %}{% endblock %}
 
 {% block topbar_title %}

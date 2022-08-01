@@ -6,7 +6,7 @@
 {{ block.super }}
 {% render_bundle 'hunts_stats' 'css' %}
 {% endblock %}
-{% block script %}
+{% block webpack_script %}
 {% render_bundle 'hunts_stats' 'js' attrs='defer' %}
 {% endblock %}
 

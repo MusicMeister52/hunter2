@@ -11,7 +11,7 @@
 Progress - {{ block.super }}
 {% endblock %}
 
-{% block script %}
+{% block webpack_script %}
 {% render_bundle 'hunts_admin_progress' 'js' attrs='defer' %}
 {% endblock %}
 
