@@ -52,7 +52,7 @@
     "@types/lodash-es": "4.17.6",
     "@vue/compiler-sfc": "3.2.37",
     "bootstrap": "5.2.0",
-    "chart.js": "3.8.2",
+    "chart.js": "3.9.1",
     "chartjs-adapter-luxon": "1.1.0",
     "d3": "6.7.0",
     "date-fns": "2.29.1",
