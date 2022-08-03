@@ -11,7 +11,7 @@
 Admin Stats - {{ block.super }}
 {% endblock %}
 
-{% block script %}
+{% block webpack_script %}
 {% render_bundle 'hunts_admin_stats' 'js' attrs='defer' %}
 {% endblock %}
 
