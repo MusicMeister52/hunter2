@@ -25,7 +25,5 @@ services:
       - POSTGRES_PASSWORD
   metrics:
     build: images/metrics
-  postgres_exporter:
-    build: images/postgres_exporter
   web:
     build: images/web
