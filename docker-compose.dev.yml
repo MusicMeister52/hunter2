@@ -25,7 +25,7 @@ services:
       - "${H2_WEBPACK_DEV_PORT:-4000}:${H2_WEBPACK_DEV_PORT:-4000}"
       - "${H2_WEBPACK_STATS_PORT:-8888}:${H2_WEBPACK_STATS_PORT:-8888}"
     volumes:
-      - ${PWD:-.}:/opt/hunter2/src:delegated
+      - ${PWD:-.}:/opt/hunter2/src:consistent
       - assets:/opt/hunter2/assets:z
       - node_modules:/opt/hunter2/src/node_modules:z
       - babel_cache:/var/cache/babel-loader:z
