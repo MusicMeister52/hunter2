@@ -1,5 +1,5 @@
 # Construct a common base image for creating python wheels and the final image
-FROM python:3.8.12-alpine3.15@sha256:7c5cf4ffe8a16be5166a197eac378e802e5fbccfe958bd397cb90960916e8985 AS runtime_base
+FROM python:3.10.6-alpine3.15 AS runtime_base
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
     libxml2 \
@@ -19,35 +19,25 @@ WORKDIR /opt/hunter2/src
 FROM runtime_base AS python_build
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
-    cargo \
     gcc \
     git \
-    libffi-dev \
-    libxml2-dev \
-    libxslt-dev \
     linux-headers \
     lua5.2-dev \
-    musl-dev \
-    postgresql-dev \
-    rust
+    musl-dev
 
 # Suppress pip version warning, we're keeping the version from the docker base image
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 
-ENV PATH "/root/.poetry/bin:${PATH}"
-ARG poetry_version=1.1.4
-RUN wget "https://raw.githubusercontent.com/python-poetry/poetry/${poetry_version}/get-poetry.py" \
- && python get-poetry.py --version "${poetry_version}" \
- && rm get-poetry.py \
+ENV PATH "/root/.local/bin:${PATH}"
+RUN wget -q -O - https://raw.githubusercontent.com/python-poetry/install.python-poetry.org/9b64f71d730d7be00e204b96a095b38af9e909e3/install-poetry.py | python3 - --version 1.2.0 \
  && poetry config virtualenvs.create false \
  && python -m venv /opt/hunter2/venv
 
-ARG dev_flag=" --no-dev"
-COPY poetry.lock pyproject.toml /opt/hunter2/src/
+ARG dev_flag=" --only main"
+COPY poetry.lock poetry.toml pyproject.toml /opt/hunter2/src/
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/root/.cargo \
     . /opt/hunter2/venv/bin/activate \
- && poetry install${dev_flag} --no-root
+ && poetry install${dev_flag} --no-root --no-interaction --verbose
 
 
 # Build all the required Lua components
