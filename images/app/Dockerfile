@@ -19,26 +19,14 @@ WORKDIR /opt/hunter2/src
 FROM runtime_base AS python_build
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
-    cargo \
-    gcc \
-    git \
-    libffi-dev \
-    libxml2-dev \
-    libxslt-dev \
-    linux-headers \
-    lua5.2-dev \
-    musl-dev \
-    postgresql-dev \
-    rust
+    git
 
 # Suppress pip version warning, we're keeping the version from the docker base image
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 
 ENV PATH "/root/.poetry/bin:${PATH}"
-ARG poetry_version=1.1.4
-RUN wget "https://raw.githubusercontent.com/python-poetry/poetry/${poetry_version}/get-poetry.py" \
- && python get-poetry.py --version "${poetry_version}" \
- && rm get-poetry.py \
+ARG poetry_version=1.2.0b3
+RUN pip install "poetry==${poetry_version}" \
  && poetry config virtualenvs.create false \
  && python -m venv /opt/hunter2/venv
 
