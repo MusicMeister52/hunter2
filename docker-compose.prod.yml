@@ -72,7 +72,7 @@ services:
       - db
     environment:
       - DATA_SOURCE_NAME=postgresql://postgres_exporter:${H2_DB_EXPORTER_PASSWORD}@db:5432/postgres?sslmode=disable
-    image: prometheuscommunity/postgres_exporter:v0.11.0
+    image: prometheuscommunity/postgres-exporter:v0.11.0
   metrics:
     environment:
       - H2_IMAGE_VERSION
