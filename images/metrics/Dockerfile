@@ -1,3 +1,3 @@
-FROM prom/prometheus:v2.37.0@sha256:56e7f18e05dd567f96c05046519760b356f52450c33f6e0055a110a493a41dc4
+FROM prom/prometheus:v2.38.0@sha256:aa1687dd552ed98df598cc0fed2effbc62a0f05236bc2253c65520ddd4f2afce
 
 COPY . /
