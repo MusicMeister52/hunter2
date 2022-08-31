@@ -90,7 +90,7 @@ services:
       - redis
     environment:
       - REDIS_ADDR=redis://redis:6379
-    image: oliver006/redis_exporter:v1.43.1@sha256:686e86111ad01cba12b51e6b3ba0a3ff1a8f3dbd6eddcf1d198a3320cfd11be8
+    image: oliver006/redis_exporter:v1.44.0@sha256:9350f302e9d382f82a3d814891c1679d2e01531d9e9ab9afe327f5130d062fa2
   web:
     depends_on:
       - app
