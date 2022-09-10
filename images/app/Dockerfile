@@ -21,7 +21,7 @@ FROM runtime_base AS python_build
 RUN --mount=type=cache,target=/var/cache/apk apk add \
     gcc \
     git \
-    linux-headers \
+    libffi-dev \
     lua5.2-dev \
     musl-dev
 
