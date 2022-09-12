@@ -52,7 +52,7 @@ dateparser = "==1.1.1"
 psycopg2-binary = "2.9.3"
 [tool.poetry.dev-dependencies]
 django-silk = "==5.0.1"
-ipython = "==8.4.0"
+ipython = "==8.5.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
 Sphinx = "==5.1.1"
