@@ -51,7 +51,7 @@
     </svg>
 </template>
 <script>
-import DateTime from 'luxon/src/datetime.js'
+import {DateTime} from 'luxon'
 
 export default {
   props: ['state', 'row', 'col'],
