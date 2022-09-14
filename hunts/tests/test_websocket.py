@@ -152,11 +152,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.disconnect)()
 
     def test_initial_connection(self):
+        user = TeamMemberFactory()
+        progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=user.team_at(self.tenant), start_time=timezone.now())
         ua1 = UnlockAnswerFactory(unlock__puzzle=self.pz)
         UnlockAnswerFactory(unlock__puzzle=self.pz, guess=ua1.guess + '_different')
-        h1 = HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
-        user = TeamMemberFactory()
-        TeamPuzzleProgressFactory(puzzle=self.pz, team=user.team_at(self.tenant), start_time=timezone.now())
+        HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
+        h2 = HintFactory(puzzle=self.pz, time=datetime.timedelta(0))
+        progress.accepted_hints.add(h2)
         g1 = GuessFactory(for_puzzle=self.pz, by=user)
         g1.given = timezone.now() - datetime.timedelta(days=1)
         g1.save()
@@ -202,7 +204,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did nothing in response to request for hints')
 
         self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint'], h1.text)
+        self.assertEqual(output['content']['hint'], None)
+        self.assertEqual(output['content']['accepted'], False)
+
+        output = self.receive_json(comm, 'Websocket sent too few hints')
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint'], h2.text)
+        self.assertEqual(output['content']['accepted'], True)
         self.assertTrue(self.run_async(comm.receive_nothing)())
 
         self.run_async(comm.disconnect)()
@@ -484,13 +492,13 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did nothing in response to a new hint')
 
         self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint'], h.text)
+        self.assertEqual(output['content']['hint_uid'], h.compact_id)
         self.assertEqual(output['content']['depends_on_unlock_uid'], ua.unlock.compact_id)
 
         self.assertTrue(self.run_async(comm.receive_nothing)(), 'Websocket sent extra messages')
         self.run_async(comm.disconnect)()
 
-    def test_websocket_receives_hints(self):
+    def test_websocket_receives_and_accepts_hints(self):
         # It would be better to mock the asyncio event loop in order to fake advancing time
         # but that's too much effort (and freezegun doesn't support it yet) so just use
         # short delays and hope.
@@ -522,7 +530,16 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
         self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint'], None)
+        self.assertEqual(output['content']['accepted'], False)
+
+        self.run_async(comm.send_json_to)({'type': 'accept-hint', 'id': hint.compact_id})
+        output = self.receive_json(comm, 'Websocket did not send accepted hint')
+
+        self.assertTrue(hint in progress.accepted_hints.all(), 'Hint acceptance from Websocket not reflected in db')
+        self.assertEqual(output['type'], 'new_hint')
         self.assertEqual(output['content']['hint'], hint.text)
+        self.assertEqual(output['content']['accepted'], True)
 
         self.run_async(comm.disconnect)()
 
@@ -557,10 +574,20 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did not send unlocked hint')
 
         self.assertEqual(output['type'], 'new_hint')
-        self.assertEqual(output['content']['hint'], hint.text)
+        self.assertEqual(output['content']['hint'], None)
+        self.assertEqual(output['content']['accepted'], False)
         self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
 
-        # alter the unlockanswer to an already-made gss, check hint re-appears
+        self.run_async(comm.send_json_to)({'type': 'accept-hint', 'id': hint.compact_id})
+        output = self.receive_json(comm, 'Websocket did not send accepted hint')
+
+        self.assertTrue(hint in progress.accepted_hints.all(), 'Hint acceptance from Websocket not reflected in db')
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint'], hint.text)
+        self.assertEqual(output['content']['accepted'], True)
+        self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
+
+        # alter the unlockanswer to an already-made guess, check hint re-appears
         GuessFactory(for_puzzle=self.pz, by=user, guess='__DIFFERENT__')
         self.receive_json(comm, 'Websocket did not receive new guess')
         unlockanswer.guess = '__DIFFERENT__'
@@ -572,6 +599,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         output = self.receive_json(comm, 'Websocket did not resend hint')
         self.assertEqual(output['type'], 'new_hint')
         self.assertEqual(output['content']['hint_uid'], hint.compact_id)
+        self.assertEqual(output['content']['accepted'], True)
+        self.assertEqual(output['content']['hint'], hint.text)
+
+        # Next check that updating an unlockanswer will result in the hint coming through
 
         # delete the unlockanswer, check for notification
         unlockanswer.delete()
@@ -620,9 +651,10 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             hint.text = 'different_hint_text'
             hint.save()
 
-            output = self.receive_json(comm, 'Websocket did not update changed hint text')
+            output = self.receive_json(comm, 'Websocket did not update changed hint')
             self.assertEqual(output['type'], 'new_hint')
-            self.assertEqual(output['content']['hint'], hint.text)
+            self.assertEqual(output['content']['hint'], None)
+            self.assertEqual(output['content']['accepted'], False)
             old_id = output['content']['hint_uid']
             self.assertTrue(self.run_async(comm.receive_nothing)())
 
@@ -638,7 +670,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
             hint.save()
             output = self.receive_json(comm, 'Websocket did not announce hint which moved into the past')
             self.assertEqual(output['type'], 'new_hint')
-            self.assertEqual(output['content']['hint'], hint.text)
+            self.assertEqual(output['content']['hint'], None)
+            self.assertEqual(output['content']['accepted'], False)
             old_id = output['content']['hint_uid']
             self.assertTrue(self.run_async(comm.receive_nothing)())
 

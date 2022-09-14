@@ -355,6 +355,10 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
             'solved_by'
         ).prefetch_related(
             Prefetch(
+                'accepted_hints',
+                queryset=models.Hint.objects.only('id')
+            ),
+            Prefetch(
                 'teamunlock_set',
                 queryset=models.TeamUnlock.objects.select_related(
                     'unlockanswer',
@@ -390,13 +394,17 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
                     tu.unlockanswer.unlock_id: tu.unlocked_by.given
                     for tu in progress.teamunlock_set.all()
                 }
+                accepted_hints = set(progress.accepted_hints.all())
                 hints_scheduled = any([
                     True
                     for h in puzzle.hint_set.all()
                     if (
                         not h.start_after_id
                         or h.start_after_id in unlocked_unlocks
-                    ) and not h.unlocked_by(team, progress, unlocked_unlocks=unlocked_unlocks)
+                    ) and (
+                        h not in accepted_hints
+                        or not h.unlocked_by(team, progress, unlocked_unlocks=unlocked_unlocks)
+                    )
                 ])
             return {
                 'puzzle_id': puzzle.id,
@@ -518,6 +526,7 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
             'start_time',
             'team__id',
         ).prefetch_related(
+            'accepted_hints',
             Prefetch(
                 'teamunlock_set',
                 queryset=models.TeamUnlock.objects.select_related(
@@ -603,6 +612,7 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                     {
                         'type': 'Hint',
                         'text': h.text,
+                        'accepted': h.accepted,
                         'received_at': h.unlocks_at(team, tp_progress)
                     }
                     for h in itertools.chain(*tp_progress.hints().values())

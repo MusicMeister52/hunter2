@@ -26,7 +26,7 @@
 			</div>
 			<div :id="`puzzle-${puzzle.id}-detail`" class="card-body collapse">
 				<h5>Clues Visible</h5>
-				<table class="table table-sm table-striped">
+				<table class="table table-sm table-striped team-admin-clues">
 					<thead>
 						<tr>
 							<th scope="col">Type</th>
@@ -39,7 +39,12 @@
 							<td>{{ clue.type }}</td>
 							<!-- This can be HTML but it'll be written to render in the context of the puzzle page,
 							 so it's better to just show the source than try to render it here -->
-							<td>{{ clue.text }}</td>
+							<td :class="((clue.type === 'Hint') && !clue.accepted) ? 'clue-unaccepted' : 'clue'">
+								<span :class="clue.type"></span>
+								<span :class="(clue.type === 'Hint').toString()"></span>
+								<span :class="((clue.type === 'Hint') && !clue.accepted).toString()"></span>
+								{{ clue.text }}
+							</td>
 							<td><human-datetime v-bind:value="clue.received_at" /></td>
 						</tr>
 					</tbody>

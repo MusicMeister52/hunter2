@@ -280,7 +280,7 @@ function deleteAnnouncement(announcement) {
 }
 
 function newHint(content) {
-  let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true}
+  let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true, 'accepted': content.accepted}
   if (content.depends_on_unlock_uid === null) {
     this.hints.set(content.hint_uid, hintInfo)
   } else {
@@ -409,6 +409,7 @@ function openEventSocket() {
       sock.send(JSON.stringify({'type': 'guesses-plz', 'from': 'all'}))
     }
   }
+  return sock
 }
 
 window.addEventListener('DOMContentLoaded', function() {
@@ -422,16 +423,6 @@ window.addEventListener('DOMContentLoaded', function() {
       this.unlocks.set(uid, {'unlock': null, 'guesses': new Set(), 'hints': new Map()})
     },
   })
-
-  let clueList = createApp(
-    ClueList,
-    {
-      clueData: window.clueData,
-    },
-  )
-  clueList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
-  Sentry.attachErrorHandler(clueList, { logErrors: true })
-  clueList.mount('#clue-list')
 
   let field = document.getElementById('answer-entry')
   let button = document.getElementById('answer-button')
@@ -448,7 +439,18 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 
   setupNotifications()
-  openEventSocket()
+  let sock = openEventSocket()
+
+  let clueList = createApp(
+    ClueList,
+    {
+      clueData: window.clueData,
+      socket: sock,
+    },
+  )
+  clueList.mixin(Sentry.createTracingMixins({ trackComponents: true }))
+  Sentry.attachErrorHandler(clueList, { logErrors: true })
+  clueList.mount('#clue-list')
 
   let answerForm = document.getElementById('answer-form')
   if (answerForm !== null) {

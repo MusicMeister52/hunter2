@@ -907,6 +907,7 @@ class TeamPuzzleProgress(SealableModel):
     unlockanswers = models.ManyToManyField(UnlockAnswer, through='TeamUnlock')
     # This captures whether any of the associated guesses are late
     late = models.BooleanField()
+    accepted_hints = models.ManyToManyField(Hint, through='HintAcceptance')
 
     objects = TeamPuzzleProgressQuerySet.as_manager()
 
@@ -924,12 +925,17 @@ class TeamPuzzleProgress(SealableModel):
     def hints(self):
         """Returns a dictionary of {unlock_id: visible hint}
 
-        a key of `None` is used for hints that aren't dependent on an unlock
+        Note:
+            * hints are annotated with whether they have been accepted or not
+            * a key of `None` is used for hints that aren't dependent on an unlock
         """
         hints = self.puzzle.hint_set.all().order_by('time')
+        accepted = set(self.accepted_hints.all())
         hint_dict = defaultdict(list)
+        guesses = self.guesses.all()
         for hint in hints:
-            if hint.unlocked_by(self.team, self, self.guesses.all()):
+            if hint.unlocked_by(self.team, self, guesses):
+                hint.accepted = hint in accepted
                 hint_dict[hint.start_after_id].append(hint)
 
         return hint_dict
@@ -970,6 +976,19 @@ class TeamUnlock(SealableModel):
 
     class Meta:
         unique_together = (('team_puzzle_progress', 'unlockanswer', 'unlocked_by'))
+
+
+class HintAcceptance(SealableModel):
+    team_puzzle_progress = models.ForeignKey(
+        TeamPuzzleProgress,
+        related_name='hint_acceptances',
+        on_delete=models.CASCADE,
+    )
+    hint = models.ForeignKey(Hint, on_delete=models.CASCADE)
+    accepted_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = (('team_puzzle_progress', 'hint'),)
 
 
 class UserPuzzleData(models.Model):

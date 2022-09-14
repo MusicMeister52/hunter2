@@ -37,6 +37,9 @@ export default {
         (a, b) => (a[1].time.localeCompare(b[1].time)),
       )
     },
+    acceptHint(hintId) {
+      this.socket.send(JSON.stringify({'type': 'accept-hint', 'id': hintId.toString()}))
+    },
   },
   props: [
     'clueData',

@@ -24,7 +24,7 @@
 					<label for="filter-open-puzzles">
 						Number of Open Puzzles
 						(<input type="checkbox" id="filter-no-hints" v-model="filters.no_hints">
-						<label for="filter-no-hints" class="no-margin">with no scheduled hints</label>)
+						<label for="filter-no-hints" class="no-margin">with no scheduled/unrevealed hints</label>)
 					</label>
 					<el-slider
 							id="filter-open-puzzles"
@@ -103,7 +103,7 @@
 							<tr>
 								<td>
 									Open 3h; latest 10m ago;<br>
-									no more hints scheduled
+									no more hints scheduled/unrevealed
 								</td>
 								<td>
 									<progress-state :state="{

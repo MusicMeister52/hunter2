@@ -17,10 +17,11 @@
 	<transition-group id="hints" name="highlight" tag="ul">
 		<li v-for="[id, hint] in sortedHints" v-bind:key="id" v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
 			<span class="hint-time">{{ hint.time }}: </span>
-			<strong v-html="hint.hint"></strong>
+			<strong v-if="hint.accepted" v-html="hint.hint"></strong>
+			<a v-else href="#" @click.prevent="acceptHint(id, null)">show</a>
 		</li>
 	</transition-group>
-	<table id="unlocks">
+	<table v-if="this.clueData.unlocks.size > 0" id="unlocks">
 		<tr class="unlock">
 			<th class="unlock-guesses">Guesses</th>
 			<th class="unlock-clues">Clues</th>
@@ -42,7 +43,8 @@
 					<li v-for="[hintID, hint] in unlock.hints"
 						v-bind:key="hintID"
 						v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
-						<strong v-html="hint.hint"></strong>
+						<strong v-if="hint.accepted" v-html="hint.hint"></strong>
+						<a v-else href="#" @click.prevent="acceptHint(hintID, id)">show</a>
 						<span class="hint-time"> (after {{ hint.time }})</span>
 					</li>
 				</transition-group>

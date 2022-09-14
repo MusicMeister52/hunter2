@@ -41,7 +41,7 @@ from ..admin import HintInline
 from ..forms import AnswerForm
 from ..models import EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamPuzzleData, Unlock, UnlockAnswer, \
     UserPuzzleData, TeamPuzzleProgress, \
-    TeamUnlock, Guess, Puzzle, Answer
+    TeamUnlock, Guess, Puzzle, Answer, HintAcceptance
 from ..runtimes import Runtime
 
 
@@ -50,7 +50,9 @@ class TestDjangoAdmin:
     def test_models_registered(self):
         models = apps.get_app_config('hunts').get_models()
         # Models which don't need to be directly registered due to being managed by inlines or being an M2M through model
-        inline_models = (EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamUnlock, Unlock, UnlockAnswer, )
+        inline_models = (
+            EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamUnlock, Unlock, UnlockAnswer, HintAcceptance,
+        )
         for model in models:
             if model not in inline_models:
                 assert isinstance(admin.site._registry[model], admin.ModelAdmin)
@@ -373,7 +375,7 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
 
         with freezegun.freeze_time() as frozen_datetime:
-            TeamPuzzleProgress.objects.get(team=team, puzzle=self.puzzle)
+            tpp = TeamPuzzleProgress.objects.get(team=team, puzzle=self.puzzle)
 
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
@@ -396,6 +398,7 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 1)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][0]['text'], hint.text)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][0]['accepted'], False)
 
             # Make the hint dependent on an unlock that is not unlocked. It is now neither visible nor scheduled.
             unlock = UnlockFactory(puzzle=self.puzzle)
@@ -429,10 +432,22 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(response.status_code, 200)
             response_json = response.json()
 
-            # TODO disambiguate?
             self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 2)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['accepted'], False)
+
+            # Accept the hint and check that this fact is reflected
+            tpp.accepted_hints.add(hint)
+
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            response_json = response.json()
+
+            self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 2)
+            self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['accepted'], True)
 
     def test_can_view_admin_progress(self):
         self.client.force_login(self.admin_user)
@@ -541,7 +556,7 @@ class AdminContentTests(EventTestCase):
         url = reverse('admin_progress_content')
 
         with freezegun.freeze_time() as frozen_datetime:
-            TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now())
+            tpp = TeamPuzzleProgressFactory(team=team, puzzle=self.puzzle, start_time=timezone.now())
             hint = HintFactory(puzzle=self.puzzle, time=datetime.timedelta(minutes=10), start_after=None)
 
             response = self.client.get(url)
@@ -551,8 +566,16 @@ class AdminContentTests(EventTestCase):
             # Initially the hint is not unlocked, but scheduled
             self.assertTrue(progress[0]['hints_scheduled'])
 
-            # Advance time and retry; now no hints are scheduled again
+            # Advance time and retry; now the hint is unlocked but unaccepted, so display stays the same
             frozen_datetime.tick(datetime.timedelta(minutes=11))
+
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            progress = self._check_team_get_progress(response, team)
+            self.assertTrue(progress[0]['hints_scheduled'])
+
+            # Accept the hint - now there should be nothing scheduled
+            tpp.accepted_hints.add(hint)
 
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)

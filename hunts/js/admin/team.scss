@@ -47,3 +47,12 @@ ol.hints {
     line-height: 1.2em;
     font-size: 1.5rem;
 }
+
+table.team-admin-clues {
+  td.clue-unaccepted {
+    color: #ffffff33;
+  }
+  tr:nth-of-type(2n+1) > td.clue-unaccepted {
+    color: #cfcfcf33;
+  }
+}

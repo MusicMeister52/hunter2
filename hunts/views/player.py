@@ -165,6 +165,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
             'team',
         ).prefetch_related(
             'guesses',
+            'accepted_hints',
             'puzzle__hint_set__start_after__unlockanswer_set',
             Prefetch(
                 'teamunlock_set',
