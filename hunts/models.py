@@ -926,7 +926,7 @@ class TeamPuzzleProgress(SealableModel):
 
         a key of `None` is used for hints that aren't dependent on an unlock
         """
-        hints = self.puzzle.hint_set.all()
+        hints = self.puzzle.hint_set.all().order_by('time')
         hint_dict = defaultdict(list)
         for hint in hints:
             if hint.unlocked_by(self.team, self, self.guesses.all()):
