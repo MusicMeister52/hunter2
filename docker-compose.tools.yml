@@ -26,7 +26,7 @@ services:
   docs:
     environment:
       - H2_IMAGE_VERSION
-    image: ${H2_REGISTRY}:-registry.gitlab.com/hunter2.app/hunter2}/app:${H2_IMAGE_VERSION:-latest}
+    image: ${H2_REGISTRY:-registry.gitlab.com/hunter2.app/hunter2}/app:${H2_IMAGE_VERSION:-latest}
     volumes:
       - ${PWD:-.}:/opt/hunter2/src
 
