@@ -18,6 +18,7 @@ from faker import Faker
 
 from accounts.models import UserProfile
 from events.factories import AttendanceFactory
+from events.models import Attendance
 from events.test import EventTestCase
 from hunter2.models import Configuration
 from teams.factories import TeamMemberFactory
@@ -29,6 +30,9 @@ from teams.models import TeamRole
 class FactoryTests(TestCase):
     def test_user_factory_default_construction(self):
         UserFactory.create()
+
+    def test_user_factory_no_real_name(self):
+        UserFactory.create(first_name="", last_name="")
 
 
 class ProfilePageTests(EventTestCase):
@@ -68,7 +72,7 @@ class AdminRegistrationTests(TestCase):
     def test_models_registered(self):
         models = apps.get_app_config('accounts').get_models()
         # Models which don't need to be registered due to being deprecated and retained only for old data migration
-        exclude_models = (UserProfile, )
+        exclude_models = (UserProfile,)
         for model in models:
             if model not in exclude_models:
                 self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
@@ -182,3 +186,43 @@ class AutocompleteTests(TestCase):
         results = response.json()['results']
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['id'], str(self.user_a.uuid))
+
+
+class EditProfileTests(EventTestCase):
+    def setUp(self):
+        self.fake = Faker()
+
+    def test_edit_profile_update_fields(self):
+        user = TeamMemberFactory()
+        attendance = AttendanceFactory(user=user, event=self.tenant)
+        self.client.force_login(user)
+
+        url = reverse('edit_profile')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        new_email = self.fake.email()
+        new_contact = self.fake.boolean()
+        new_picture = self.fake.image_url()
+        new_seat = self.fake.postcode()  # It looks kinda like a seat number?
+
+        self.client.post(url, {
+            'email': new_email,
+            'contact': new_contact,
+            'picture': new_picture,
+            'attendance_set-TOTAL_FORMS': 1,
+            'attendance_set-INITIAL_FORMS': 1,
+            'attendance_set-MIN_NUM_FORMS': 0,
+            'attendance_set-MAX_NUM_FORMS': 1000,
+            'attendance_set-0-id': attendance.id,
+            'attendance_set-0-user': user.id,
+            'attendance_set-0-seat': new_seat,
+        })
+        self.assertEqual(response.status_code, 200)
+
+        new_user = get_user_model().objects.get(id=user.id)
+        new_attendance = Attendance.objects.get(id=attendance.id)
+        self.assertEqual(new_user.email, new_email)
+        self.assertEqual(new_user.contact, new_contact)
+        self.assertEqual(new_user.picture, new_picture)
+        self.assertEqual(new_attendance.seat, new_seat)
