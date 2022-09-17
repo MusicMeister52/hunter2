@@ -166,3 +166,19 @@ class SignupTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
+
+
+class AutocompleteTests(TestCase):
+    def setUp(self):
+        self.user_a = UserFactory(username='a_user', email='a_email@example.org')
+        self.user_b = UserFactory(username='b_user', email='a_email@example.com')
+        self.querier = UserFactory(username='a_querier', email='a_querier@example.com')
+        self.url = reverse('user_autocomplete')
+
+    def test_autocomplete_by_user(self):
+        self.client.force_login(self.querier)
+        response = self.client.get(f'{self.url}?q=a')
+        self.assertEqual(response.status_code, 200)
+        results = response.json()['results']
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], str(self.user_a.uuid))

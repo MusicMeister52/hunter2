@@ -16,7 +16,6 @@ from allauth.account.forms import ChangePasswordForm, SetPasswordForm
 from dal import autocomplete
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse, reverse_lazy
@@ -41,10 +40,7 @@ class UserAutoComplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
         qs = User.objects.exclude(pk=self.request.user.pk).order_by('username')
 
         if self.q:
-            qs = qs.filter(
-                Q(username__istartswith=self.q) |
-                Q(email__istartswith=self.q)
-            )
+            qs = qs.filter(username__istartswith=self.q)
 
         return qs
 
