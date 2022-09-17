@@ -120,6 +120,4 @@ class EditProfileView(LoginRequiredMixin, View):
                 created_user.save()
                 attendance_formset.save()
                 return HttpResponseRedirect(reverse('edit_profile'))
-        if not attendance_formset and request.tenant:
-            attendance_formset = self._get_attendance_formset(request)
-        return self._render(request, user_form, attendance_formset)
+        return self._render(request, 400, user_form, attendance_formset)
