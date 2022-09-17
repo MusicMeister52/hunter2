@@ -47,7 +47,7 @@ django-postgresql-dag = "==0.3.2"
 pytest-django = "==4.5.2"
 pytest-cov = "==3.0.0"
 pytest-shard = "0.1.2"
-django-gdpr-assist = { git = "https://github.com/wildfish/django-gdpr-assist.git", rev = "12a8f1e8dc0d0482120ca62fe09242523c711aed"}
+django-gdpr-assist = "1.4.2"
 dateparser = "==1.1.1"
 psycopg2-binary = "2.9.3"
 [tool.poetry.dev-dependencies]

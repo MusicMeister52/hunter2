@@ -13,6 +13,7 @@
 
 import uuid
 
+import gdpr_assist
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -22,12 +23,6 @@ from django.urls import reverse
 class User(AbstractUser):
     class Meta:
         db_table = 'auth_user'
-
-    class PrivacyMeta:
-        fields = ['username', 'email', 'picture', 'contact']
-
-        def anonymise_contact(self, instance):
-            instance.contact = False
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, serialize=False, unique=True)
     picture = models.URLField(blank=True, help_text='Paste a URL to an image for your profile picture')
@@ -60,6 +55,16 @@ class User(AbstractUser):
         team = self.teams.get(at_event=event)
         self._team_at[event] = team
         return team
+
+
+class UserPrivacyMeta:
+    fields = ['username', 'email', 'picture', 'contact']
+
+    def anonymise_contact(self, instance):
+        instance.contact = False
+
+
+gdpr_assist.register(User, UserPrivacyMeta, gdpr_default_manager_name='objects_anonymised')
 
 
 # UserProfile exists only to allow for migration of foreign keys in schemas to the custom User model. It should not be used for anything.

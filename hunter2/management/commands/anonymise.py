@@ -47,7 +47,7 @@ class Command(BaseCommand):
         last_login = ' '.join(options['last_login_before'])
         until = self.parse_date(last_login)
 
-        users = User.objects.filter(last_login__lte=until)
+        users = User.objects_anonymised.filter(last_login__lte=until)
         proceed = self.get_confirmation(yes, users, until)
         if dryrun:
             self.stdout.write('Dry run: nothing to do.')

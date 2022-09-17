@@ -449,24 +449,17 @@ django = "*"
 
 [[package]]
 name = "django-gdpr-assist"
-version = "1.3.0"
-description = ""
+version = "1.4.2"
+description = "GDPR tools for Django sites"
 category = "main"
 optional = false
 python-versions = "*"
-develop = false
 
 [package.dependencies]
 django-yaa-settings = ">=1.1"
 
 [package.extras]
-dev = ["model_bakery", "pillow", "sphinx", "sphinx-autobuild", "sphinx_rtd_theme", "tox"]
-
-[package.source]
-type = "git"
-url = "https://github.com/wildfish/django-gdpr-assist.git"
-reference = "12a8f1e8dc0d0482120ca62fe09242523c711aed"
-resolved_reference = "12a8f1e8dc0d0482120ca62fe09242523c711aed"
+dev = ["freezegun", "model-bakery", "pillow", "sphinx", "sphinx-autobuild", "sphinx-rtd-theme", "tox"]
 
 [[package]]
 name = "django-nested-admin"
@@ -1815,7 +1808,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3cff983006d209d66af49b5cda77b02fa6b1600907e1ccd3e221dcf8e509bed8"
+content-hash = "23762db372731ad44653fddbc602ad0a3d7c8ed7e4651390669fc5c8b1b2861c"
 
 [metadata.files]
 aioredis = [
@@ -2111,7 +2104,10 @@ django-fullclean = [
     {file = "django-fullclean-0.0.5.tar.gz", hash = "sha256:f02db89a6bb0f9b58a3f7660b3437790d7c3d2ead2191db187b9a6022f1ac90a"},
     {file = "django_fullclean-0.0.5-py3-none-any.whl", hash = "sha256:4ae0271e6286d763e881679e6bdf45c8c6da414b96d6513a5c7ef911d44f717e"},
 ]
-django-gdpr-assist = []
+django-gdpr-assist = [
+    {file = "django-gdpr-assist-1.4.2.tar.gz", hash = "sha256:5221a2159f306fa853eea9c03f34a2ddab0db2fdfd6d315d9ff1ca0e74a18efc"},
+    {file = "django_gdpr_assist-1.4.2-py3-none-any.whl", hash = "sha256:791aff8be0916f1d2e83b8c02bd1ca90362fe8616d9df29ff8558d87ad1a1c5a"},
+]
 django-nested-admin = [
     {file = "django-nested-admin-3.4.0.tar.gz", hash = "sha256:fbcf20d75a73dcbcc6285793ff936eff8df4deba5b169e0c1ab765394c562805"},
     {file = "django_nested_admin-3.4.0-py2.py3-none-any.whl", hash = "sha256:c6852c5ac632f4e698b6beda455006fd464c852459e5e858a6db832cdb23d9e1"},
