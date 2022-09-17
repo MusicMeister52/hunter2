@@ -1,4 +1,4 @@
-import Duration from 'luxon/src/duration.js'
+import {Duration} from 'luxon'
 
 // We don't have any support for locales in Intl yet, so this just has static formats
 export default {

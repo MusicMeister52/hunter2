@@ -4,17 +4,12 @@ import 'bootstrap/js/dist/collapse'
 
 import AlertList from './alert-list.vue'
 
-import DateTime from 'luxon/src/datetime'
-import * as LuxonFormats from 'luxon/src/impl/formats'
+import {DateTime} from 'luxon'
 
 export function formatDatesForLocalTZ() {
   document.querySelectorAll('span.localtime').forEach(elt => {
     let dt = DateTime.fromISO(elt.dataset.utc)
     let fmt = elt.dataset.format
-    if (!Object.prototype.hasOwnProperty.call(LuxonFormats, fmt)) {
-      throw new Error(`${fmt} is not a valid Luxon format preset`)
-    }
-
     let text = dt.toLocaleString(DateTime[fmt])
     elt.parentNode.replaceChild(document.createTextNode(text), elt)
   })
