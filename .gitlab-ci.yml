@@ -20,7 +20,7 @@ stages:
 
 .base_job:
   before_script:
-    - export H2_IMAGE_VERSION=$([[ "${CI_COMMIT_BRANCH}" != "${CI_DEFAULT_BRANCH}" ]] && echo "${CI_COMMIT_REF_SLUG}_")$(git describe)
+    - export H2_IMAGE_VERSION=$([[ -n "${CI_COMMIT_BRANCH}" && "${CI_COMMIT_BRANCH}" != "${CI_DEFAULT_BRANCH}" ]] && echo "${CI_COMMIT_REF_SLUG}_")$(git describe)
     - export H2_REGISTRY="${CI_REGISTRY_IMAGE}"
     - chmod -R g-w,o-w .
     - ln -s docker-compose.prod.yml docker-compose.yml
