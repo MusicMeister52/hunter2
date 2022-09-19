@@ -159,25 +159,31 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
                     break
         return self.relative_id
 
-    def finished_times(self):
-        """Get a list of player teams who have finished this episode with their finish time, in the order in which they finished."""
+    def finished_times(self, include_late=False):
+        """Get a list of player teams who have finished this episode with their finish time, in the order in which they finished.
+
+        Unless include_late is True, teams whose Progress on any puzzle is marked "late" - i.e. they finished a
+        puzzle after the event ended - are excluded.
+        """
+        solved_filter = Q(
+            teampuzzleprogress__puzzle__episode=self,
+            teampuzzleprogress__solved_by__isnull=False,
+        )
+        if not include_late:
+            solved_filter &= Q(teampuzzleprogress__late=False)
+
         return [(t, t.last_solve) for t in teams.models.Team.objects.annotate(
-            solved_count=Count('teampuzzleprogress', filter=Q(
-                teampuzzleprogress__puzzle__episode=self,
-                teampuzzleprogress__solved_by__isnull=False),
-            ),
-            last_solve=Max('teampuzzleprogress__solved_by__given', filter=Q(
-                teampuzzleprogress__puzzle__episode=self,
-            )),
+            solved_count=Count('teampuzzleprogress', filter=solved_filter),
+            last_solve=Max('teampuzzleprogress__solved_by__given', filter=solved_filter),
         ).filter(
             role=teams.models.TeamRole.PLAYER,
             solved_count__gt=0,
             solved_count=self.puzzle_set.count(),
         ).order_by('last_solve')]
 
-    def finished_positions(self):
+    def finished_positions(self, include_late=False):
         """Get a list of player teams who have finished this episode in the order in which they finished."""
-        return [team for team, time in self.finished_times()]
+        return [team for team, time in self.finished_times(include_late=include_late)]
 
     def headstart_applied(self, team):
         """Get how much headstart the given team has acquired for the episode
@@ -734,6 +740,7 @@ class Guess(ExportModelOperationsMixin('guess'), SealableModel):
     by_team = models.ForeignKey(teams.models.Team, on_delete=models.SET_NULL, null=True, blank=True)
     guess = models.TextField(max_length=512)
     given = models.DateTimeField(default=timezone.now)
+    late = models.BooleanField()
     # The following two fields cache whether the guess is correct. Do not use them directly.
     correct_for = models.ForeignKey(Answer, blank=True, null=True, on_delete=models.SET_NULL)
     correct_current = models.BooleanField(default=False)
@@ -889,6 +896,8 @@ class TeamPuzzleProgress(SealableModel):
     start_time = models.DateTimeField(blank=True, null=True)
     solved_by = models.ForeignKey(Guess, blank=True, null=True, on_delete=models.SET_NULL, related_name="+")
     unlockanswers = models.ManyToManyField(UnlockAnswer, through='TeamUnlock')
+    # This captures whether any of the associated guesses are late
+    late = models.BooleanField()
 
     objects = TeamPuzzleProgressQuerySet.as_manager()
 

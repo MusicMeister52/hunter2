@@ -128,15 +128,22 @@ class EpisodeBehaviourTests(EventTestCase):
         self.client.force_login(user)
         url = reverse('episode_content', kwargs={'episode_number': linear_episode.get_relative_id()})
 
-        with freezegun.freeze_time() as frozen_datetime:
-            linear_episode.event.end_date = timezone.now()
-            linear_episode.event.save()
-            frozen_datetime.move_to(linear_episode.puzzle_set.last().start_date)
-            team_puzzles = self.client.get(url).context['puzzles']
-            self.assertEqual(len(team_puzzles), 1, msg='Before the event ends, only the first puzzle should be available')
-            frozen_datetime.move_to(linear_episode.event.end_date + datetime.timedelta(seconds=1))
-            team_puzzles = self.client.get(url).context['puzzles']
-            self.assertEqual(len(team_puzzles), num_puzzles, msg='After the event ends, all of the puzzles should be available')
+        # TenantTestCase (hence EventTestCase) does not restore change to the tenant itself for some reason
+        original_end_date = linear_episode.event.end_date
+        try:
+            with freezegun.freeze_time() as frozen_datetime:
+                linear_episode.event.end_date = timezone.now()
+                linear_episode.event.save()
+                start_date = linear_episode.puzzle_set.last().start_date
+                frozen_datetime.move_to(start_date)
+                team_puzzles = self.client.get(url).context['puzzles']
+                self.assertEqual(len(team_puzzles), 1, msg='Before the event ends, only the first puzzle should be available')
+                frozen_datetime.move_to(linear_episode.event.end_date + datetime.timedelta(seconds=1))
+                team_puzzles = self.client.get(url).context['puzzles']
+                self.assertEqual(len(team_puzzles), num_puzzles, msg='After the event ends, all of the puzzles should be available')
+        finally:
+            linear_episode.event.end_date = original_end_date
+            linear_episode.save()
 
     def test_puzzle_start_dates(self):
         with freezegun.freeze_time():
@@ -223,8 +230,13 @@ class EpisodeBehaviourTests(EventTestCase):
 
         PuzzleFactory(episode=episode, start_date=event_end - datetime.timedelta(seconds=1))
 
-        with self.assertRaises(ValidationError):
-            self.tenant.end_date = self.tenant.end_date - datetime.timedelta(minutes=1)
+        original_end_date = self.tenant.end_date
+        try:
+            with self.assertRaises(ValidationError):
+                self.tenant.end_date = self.tenant.end_date - datetime.timedelta(minutes=1)
+                self.tenant.save()
+        finally:
+            self.tenant.end_date = original_end_date
             self.tenant.save()
 
     def test_headstarts(self):

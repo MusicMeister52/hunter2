@@ -46,15 +46,15 @@ class TotalsGenerator(AbstractGenerator):
     def generate(self):
         User = get_user_model()
 
+        guesses_filter = Q(late=False)
+        team_guesses_filter = Q(guess__late=False)
+        team_puzzle_progress_filter = Q(late=False)
         if self.episode is not None:
-            guesses_filter = Q(for_puzzle__episode=self.episode)
-            team_guesses_filter = Q(guess__for_puzzle__episode=self.episode)
-            team_puzzle_progress_filter = Q(puzzle__episode=self.episode)
+            guesses_filter &= Q(for_puzzle__episode=self.episode)
+            team_guesses_filter &= Q(guess__for_puzzle__episode=self.episode)
+            team_puzzle_progress_filter &= Q(puzzle__episode=self.episode)
             finishing_episodes = [self.episode]
         else:
-            guesses_filter = Q()
-            team_guesses_filter = Q()
-            team_puzzle_progress_filter = Q()
             finishing_episodes = self.event.episode_set.filter(winning=True)
         teams = Team.objects.filter(role=TeamRole.PLAYER).annotate(
             guesses=Count('guess', filter=team_guesses_filter),
@@ -70,6 +70,7 @@ class TotalsGenerator(AbstractGenerator):
             team_puzzle_progress_filter,
             team__role=TeamRole.PLAYER,
             solved_by__isnull=False,
+            late=False,
         )
         guesses = Guess.objects.filter(guesses_filter & Q(by_team__role=TeamRole.PLAYER))
         return {

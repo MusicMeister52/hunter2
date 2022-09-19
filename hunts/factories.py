@@ -23,7 +23,7 @@ from django.utils import timezone
 from faker import Faker
 
 from accounts.factories import UserFactory
-from events.models import Event
+from events.factories import activated_event
 from teams.factories import TeamFactory, TeamMemberFactory
 from .models import AnnouncementType
 from .runtimes import Runtime
@@ -41,7 +41,7 @@ class EpisodeFactory(factory.django.DjangoModelFactory):
     name = factory.Faker('sentence')
     flavour = factory.Faker('text')
     start_date = factory.Faker('date_time_this_month', tzinfo=pytz.utc)
-    event = factory.LazyFunction(Event.objects.get)
+    event = factory.LazyFunction(activated_event)
     parallel = factory.Faker('boolean')
 
     @factory.post_generation
@@ -246,10 +246,10 @@ class GuessFactory(factory.django.DjangoModelFactory):
     # We need to ensure that there is this consistency:
     # User(by) <-> Team <-> Event <-> Episode <-> Puzzle(for_puzzle)
     for_puzzle = factory.SubFactory(PuzzleFactory)
-    event = factory.LazyAttribute(lambda o: o.for_puzzle.episode.event)
-    by = factory.LazyAttribute(lambda o: TeamMemberFactory(team__at_event=o.event))
+    by = factory.LazyAttribute(lambda o: TeamMemberFactory(team__at_event=activated_event()))
     guess = factory.Faker('sentence')
     given = factory.LazyFunction(timezone.now)
+    late = factory.LazyAttribute(lambda o: timezone.now() > o.for_puzzle.episode.event.end_date)
     # by_team, correct_for and correct_current are all handled internally.
 
 
@@ -261,6 +261,7 @@ class TeamPuzzleProgressFactory(factory.django.DjangoModelFactory):
     start_time = factory.Faker('past_datetime', start_date='-1h', tzinfo=pytz.utc)
     puzzle = factory.SubFactory(PuzzleFactory)
     team = factory.SubFactory(TeamFactory)
+    late = factory.LazyAttribute(lambda o: timezone.now() > o.puzzle.episode.event.end_date)
 
 
 class DataFactory(factory.django.DjangoModelFactory):
@@ -286,7 +287,7 @@ class UserDataFactory(DataFactory):
         model = 'hunts.UserData'
         django_get_or_create = ('event', 'user')
 
-    event = factory.LazyFunction(Event.objects.get)
+    event = factory.LazyFunction(activated_event)
     user = factory.SubFactory(UserFactory)
 
 

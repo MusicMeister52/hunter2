@@ -38,6 +38,7 @@ from ..factories import (
     SolutionFileFactory,
     TeamPuzzleProgressFactory,
 )
+from ..models import Guess
 
 
 class ErrorTests(EventTestCase):
@@ -220,17 +221,24 @@ class AnswerSubmissionTests(EventTestCase):
         with freezegun.freeze_time() as frozen_datetime:
             self.event.end_date = timezone.now() + datetime.timedelta(seconds=5)
             self.event.save()
+            self.assertFalse(Guess.objects.exists())
             response = self.client.post(self.url, {
                 'last_updated': '0',
-                'answer': GuessFactory.build(for_puzzle=self.puzzle, correct=False).guess
+                'answer': '__FIRST__',
             })
             self.assertEqual(response.status_code, 200)
+            new_guess = Guess.objects.order_by('given').last()
+            self.assertEqual(new_guess.guess, '__FIRST__')
+            self.assertEqual(new_guess.late, False)
             frozen_datetime.tick(delta=datetime.timedelta(seconds=10))
             response = self.client.post(self.url, {
                 'last_updated': '0',
-                'answer': GuessFactory.build(for_puzzle=self.puzzle, correct=False).guess
+                'answer': '__SECOND__',
             })
-            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.status_code, 200)
+            new_guess = Guess.objects.order_by('given').last()
+            self.assertEqual(new_guess.guess, '__SECOND__')
+            self.assertEqual(new_guess.late, True)
 
 
 class PuzzleAccessTests(EventTestCase):
@@ -327,7 +335,7 @@ class PuzzleAccessTests(EventTestCase):
             # Can't load, callback or answer the third puzzle
             _check_load_callback_answer(self.puzzles[2], 403)
 
-            # Can load third puzzle, but not callback or answer after event ends
+            # Can load third puzzle, and still callback or answer after event ends
             old_time = frozen_datetime()
             frozen_datetime.move_to(self.tenant.end_date + datetime.timedelta(seconds=1))
 
@@ -346,7 +354,7 @@ class PuzzleAccessTests(EventTestCase):
                 HTTP_ACCEPT='application/json',
                 HTTP_X_REQUESTED_WITH='XMLHttpRequest',
             )
-            self.assertEqual(resp.status_code, 400)
+            self.assertEqual(resp.status_code, 200)
 
             # Answer
             resp = self.client.post(
@@ -354,7 +362,7 @@ class PuzzleAccessTests(EventTestCase):
                 {'answer': 'NOT_CORRECT'},  # Deliberately incorrect answer
                 HTTP_X_REQUESTED_WITH='XMLHttpRequest'
             )
-            self.assertEqual(resp.status_code, 400)
+            self.assertEqual(resp.status_code, 200)
 
             # Solution
             resp = self.client.get(
@@ -378,8 +386,6 @@ class PuzzleAccessTests(EventTestCase):
                 HTTP_X_REQUESTED_WITH='XMLHttpRequest'
             )
             self.assertEqual(response.status_code, 200)
-            # Can now load, callback and answer the third puzzle
-            _check_load_callback_answer(self.puzzles[2], 200)
 
 
 class FileTests(EventTestCase):

@@ -27,6 +27,7 @@ from ..factories import (
     GuessFactory,
     PuzzleFactory,
     UnlockAnswerFactory,
+    TeamPuzzleProgressFactory,
 )
 from ..models import TeamPuzzleProgress, \
     TeamUnlock, Answer, \
@@ -175,6 +176,19 @@ class EventWinningTests(EventTestCase):
         # team2 should be first
         self.assertEqual(utils.finishing_positions(self.tenant), [self.team2, self.team1])
 
+    def test_win_with_late_team(self):
+        GuessFactory.create(for_puzzle=self.ep1.get_puzzle(1), by=self.user1, correct=True)
+        GuessFactory.create(for_puzzle=self.ep1.get_puzzle(2), by=self.user1, correct=True)
+
+        self.assertEqual(utils.finishing_positions(self.tenant), [self.team1])
+        self.assertEqual(utils.finishing_positions(self.tenant, include_late=True), [self.team1])
+
+        GuessFactory.create(for_puzzle=self.ep1.get_puzzle(1), by=self.user2, correct=True)
+        GuessFactory.create(for_puzzle=self.ep1.get_puzzle(2), by=self.user2, correct=True, late=True)
+
+        self.assertEqual(utils.finishing_positions(self.tenant), [self.team1])
+        self.assertEqual(utils.finishing_positions(self.tenant, include_late=True), [self.team1, self.team2])
+
 
 class ProgressSignalTests(EventTestCase):
     def setUp(self):
@@ -184,8 +198,7 @@ class ProgressSignalTests(EventTestCase):
         self.unlock = self.unlockanswer.unlock
         self.user = TeamMemberFactory()
         self.team = self.user.team_at(self.tenant)
-        self.progress = TeamPuzzleProgress(team=self.team, puzzle=self.puzzle, start_time=timezone.now())
-        self.progress.save()
+        self.progress = TeamPuzzleProgressFactory(team=self.team, puzzle=self.puzzle, start_time=timezone.now())
 
     def test_save_guess_updates_progress_correctly(self):
         GuessFactory(for_puzzle=self.puzzle, by=self.user, guess='incorrect')

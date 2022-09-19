@@ -229,7 +229,13 @@ class PuzzleEventWebsocket(HuntWebsocket):
         except KeyError:
             pass
 
-        progress, _ = models.TeamPuzzleProgress.objects.get_or_create(puzzle=self.puzzle, team=self.team)
+        progress, _ = models.TeamPuzzleProgress.objects.get_or_create(
+            puzzle=self.puzzle,
+            team=self.team,
+            defaults={
+                'late': timezone.now() > self.episode.event.end_date
+            }
+        )
         delay = hint.delay_for_team(self.team, progress)
         if delay is None:
             return

@@ -76,8 +76,13 @@ def saved_guess(sender, instance, raw, created, *args, **kwargs):
             # If we do have to create this then we don't know the start time.
             # Use the guess time as the start time since it's the only bound we have.
             'start_time': guess.given,
+            'late': guess.late,
         },
     )
+    if guess.late and not progress.late:
+        progress.late = True
+        progress.save()
+
     # hints are prefetched for the consumer signal handler
     unlocks = guess.for_puzzle.unlock_set.all().prefetch_related('unlockanswer_set', 'hint_set').seal()
 

@@ -1,4 +1,5 @@
 {% extends "teams/base.html" %}
+{% load tz %}
 {% load static %}
 {% load render_bundle from webpack_loader %}
 
@@ -86,11 +87,17 @@
 <section id="puzzle-answer">
 {% if answered %}
 <h2>Your correct answer</h2>
-<p>"{{ answered.guess }}" &mdash; entered by {{ answered.by.username }}</p>
-{% elif ended %}
-<h2>Event is over</h2>
+<p>
+	"{{ answered.guess }}" &mdash; entered by {{ answered.by.username }} at
+	<span class="localtime"
+		  data-utc="{{ answered.given|utc|date:"c" }}"
+		  data-format="DATETIME_SHORT_WITH_SECONDS">
+		{{ answered.given|date:"Y-m-d H:i:s O" }}
+	</span>
+	{% if answered.late %}(after the end of the event){% endif %}
+</p>
 {% endif %}
-{% if admin or not answered and not ended %}
+{% if admin or not answered %}
 <form id="answer-form" class="form-inline" action="an" method="POST">
 	{% csrf_token %}
 	<span id="answer-border">
@@ -101,6 +108,13 @@
 <div id="connection-status"></div>
 {% endif %}
 {% if ended or admin %}
+{% if ended and not answered %}
+<h3>Event is over</h3>
+<p>
+	You may still submit answers and solve puzzles, but your progress will not appear on leaderboards or in
+	statistics.
+</p>
+{% endif %}
 <button
 	id="solution-button"
 	class="btn btn-primary"

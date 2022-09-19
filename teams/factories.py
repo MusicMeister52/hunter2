@@ -17,7 +17,7 @@ import factory
 from faker import Faker
 
 from accounts.factories import UserFactory
-from events.models import Event
+from events.factories import activated_event
 
 from .models import TeamRole
 
@@ -27,7 +27,7 @@ class TeamFactory(factory.django.DjangoModelFactory):
         model = 'teams.Team'
 
     name = factory.Sequence(lambda n: f'{n}{Faker().color_name()}')
-    at_event = factory.LazyFunction(Event.objects.get)
+    at_event = factory.LazyFunction(activated_event)
     role = TeamRole.PLAYER
 
     @factory.post_generation

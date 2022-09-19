@@ -61,10 +61,9 @@ class TopGuessesGenerator(AbstractGenerator):
 
     def generate(self):
         User = get_user_model()
+        guesses_filter = Q(guess__late=False)
         if self.episode is not None:
-            guesses_filter = Q(guess__for_puzzle__episode=self.episode)
-        else:
-            guesses_filter = Q()
+            guesses_filter &= Q(guess__for_puzzle__episode=self.episode)
         teams = Team.objects.filter(role=TeamRole.PLAYER).annotate(guess_count=Count('guess', filter=guesses_filter)).order_by('-guess_count')
         users = User.objects.filter(teams__role=TeamRole.PLAYER).annotate(guess_count=Count('guess', filter=guesses_filter)).order_by('-guess_count')
         return {

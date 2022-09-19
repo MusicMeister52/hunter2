@@ -15,6 +15,8 @@ from datetime import timedelta
 from urllib.parse import unquote, urlparse
 
 from channels.testing import WebsocketCommunicator, ApplicationCommunicator
+from django.core.management import call_command
+from django.db import connection, connections
 from django.test import TransactionTestCase
 from django.utils import timezone
 from django_tenants.test.cases import FastTenantTestCase
@@ -22,6 +24,9 @@ from django_tenants.test.client import TenantClient
 
 from .factories import EventFactory, DomainFactory
 from .models import Event
+
+
+TEST_SCHEMA_NAME = '_unittest_schema'
 
 
 class EventAwareTestCase(TransactionTestCase):
@@ -36,8 +41,43 @@ class EventAwareTestCase(TransactionTestCase):
         super()._fixture_setup()
 
     def _fixture_teardown(self):
-        self._flush_events()
-        super()._fixture_teardown()
+        # Modify the default behaviour of TransactionTestCase to truncate both the test tenant schema and
+        # the public schema, then leave the connection set to the public schema.
+        for db_name in self._databases_names(include_mirrors=False):
+            # Flush the database
+            inhibit_post_migrate = (
+                    self.available_apps is not None or
+                    (   # Inhibit the post_migrate signal when using serialized
+                        # rollback to avoid trying to recreate the serialized data.
+                        self.serialized_rollback and
+                        hasattr(connections[db_name], '_test_serialized_contents')
+                    )
+            )
+            connection.set_tenant(Event(schema_name=TEST_SCHEMA_NAME))
+            call_command(
+                'flush',
+                verbosity=0,
+                interactive=False,
+                database=db_name,
+                reset_sequences=False,
+                allow_cascade=self.available_apps is not None,
+                inhibit_post_migrate=inhibit_post_migrate
+            )
+            connection.set_schema_to_public()
+            # There are foreign keys from the non-public schemas to the public schema, so we must allow the truncate to
+            # cascade. (This is not the default behaviour)) In the case where the only non-public schema is the one we
+            # just deleted, this makes no difference beyond suppressing a SQL error. However, if another schema exists
+            # then this is going to delete its corresponding row in the Event table in the public schema, which will
+            # cascade to the tables in that other schema.
+            call_command(
+                'flush',
+                verbosity=0,
+                interactive=False,
+                database=db_name,
+                reset_sequences=False,
+                allow_cascade=True,
+                inhibit_post_migrate=inhibit_post_migrate
+            )
 
 
 class EventTestCase(FastTenantTestCase):
@@ -51,6 +91,10 @@ class EventTestCase(FastTenantTestCase):
         tenant.current = True
         tenant.end_date = timezone.now() + timedelta(days=5)
         tenant.name = 'Test Event'
+
+    @classmethod
+    def get_test_schema_name(cls):
+        return TEST_SCHEMA_NAME
 
 
 class ScopeOverrideCommunicator(WebsocketCommunicator):
