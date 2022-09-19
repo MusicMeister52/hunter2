@@ -512,18 +512,21 @@ class SolutionFile(models.Model):
 class Clue(SealableModel):
     id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE)
-    text = models.TextField(help_text="Text displayed when this clue is unlocked")
 
     class Meta:
         abstract = True
-        unique_together = (('puzzle', 'text'), )
 
     @property
     def compact_id(self):
         return utils.encode_uuid(self.id)
 
+    @property
+    def short_compact_id(self):
+        return self.compact_id[-6:]
+
 
 class Hint(Clue):
+    text = models.TextField(help_text="Text displayed when this clue is unlocked")
     start_after = models.ForeignKey(
         'Unlock',
         verbose_name='Start after Unlock',
@@ -583,6 +586,12 @@ class Hint(Clue):
 
 
 class Unlock(Clue):
+    text = models.TextField(help_text="Text displayed when this clue is unlocked", blank=True)
+
+    @property
+    def hidden(self):
+        return not self.text
+
     def unlocked_by(self, team, guesses=None):
         """Return a list of guesses (from the supplied iterable, if given) by the given team, which unlock this Unlock"""
         if guesses is None:
@@ -596,7 +605,7 @@ class Unlock(Clue):
         return [g for g in guesses if any([u.validate_guess(g) for u in unlockanswers])]
 
     def __str__(self):
-        return f'"{self.text}"'
+        return f'{self.short_compact_id}: "{self.text}"'
 
 
 class UnlockAnswer(SealableModel):

@@ -12,6 +12,12 @@
     text-transform: uppercase;
 }
 
+.inline-label {
+    font-weight: normal;
+    font-style: italic;
+    font-size: small;
+    margin-left: 0.5em;
+}
 .unlock-container {
     display: flex;
     flex-flow: row wrap;

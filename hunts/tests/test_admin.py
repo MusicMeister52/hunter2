@@ -13,10 +13,11 @@
 import datetime
 
 import freezegun
+import pytest
 from django.apps import apps
 from django.contrib import admin
 from django.forms import inlineformset_factory
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -36,6 +37,7 @@ from ..factories import (
     UnlockFactory,
     UserPuzzleDataFactory,
 )
+from ..admin import HintInline
 from ..forms import AnswerForm
 from ..models import EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamPuzzleData, Unlock, UnlockAnswer, \
     UserPuzzleData, TeamPuzzleProgress, \
@@ -43,14 +45,23 @@ from ..models import EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamPuzzleD
 from ..runtimes import Runtime
 
 
-class AdminRegistrationTests(TestCase):
+@pytest.mark.usefixtures('event')
+class TestDjangoAdmin:
     def test_models_registered(self):
         models = apps.get_app_config('hunts').get_models()
         # Models which don't need to be directly registered due to being managed by inlines or being an M2M through model
         inline_models = (EpisodePrequel, Hint, PuzzleFile, SolutionFile, TeamUnlock, Unlock, UnlockAnswer, )
         for model in models:
             if model not in inline_models:
-                self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
+                assert isinstance(admin.site._registry[model], admin.ModelAdmin)
+
+    def test_hint_label_short(self):
+        unlock = UnlockFactory(text='short')
+        assert HintInline.start_after_label_from_instance(unlock) == str(unlock)
+
+    def test_hint_label_long(self):
+        unlock = UnlockFactory(text='long' * 50)
+        assert HintInline.start_after_label_from_instance(unlock) == str(unlock)[:50] + '…'
 
 
 class AdminCreatePageLoadTests(EventTestCase):

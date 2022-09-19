@@ -280,13 +280,14 @@ function deleteAnnouncement(announcement) {
 }
 
 function newHint(content) {
+  let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true}
   if (content.depends_on_unlock_uid === null) {
-    this.hints.set(content.hint_uid, {'time': content.time, 'hint': content.hint})
+    this.hints.set(content.hint_uid, hintInfo)
   } else {
     if (!(this.unlocks.has(content.depends_on_unlock_uid))) {
       this.createBlankUnlock(content.depends_on_unlock_uid)
     }
-    this.unlocks.get(content.depends_on_unlock_uid).hints.set(content.hint_uid, {'time': content.time, 'hint': content.hint})
+    this.unlocks.get(content.depends_on_unlock_uid).hints.set(content.hint_uid, hintInfo)
   }
 }
 
@@ -309,6 +310,7 @@ function newUnlock(content) {
   let unlockInfo = this.unlocks.get(content.unlock_uid)
   unlockInfo.unlock = content.unlock
   unlockInfo.guesses.add(content.guess)
+  unlockInfo.isNew = true
 }
 
 function changeUnlock(content) {
