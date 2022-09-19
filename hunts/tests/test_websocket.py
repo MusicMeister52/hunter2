@@ -533,7 +533,7 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['hint'], None)
         self.assertEqual(output['content']['accepted'], False)
 
-        self.run_async(comm.send_json_to)({'type': 'accept-hint', 'id': hint.compact_id})
+        progress.accepted_hints.add(hint)
         output = self.receive_json(comm, 'Websocket did not send accepted hint')
 
         self.assertTrue(hint in progress.accepted_hints.all(), 'Hint acceptance from Websocket not reflected in db')
@@ -578,7 +578,8 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.assertEqual(output['content']['accepted'], False)
         self.assertEqual(output['content']['depends_on_unlock_uid'], unlock.compact_id)
 
-        self.run_async(comm.send_json_to)({'type': 'accept-hint', 'id': hint.compact_id})
+        # accept the hint (programmatically)
+        progress.accepted_hints.add(hint)
         output = self.receive_json(comm, 'Websocket did not send accepted hint')
 
         self.assertTrue(hint in progress.accepted_hints.all(), 'Hint acceptance from Websocket not reflected in db')

@@ -16,9 +16,9 @@ from datetime import datetime
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 from channels.layers import get_channel_layer
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections, transaction
-from django.db.models.signals import pre_save, post_save, pre_delete
+from django.db.models.signals import pre_save, post_save, pre_delete, m2m_changed
 from django.dispatch import receiver
 from django.utils import timezone
 from django_tenants.utils import get_tenant_database_alias
@@ -200,11 +200,6 @@ class PuzzleEventWebsocket(HuntWebsocket):
                 self._error('required field "from" is missing')
                 return
             self.send_old_hints(content['from'])
-        elif content['type'] == 'accept-hint':
-            if 'id' not in content:
-                self._error('required field "id" is missing')
-                return
-            self.accept_hint(content['id'])
         else:
             self._error('invalid request type')
 
@@ -484,21 +479,6 @@ class PuzzleEventWebsocket(HuntWebsocket):
                 'content': self._new_unlock_json(tu)
             })
 
-    def accept_hint(self, id):
-        try:
-            hint = models.Hint.objects.get(id=utils.decode_uuid(id))
-        except (models.Hint.DoesNotExist, ValidationError):
-            self._error(f'Hint with id {id} does not exist')
-            return
-
-        progress = self.team.teampuzzleprogress_set.get(puzzle=self.puzzle)
-        if not hint.unlocked_by(self.team, progress):
-            self._error(f'Hint with id {id} cannot be accepted: it is not unlocked')
-            return
-
-        progress.accepted_hints.add(hint)
-        self.send_json(self._new_hint_json(hint, True))
-
     @pre_save_handler
     def _saved_teamunlock(cls, old, sender, teamunlock, raw, *args, **kwargs):
         if raw:  # nocover:
@@ -600,6 +580,15 @@ class PuzzleEventWebsocket(HuntWebsocket):
             if hint.unlocked_by(team, progress):
                 cls.send_delete_hint(team.id, hint)
 
+    # handler: TeamPuzzleProgress.accepted_hints.through.m2m_changed
+    @classmethod
+    def accepted_hint(cls, sender, instance, action, pk_set, **kwargs):
+        # hints will never be "unaccepted" in normal flow, so don't handle this scenario
+        if action == 'post_add':
+            team = instance.team
+            for hint in models.Hint.objects.filter(pk__in=pk_set):
+                cls.send_new_hint_to_team(team.id, hint, True)
+
 
 pre_save.connect(PuzzleEventWebsocket._saved_teampuzzleprogress, sender=models.TeamPuzzleProgress)
 pre_save.connect(PuzzleEventWebsocket._saved_teamunlock, sender=models.TeamUnlock)
@@ -609,3 +598,5 @@ pre_save.connect(PuzzleEventWebsocket._saved_hint, sender=models.Hint)
 
 pre_delete.connect(PuzzleEventWebsocket._deleted_teamunlock, sender=models.TeamUnlock)
 pre_delete.connect(PuzzleEventWebsocket._deleted_hint, sender=models.Hint)
+
+m2m_changed.connect(PuzzleEventWebsocket.accepted_hint, sender=models.TeamPuzzleProgress.accepted_hints.through)

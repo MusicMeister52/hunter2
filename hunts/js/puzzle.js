@@ -54,7 +54,7 @@ function correct_answer() {
   }
 }
 
-function fadingMessage(element, message, title) {
+export function fadingMessage(element, message, title) {
   let container = document.createElement('div')
   container.classList.add('fading-message-container')
   container.innerHTML = `<p class="fading-message" title="${title}">${message}</p>`

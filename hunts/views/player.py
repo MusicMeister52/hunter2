@@ -361,6 +361,25 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         return JsonResponse(response)
 
 
+class AcceptHint(LoginRequiredMixin, PuzzleUnlockedMixin, View):
+    def post(self, request, episode_number, puzzle_number):
+        try:
+            hint_id = request.POST['id']
+        except KeyError:
+            return JsonResponse({'error': 'No hint ID specified'}, status=400)
+        try:
+            hint = models.Hint.objects.get(id=utils.decode_uuid(hint_id))
+        except (models.Hint.DoesNotExist, ValueError):
+            return JsonResponse({'error': f'Hint with id {hint_id} does not exist'}, status=400)
+
+        progress = request.team.teampuzzleprogress_set.get(puzzle=request.puzzle)
+        if not hint.unlocked_by(request.team, progress):
+            return JsonResponse({'error': f'Hint with id {hint_id} cannot be accepted: it is not unlocked'}, status=400)
+
+        progress.accepted_hints.add(hint)
+        return JsonResponse({})
+
+
 class Callback(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
         if request.content_type != 'application/json':
