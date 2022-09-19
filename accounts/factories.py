@@ -23,6 +23,11 @@ class UserFactory(DjangoModelFactory):
     class Meta:
         model = 'accounts.User'
 
+    class Params:
+        fallback_email_domain = factory.Faker('safe_domain_name')
+        fallback_email = factory.Faker('safe_email')
+        fallback_user_name = factory.Faker('user_name')
+
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
     password = factory.Faker('password')
@@ -52,13 +57,13 @@ class UserFactory(DjangoModelFactory):
             last_name = (unicodedata.normalize('NFKD', self.last_name).encode('ascii', 'ignore').decode('utf8'))[:9]
             return '{0}{1}{2}'.format(first_letter, last_name, n)
         else:
-            return factory.Faker('user_name')
+            return self.fallback_user_name
 
     @factory.lazy_attribute_sequence
     def email(self, n):
         if self.first_name and self.last_name:
             first_letter = (unicodedata.normalize('NFKD', self.first_name).encode('ascii', 'ignore').decode('utf8'))[:1]
             last_name = (unicodedata.normalize('NFKD', self.last_name).encode('ascii', 'ignore').decode('utf8'))[:9]
-            return '{}.{}{}@{}'.format(first_letter, last_name, n, factory.Faker('free_email_domain'))
+            return '{}.{}{}@{}'.format(first_letter, last_name, n, self.fallback_email_domain)
         else:
-            return factory.Faker('ascii_safe_email')
+            return self.fallback_email
