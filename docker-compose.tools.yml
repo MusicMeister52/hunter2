@@ -16,7 +16,7 @@ services:
       - ${PWD:-.}:/files
   eslint:
     command: ["."]
-    image: registry.gitlab.com/rconan/docker-eslint:8.23.1-5@sha256:a55428c85863b56ec0e2ee2e06ff4f6f0334be3ce162318f05f1e2af124f9fb1
+    image: registry.gitlab.com/rconan/docker-eslint:8.23.1-6@sha256:0b144f3c003f4de2de020e9aa86ca3c57b184eb9e35c94b97aa70415efa50811
     volumes:
       - ${PWD:-.}:/code
   flake8:
