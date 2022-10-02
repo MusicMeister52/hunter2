@@ -81,3 +81,10 @@ def event(db, test_schema, session_settings):
     yield event
 
     connection.set_schema_to_public()
+
+
+@pytest.fixture
+def tenant_client(event):
+    from django_tenants.test.client import TenantClient
+
+    return TenantClient(event)
