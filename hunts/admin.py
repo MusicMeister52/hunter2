@@ -176,7 +176,7 @@ class UnlockInline(ObjectPermissionsInlineModelAdminMixin, NestedStackedInline):
 
 
 @admin.register(models.Guess)
-class GuessAdmin(admin.ModelAdmin):
+class GuessAdmin(ObjectPermissionsModelAdminMixin, admin.ModelAdmin):
     read_only_fields = ('correct_current', 'correct_for', 'late')
     list_display = ('for_puzzle', 'guess', 'by_team', 'by', 'given')
     list_display_links = ('guess',)

@@ -53,6 +53,12 @@ def is_admin_for_event_child(user, obj):
     return is_admin_for_event.test(user, event)
 
 
+@rules.predicate
+def is_admin_guess(user, obj):
+    from hunts.models import Guess
+    return isinstance(obj, Guess) and obj.by_team.is_admin
+
+
 rules.add_perm('events', is_admin_for_event)
 
 # Admin teams cannot create or delete events, only update and view

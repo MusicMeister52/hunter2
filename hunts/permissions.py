@@ -12,7 +12,7 @@
 
 import rules
 
-from teams.permissions import is_admin_for_schema_event
+from teams.permissions import is_admin_for_schema_event, is_admin_guess
 
 
 def set_all_perms_for_model(app, model, predicate):
@@ -32,9 +32,12 @@ set_all_perms_for_model('hunts', 'hint', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'puzzle', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'puzzlefile', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'solutionfile', is_admin_for_schema_event)
+set_all_perms_for_model('hunts', 'teampuzzleprogress', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'teamdata', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'teampuzzledata', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'unlock', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'unlockanswer', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'userdata', is_admin_for_schema_event)
 set_all_perms_for_model('hunts', 'userpuzzledata', is_admin_for_schema_event)
+
+rules.add_perm('hunts.delete_guess', is_admin_for_schema_event & is_admin_guess)

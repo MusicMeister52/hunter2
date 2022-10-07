@@ -103,6 +103,47 @@ class AdminCreatePageLoadTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
 
 
+class TestAdminDelete:
+    def test_cannot_delete_user_guess(self, event, tenant_client):
+        # user = TeamMemberFactory(role=TeamRole.PLAYER)
+        # guess = GuessFactory(by=user)
+        guess = GuessFactory(by__team__role=TeamRole.PLAYER)
+
+        admin = TeamMemberFactory(team__at_event=event, team__role=TeamRole.ADMIN, is_staff=True)
+        tenant_client.force_login(admin)
+        page = reverse('admin:hunts_guess_delete', args=[guess.id])
+        response = tenant_client.post(page, data={'post': 'yes'})
+        assert response.status_code == 403
+
+    def test_delete_puzzle(self, event, tenant_client):
+        user = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        team = user.team_at(event)
+
+        # Create associated objects to be sure that admins have permission to delete those
+        # Don't create guesses from users
+        tpp = TeamPuzzleProgressFactory(team=team)
+        UnlockAnswerFactory(unlock__puzzle=tpp.puzzle, guess='__UNLOCK__')
+        TeamPuzzleDataFactory(team=team, puzzle=tpp.puzzle)
+        UserPuzzleDataFactory(user=user, puzzle=tpp.puzzle)
+
+        admin = TeamMemberFactory(team__at_event=event, team__role=TeamRole.ADMIN, is_staff=True)
+        admin_team = admin.team_at(event)
+
+        # Create objects, including guesses, from admin teams
+        tpp = TeamPuzzleProgressFactory(team=admin_team)
+        GuessFactory(for_puzzle=tpp.puzzle, by_team=admin_team)
+        UnlockAnswerFactory(unlock__puzzle=tpp.puzzle, guess='__UNLOCK__')
+        GuessFactory(for_puzzle=tpp.puzzle, by_team=admin_team, guess='__UNLOCK__')
+        TeamPuzzleDataFactory(team=admin_team, puzzle=tpp.puzzle)
+        UserPuzzleDataFactory(user=admin, puzzle=tpp.puzzle)
+
+        tenant_client.force_login(admin)
+        page = reverse('admin:hunts_puzzle_delete', args=[tpp.puzzle.id])
+        response = tenant_client.post(page, data={'post': 'yes'})
+        assert response.status_code == 302, response
+        assert not Puzzle.objects.filter(id=tpp.puzzle.id)
+
+
 class AdminPuzzleFormPopupTests(EventTestCase):
     def setUp(self):
         self.user = TeamMemberFactory(is_staff=True, team__at_event=self.tenant, team__role=TeamRole.ADMIN)

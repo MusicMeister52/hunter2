@@ -33,6 +33,17 @@ such eventualities, the button is only displayed for non-player teams (note, how
 available - just in case - from the Django admin.) Dire warnings will be displayed if you try to reset progress in
 riskier circumstances, but ultimately since there may be a legitimate reason, the decision is left to the admin.
 
+## Deleting Objects
+
+Related to the above, special care should be taken when deleting objects after a hunt has started. Django will display
+a list of related objects that will be deleted should you attempt to delete a primary object - read these carefully.
+It may be difficult to determine whether they are safe, as the display of objects is not optimised for this 
+situation; direct shell access may be desirable here.
+
+It is possible for admins to delete puzzles via the Django admin, but only if there are no guesses by player teams for
+that puzzle; this should take care of any pre-hunt management that comes up. If you have ended up in the situation 
+where this is necessary, you could reset progress first, but direct shell or database access may again be a better idea.
+
 ## Anonymisation
 
 You may have a requirement to anonymise user data after a certain time period. This can be achieved with the
