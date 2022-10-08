@@ -185,6 +185,17 @@ starts counting down after the specified unlock has been displayed. At the botto
 editing" then scroll back down. Now add another hint which starts after the unlock you
 just added. It could say, "have you tried entering &lt;i&gt;the correct answer&lt;/i&gt; into the answer box".
 
+Clue text does not have to be unique. It may be that you want to give unlocks with a generic message that players 
+are doing the correct thing without giving any further information. For this situation, a random ID is displayed for 
+each unlock, which you can use to pick the correct one from the list when creating a dependent hint.
+
+In fact, unlocks don't have to have *any* text at all, but in this case the behaviour is a little different: such an 
+unlock won't ever be transmitted to players, but it serves as a placeholder from which dependent hints can start. 
+You might use this feature if you want to give players a hint some time after they've entered something on the right 
+lines, but don't want to confirm this right away, perhaps because to do so would allow them to brute force the stage 
+of the puzzle too easily. Note that once the delay for the first hint has elapsed, all guesses that unlock the 
+invisible unlock will be shown as leading to the hint on the puzzle page as normal.
+
 ```{figure} img/crud_puzzle_files.png
 :width: 1200
 :alt: Django admin page showing a partially created puzzle with an answer and clues

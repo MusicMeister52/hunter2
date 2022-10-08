@@ -21,12 +21,21 @@ export default {
       return this.hintArray(this.clueData.hints)
     },
     sortedUnlocks() {
-      return Array.from(this.clueData.unlocks.entries(), u => [u[0], u[1].unlock, u[1].guesses, this.hintArray(u[1].hints)])
+      return Array.from(this.clueData.unlocks.entries(), u => [u[0], {
+        unlock: u[1].unlock,
+        guesses: u[1].guesses,
+        isNew: u[1].isNew,
+        hints: this.hintArray(u[1].hints),
+      }])
     },
   },
   methods: {
     hintArray(hintMap) {
-      return Array.from(hintMap.entries(), h => [h[0], h[1].time, h[1].hint]).sort((a, b) => (a[1].localeCompare(b[1])))
+      return Array.from(
+        hintMap.entries(),
+      ).sort(
+        (a, b) => (a[1].time.localeCompare(b[1].time)),
+      )
     },
   },
   props: [

@@ -87,7 +87,8 @@ class HintInline(ObjectPermissionsInlineModelAdminMixin, NestedTabularInline):
 
     @staticmethod
     def start_after_label_from_instance(instance):
-        truncated = instance.text[:50] + '…' if len(instance.text) > 50 else instance.text
+        text = str(instance)
+        truncated = (text[:50] + '…') if len(text) > 50 else text
         return truncated
 
     def formfield_for_dbfield(self, db_field, **kwargs):

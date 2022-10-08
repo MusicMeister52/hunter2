@@ -199,6 +199,7 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
                 'compact_id': u.compact_id,
                 'guesses': guesses,
                 'text': unlock_text,
+                'hidden': u.hidden,
                 'hints': hints[u.id],
             })
 

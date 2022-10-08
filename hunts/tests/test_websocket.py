@@ -466,6 +466,30 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
         self.run_async(comm.disconnect)()
         self.run_async(comm_eve.disconnect)()
 
+    def test_websocket_hidden_unlocks(self):
+        user = TeamMemberFactory()
+        ua = UnlockAnswerFactory(unlock__puzzle=self.pz, unlock__text='', guess='unlock_guess')
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
+
+        connected, subprotocol = self.run_async(comm.connect)()
+        self.assertTrue(connected)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        GuessFactory(for_puzzle=self.pz, by=user, guess=ua.guess)
+        self.receive_json(comm, 'Websocket did nothing in response to a submitted guess')
+        self.assertTrue(self.run_async(comm.receive_nothing)(), 'Websocket incorrectly received a hidden unlock')
+
+        h = HintFactory(puzzle=self.pz, start_after=ua.unlock, time=datetime.timedelta(0))
+
+        output = self.receive_json(comm, 'Websocket did nothing in response to a new hint')
+
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint'], h.text)
+        self.assertEqual(output['content']['depends_on_unlock_uid'], ua.unlock.compact_id)
+
+        self.assertTrue(self.run_async(comm.receive_nothing)(), 'Websocket sent extra messages')
+        self.run_async(comm.disconnect)()
+
     def test_websocket_receives_hints(self):
         # It would be better to mock the asyncio event loop in order to fake advancing time
         # but that's too much effort (and freezegun doesn't support it yet) so just use

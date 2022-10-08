@@ -15,17 +15,39 @@
 	<h3>Clues</h3>
 	<p v-if="none"><em>None yet</em></p>
 	<transition-group id="hints" name="highlight" tag="ul">
-		<li v-for="[id, time, hint] in sortedHints" v-bind:key="id">{{ time }}: <strong v-html="hint" /></li>
-	</transition-group>
-	<transition-group id="unlocks" name="highlight" tag="ul">
-		<li v-bind:key="id" v-for="[id, unlock, guesses, hints] in sortedUnlocks">
-			<span v-html="unlock" />
-			<transition-group v-bind:id="`unlock-${id}-guesses`" name="highlight" tag="ul">
-				<li v-for="ua in guesses" v-bind:key="ua"><strong>{{ ua }}</strong></li>
-			</transition-group>
-			<transition-group v-bind:id="`unlock-${id}-hints`" name="highlight" tag="ul">
-				<li v-for="[hintID, time, hint] in hints" v-bind:key="hintID">{{ time }}: <strong v-html="hint"></strong></li>
-			</transition-group>
+		<li v-for="[id, hint] in sortedHints" v-bind:key="id" v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
+			<span class="hint-time">{{ hint.time }}: </span>
+			<strong v-html="hint.hint"></strong>
 		</li>
 	</transition-group>
+	<table id="unlocks">
+		<tr class="unlock">
+			<th class="unlock-guesses">Guesses</th>
+			<th class="unlock-clues">Clues</th>
+		</tr>
+		<tr v-bind:key="id" v-for="([id, unlock], index) in sortedUnlocks" class="unlock">
+			<td>
+				<transition-group v-bind:id="`unlock-${id}-guesses`" name="highlight" tag="ul" class="unlock-guesses" appear>
+					<li v-for="ua in unlock.guesses"
+						:key="ua"
+						v-bind:title="ua"
+						v-bind:class="unlock.isNew ? 'newClue' : 'oldClue'">
+						<strong>{{ ua }}</strong>
+					</li>
+				</transition-group>
+			</td>
+			<td>
+				<transition-group v-bind:id="`unlock-${id}-hints`" name="highlight" tag="ul" class="unlock-clues" appear>
+					<li class="unlock-text" v-if="unlock.unlock" v-html="unlock.unlock" />
+					<li v-for="[hintID, hint] in unlock.hints"
+						v-bind:key="hintID"
+						v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
+						<strong v-html="hint.hint"></strong>
+						<span class="hint-time"> (after {{ hint.time }})</span>
+					</li>
+				</transition-group>
+			</td>
+			<div v-if="index != sortedUnlocks.length - 1" class="unlock-divider"/>
+		</tr>
+	</table>
 </div>

@@ -270,10 +270,11 @@ class PuzzleEventWebsocket(HuntWebsocket):
 
     @classmethod
     def send_new_unlock(cls, teamunlock):
-        cls._send_message(cls._puzzle_groupname(teamunlock.team_puzzle_progress.puzzle, teamunlock.team_puzzle_progress.team_id), {
-            'type': 'new_unlock',
-            'content': cls._new_unlock_json(teamunlock)
-        })
+        if not teamunlock.unlockanswer.unlock.hidden:
+            cls._send_message(cls._puzzle_groupname(teamunlock.team_puzzle_progress.puzzle, teamunlock.team_puzzle_progress.team_id), {
+                'type': 'new_unlock',
+                'content': cls._new_unlock_json(teamunlock)
+            })
 
     @classmethod
     def _new_guess_json(cls, guess):

@@ -14,12 +14,56 @@
 
 ul {
     list-style: none;
-    padding-left: 1em;
+    padding: 0;
+    margin: 0;
 }
 
 li {
-    margin-left: 16pt;
     margin-top: 3pt;
+    margin-bottom: 3pt;
+}
+
+#hints {
+    margin: 1em;
+}
+
+#unlocks {
+    margin: 1em;
+    display: inline-grid;
+    grid-template-columns: minmax(100px, 1fr) minmax(100px, 2fr);
+    grid-gap: 1em;
+    align-items: center;
+
+    .unlock-divider {
+        grid-column: 1 / 3;
+        border-top: 1px dotted #ffffff33;
+    }
+    .unlock {
+        display: contents;
+        th {
+            opacity: 50%;
+        }
+        .unlock-guesses {
+            grid-column: 1;
+            text-align: right;
+            li {
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                text-align: right;
+            }
+        }
+        .unlock-clues {
+            grid-column: 2;
+            .hint-time {
+                font-style: italic;
+            }
+        }
+    }
+}
+
+.hint-time {
+    opacity: 60%;
 }
 
 #unlocks > li {
@@ -29,10 +73,10 @@ li {
     }
 }
 
-.highlight-enter {
+.highlight-enter-from.newClue {
     background-color: yellow;
 }
 
-.highlight-enter-active {
+.highlight-enter-active.newClue {
     transition: background-color 5s;
 }
