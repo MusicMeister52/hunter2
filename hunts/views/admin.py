@@ -316,6 +316,7 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
             'episode__event__episode_set',
             'episode__puzzle_set',
             'hint_set',
+            'hint_set__obsoleted_by',
         ).seal()
 
         # Sort teams according to how urgently we expect them to need help
@@ -468,7 +469,7 @@ class ProgressContent(EventAdminJSONMixin, CacheMixin, View):
 class TeamAdmin(EventAdminMixin, View):
     def get(self, request):
         context = {
-            'teams': Team.objects.filter(at_event=request.tenant)
+            'teams': Team.objects.prefetch_related('members').all()
         }
 
         return TemplateResponse(
@@ -565,7 +566,8 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                     'text',
                     'time',
                 ).prefetch_related(
-                    'start_after__unlockanswer_set'
+                    'start_after__unlockanswer_set',
+                    'obsoleted_by',
                 )
             ),
         ).seal()

@@ -167,13 +167,14 @@ class Puzzle(LoginRequiredMixin, PuzzleUnlockedMixin, View):
             'guesses',
             'accepted_hints',
             'puzzle__hint_set__start_after__unlockanswer_set',
+            'puzzle__hint_set__obsoleted_by',
             Prefetch(
                 'teamunlock_set',
                 queryset=models.TeamUnlock.objects.select_related(
                     'unlocked_by',
                     'unlockanswer',
                     'unlockanswer__unlock',
-                )
+                ).seal()
             ),
         ).seal().get_or_create(
             puzzle=request.puzzle,

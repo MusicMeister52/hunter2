@@ -84,7 +84,11 @@ def saved_guess(sender, instance, raw, created, *args, **kwargs):
         progress.save()
 
     # hints are prefetched for the consumer signal handler
-    unlocks = guess.for_puzzle.unlock_set.all().prefetch_related('unlockanswer_set', 'hint_set').seal()
+    unlocks = guess.for_puzzle.unlock_set.all().prefetch_related(
+        'unlockanswer_set',
+        'unlockanswer_set__unlock__obsoletes',
+        'hint_set',
+    ).seal()
 
     if not progress.solved_by_id:
         for answer in answers:

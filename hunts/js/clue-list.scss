@@ -73,10 +73,22 @@ li {
     }
 }
 
+.obsolete {
+    opacity: 33%;
+    > a {
+        opacity: 50%;
+    }
+}
+
 .highlight-enter-from.newClue {
     background-color: yellow;
 }
 
 .highlight-enter-active.newClue {
     transition: background-color 5s;
+}
+
+.hover {
+    text-decoration: underline dotted;
+    cursor: help;
 }

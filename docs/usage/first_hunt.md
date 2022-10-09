@@ -174,7 +174,7 @@ case-insensitively. Add an answer now, for example, "the correct answer".
 Clues come in two flavours: *hints* which appear after a time delay and *unlocks* which appear when something specific
 is entered in the answer box.
 
-Add a hint with some text, leave the *start after unlock* field blank and enter a delay of `00:00:10` (i.e. 10 seconds).
+Add a hint with some text, enter a delay of `00:00:10` (i.e. 10 seconds) and leave the other fields as they are.
 
 Add an unlock with some helpful text like, "have you tried entering the correct answer into the answer box?" For an
 unlock to ever appear it needs an *unlock answer* just like a puzzle needs an answer. Add one to the unlock, for example
@@ -184,6 +184,13 @@ Now let's return to the *start after unlock* option for hints: this means that t
 starts counting down after the specified unlock has been displayed. At the bottom of the page click "Save and continue
 editing" then scroll back down. Now add another hint which starts after the unlock you
 just added. It could say, "have you tried entering &lt;i&gt;the correct answer&lt;/i&gt; into the answer box".
+
+The last option for hints is *reveal after unlock*: this means that a team which unlocks any of the selected
+unlocks is *immediately* shown the hint, and (even if they have it already) it will be shown in a different style to
+let players know that they have already hit upon whatever insight was in the timed clue. Use this feature to
+mitigate the frustration associated with automatic hints arriving which the player doesn't need.
+Be careful that you don't mislead players with this feature: if a hint contains *two* insights, it is probably a
+mistake to reveal it from an unlock which only indicates they know one of those insights.
 
 Clue text does not have to be unique. It may be that you want to give unlocks with a generic message that players 
 are doing the correct thing without giving any further information. For this situation, a random ID is displayed for 

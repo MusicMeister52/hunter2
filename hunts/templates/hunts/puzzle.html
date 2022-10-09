@@ -22,6 +22,7 @@
 				'time': '{{ hint.time }}',
 				'hint': {% if hint.accepted %}'{{ hint.text|escapejs }}'{% else %}null{% endif %},
 				'accepted': {% if hint.accepted %}true{% else %}false{% endif %},
+				'obsolete': {% if hint.obsolete %}true{% else %}false{% endif %},
 			}],
 		{% endfor %}]);
 		window.unlocks = new Map([{% for unlock in unlocks %}{% if not unlock.hidden or unlock.hints %}[
@@ -31,8 +32,9 @@
 				'hints': new Map([{% for h in unlock.hints %}[
 					'{{ h.compact_id }}', {
 						'time': '{{ h.time }}',
-                        'hint': {% if h.accepted %}'{{ h.text|escapejs }}'{% else %}null{% endif %},
-                        'accepted': {% if h.accepted %}true{% else %}false{% endif %},
+						'hint': {% if h.accepted %}'{{ h.text|escapejs }}'{% else %}null{% endif %},
+						'accepted': {% if h.accepted %}true{% else %}false{% endif %},
+						'obsolete': {% if hint.obsolete %}true{% else %}false{% endif %},
 					}],
 				{% endfor %}])
 			}],{% endif %}{% endfor %}

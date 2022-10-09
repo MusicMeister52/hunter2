@@ -17,8 +17,11 @@
 	<transition-group id="hints" name="highlight" tag="ul">
 		<li v-for="[id, hint] in sortedHints" v-bind:key="id" v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
 			<span class="hint-time">{{ hint.time }}: </span>
-			<strong v-if="hint.accepted" v-html="hint.hint"></strong>
-			<a v-else href="#" @click.prevent="acceptHint(id, null)">show</a>
+			<span v-if="hint.obsolete" class="obsolete">
+				(<span class="hover" title="You entered a guess which indicated you don't need this hint">surpassed</span>)
+			</span>
+			<strong v-if="hint.accepted" :class="{ obsolete: hint.obsolete }" v-html="hint.hint"></strong>
+			<a v-else href="#" :class="{ obsolete: hint.obsolete }" @click.prevent="acceptHint(id, null)">show</a>
 		</li>
 	</transition-group>
 	<table v-if="this.clueData.unlocks.size > 0" id="unlocks">
@@ -43,7 +46,10 @@
 					<li v-for="[hintID, hint] in unlock.hints"
 						v-bind:key="hintID"
 						v-bind:class="hint.isNew ? 'newClue' : 'oldClue'">
-						<strong v-if="hint.accepted" v-html="hint.hint"></strong>
+						<span v-if="hint.obsolete" class="obsolete">
+							(<span class="hover" title="You entered a guess which indicated you don't need this hint">surpassed</span>)
+						</span>
+						<strong v-if="hint.accepted" :class="{ obsolete: hint.obsolete }" v-html="hint.hint"></strong>
 						<a v-else href="#" @click.prevent="acceptHint(hintID, id)">show</a>
 						<span class="hint-time"> (after {{ hint.time }})</span>
 					</li>
