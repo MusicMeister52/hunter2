@@ -16,6 +16,7 @@ import string
 from os import path
 
 import freezegun
+import pytest
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
 from django.test import RequestFactory
@@ -26,6 +27,8 @@ from accounts.factories import UserFactory
 from events.factories import EventFileFactory, AttendanceFactory
 from events.models import Event
 from events.test import EventAwareTestCase, EventTestCase, AsyncEventTestCase
+from hunter2.factories import FileFactory
+from hunter2.models import Configuration
 from hunter2.views import DefaultEventView
 from teams.factories import TeamMemberFactory
 from teams.models import TeamRole
@@ -79,20 +82,50 @@ class SiteSetupTest(EventAwareTestCase):
         self.assertIn("README", str(context.exception))
 
 
-class HomePageTests(EventTestCase):
-    def test_load_homepage(self):
-        url = reverse('index')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
+class TestHomePage:
 
-    def test_event_script_and_style(self):
-        self.tenant.script = 'console.log("hello");'
-        self.tenant.style = 'body {width: 1234px;}'
-        self.tenant.save()
-        url = reverse('index')
-        response = self.client.get(url)
-        self.assertContains(response, 'console.log("hello");')
-        self.assertContains(response, 'body {width: 1234px;}')
+    @pytest.fixture(scope='class')
+    def url(self):
+        return reverse('index')
+
+    @pytest.fixture
+    def stylish_event(self, event):
+        event.script = 'console.log("hello");'
+        event.script_file = EventFileFactory(event=event)
+        event.style = 'body {width: 1234px;}'
+        event.style_file = EventFileFactory(event=event)
+        event.save()
+        return event
+
+    @pytest.fixture
+    def stylish_site(self, db):
+        configuration = Configuration.get_solo()
+        configuration.script = 'console.log("hello");'
+        configuration.script_file = FileFactory()
+        configuration.style = 'body {width: 1234px;}'
+        configuration.style_file = FileFactory()
+        configuration.save()
+        return configuration
+
+    def test_load_homepage(self, tenant_client, url):
+        response = tenant_client.get(url)
+        assert response.status_code == 200
+
+    def test_site_script_and_style(self, stylish_site, tenant_client, url):
+        response = tenant_client.get(url)
+        content = response.content.decode('utf-8')
+        assert stylish_site.script in content
+        assert stylish_site.script_file.file.url in content
+        assert stylish_site.style in content
+        assert stylish_site.style_file.file.url in content
+
+    def test_event_script_and_style(self, stylish_event, tenant_client, url):
+        response = tenant_client.get(url)
+        content = response.content.decode('utf-8')
+        assert stylish_event.script in content
+        assert stylish_event.script_file.file.url in content
+        assert stylish_event.style in content
+        assert stylish_event.style_file.file.url in content
 
 
 class EventIndexTests(EventTestCase):

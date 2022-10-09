@@ -55,9 +55,7 @@
 
 	{% block site_script %}{% spaceless %}
 		{% if site_script %}
-			<script defer>
-                {{ site_script }}
-			</script>
+			<script defer>{{ site_script | safe }}</script>
 		{% endif %}
 		{% if site_script_file %}
 			<script src="{{ site_script_file }}" defer></script>

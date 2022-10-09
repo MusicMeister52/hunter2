@@ -25,6 +25,7 @@ from unittest import expectedFailure
 from unittest.mock import patch
 
 import freezegun
+import pytest
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount
 from django.contrib.sites.models import Site
@@ -38,6 +39,7 @@ from xmlrunner.extra.djangotestrunner import XMLTestRunner
 from teams.factories import TeamMemberFactory
 from hunter2.management.commands import setupsite, anonymise
 from events.test import EventTestCase
+from .factories import FileFactory
 from .utils import generate_secret_key, load_or_create_secret_key
 
 
@@ -160,6 +162,12 @@ class MockTTY:
 
     def isatty(self):  # nocover
         return True
+
+
+@pytest.mark.usefixtures('db')
+class TestFactories:
+    def test_file_factory(self):
+        FileFactory.create()
 
 
 class MigrationsTests(TestCase):
