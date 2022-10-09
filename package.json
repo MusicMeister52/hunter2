@@ -48,7 +48,7 @@
     "@sentry/browser": "7.14.2",
     "@sentry/integrations": "7.14.2",
     "@sentry/vue": "7.14.2",
-    "@sgratzl/chartjs-chart-boxplot": "3.9.1",
+    "@sgratzl/chartjs-chart-boxplot": "3.10.0",
     "@types/lodash-es": "4.17.6",
     "@vue/compiler-sfc": "3.2.40",
     "bootstrap": "5.2.2",
