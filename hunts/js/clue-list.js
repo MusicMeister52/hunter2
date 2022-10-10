@@ -12,6 +12,10 @@
  * You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import Cookies from 'js-cookie'
+
+import {fadingMessage} from './puzzle'
+
 export default {
   computed: {
     none() {
@@ -35,6 +39,50 @@ export default {
         hintMap.entries(),
       ).sort(
         (a, b) => (a[1].time.localeCompare(b[1].time)),
+      )
+    },
+    acceptHint(hintId, unlockId) {
+      fetch(
+        'accept_hint',
+        {
+          method: 'POST',
+          body: new URLSearchParams({
+            id: hintId.toString(),
+          }),
+          headers: {
+            'X-CSRFToken': Cookies.get('csrftoken'),
+          },
+        },
+      ).then(
+        res => res.json(),
+      ).then(
+        data => {
+          if ('error' in data) {
+            console.log('Server returned error when trying to accept the hint.', data.error)
+            fadingMessage(
+              document.querySelector('#hints'),
+              'Server returned error when trying to accept the hint.',
+              data.error,
+            )
+            return
+          }
+          let hintData
+          if (unlockId === null) {
+            hintData = this.clueData.hints.get(hintId)
+          } else {
+            hintData = this.clueData.unlocks.get(unlockId).hints.get(hintId)
+          }
+          // if the response arrives before the websocket message, display a holding message
+          if (!hintData.accepted) {
+            hintData.accepted = true
+            hintData.hint = '<i>getting hint...</i>'
+          }
+        },
+      ).catch(
+        err => {
+          console.log('There was an error accepting the hint.', err)
+          fadingMessage(document.querySelector('#hints'), 'There was an error accepting the hint.', err)
+        },
       )
     },
   },

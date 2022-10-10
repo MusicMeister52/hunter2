@@ -40,6 +40,7 @@ eventadminpatterns = [
 puzzlepatterns = [
     path('', views.player.Puzzle.as_view(), name='puzzle'),
     path('an', views.player.Answer.as_view(), name='answer'),
+    path('accept_hint', views.player.AcceptHint.as_view(), name='accept_hint'),
     path('cb', views.player.Callback.as_view(), name='callback'),
     path('media/<path:file_path>', views.player.PuzzleFile.as_view(), name='puzzle_file'),
     path('soln', views.player.SolutionContent.as_view(), name='solution_content'),

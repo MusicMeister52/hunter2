@@ -40,6 +40,7 @@ from ..factories import (
     PuzzleFileFactory,
     SolutionFileFactory,
     TeamPuzzleProgressFactory,
+    HintFactory,
 )
 from ..models import Guess
 
@@ -272,6 +273,84 @@ class AnswerSubmissionTests(EventTestCase):
             new_guess = Guess.objects.order_by('given').last()
             self.assertEqual(new_guess.guess, '__SECOND__')
             self.assertEqual(new_guess.late, True)
+
+
+class TestHintAcceptance:
+    @pytest.fixture
+    def puzzle(self, event):
+        return PuzzleFactory()
+
+    @pytest.fixture
+    def team(self, user, event):
+        return user.team_at(event)
+
+    @pytest.fixture
+    def user(self, event):
+        return TeamMemberFactory()
+
+    @pytest.fixture
+    def progress(self, team, puzzle):
+        return TeamPuzzleProgressFactory(team=team, puzzle=puzzle, start_time=timezone.now())
+
+    @pytest.fixture
+    def hint(self, puzzle):
+        return HintFactory(puzzle=puzzle)
+
+    @pytest.fixture
+    def client(self, tenant_client):
+        # return TenantClient(event)
+        return tenant_client
+
+    def test_not_unlocked(self, puzzle, user, team, progress, hint, client):
+        client.force_login(user)
+        assert not hint.unlocked_by(team, progress)
+        url = reverse(
+            'accept_hint', kwargs={
+                'episode_number': puzzle.episode.get_relative_id(),
+                'puzzle_number': puzzle.get_relative_id()
+            }
+        )
+        resp = client.post(url, {'id': hint.compact_id})
+        assert resp.status_code == 400
+
+    def test_nonexistent(self, puzzle, user, hint, client):
+        client.force_login(user)
+        url = reverse(
+            'accept_hint', kwargs={
+                'episode_number': puzzle.episode.get_relative_id(),
+                'puzzle_number': puzzle.get_relative_id()
+            }
+        )
+        resp = client.post(url, {'id': '__NONEXISTENT__'})
+        assert resp.status_code == 400
+
+    def test_absent_id(self, puzzle, user, hint, client):
+        client.force_login(user)
+        url = reverse(
+            'accept_hint', kwargs={
+                'episode_number': puzzle.episode.get_relative_id(),
+                'puzzle_number': puzzle.get_relative_id()
+            }
+        )
+        resp = client.post(url, {})
+        assert resp.status_code == 400
+
+    def test_accept_hint(self, puzzle, user, team, progress, hint, client):
+        client.force_login(user)
+        assert hint not in progress.accepted_hints.all()
+        with freezegun.freeze_time() as frozen_datetime:
+            frozen_datetime.tick(hint.delay_for_team(team, progress) * 1.01)
+            assert hint.unlocked_by(team, progress)
+            url = reverse(
+                'accept_hint', kwargs={
+                    'episode_number': puzzle.episode.get_relative_id(),
+                    'puzzle_number': puzzle.get_relative_id()
+                }
+            )
+            resp = client.post(url, {'id': hint.compact_id})
+            assert resp.status_code == 200, resp.content
+            assert hint in progress.accepted_hints.all()
+            assert progress.hint_acceptances.get(hint=hint).accepted_at == timezone.now()
 
 
 class PuzzleAccessTests(EventTestCase):
