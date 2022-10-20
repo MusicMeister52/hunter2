@@ -303,7 +303,7 @@ tests = ["hypothesis (==4.23)", "pytest (>=3.10,<4.0)", "pytest-asyncio (>=0.8,<
 
 [[package]]
 name = "dateparser"
-version = "1.1.1"
+version = "1.1.2"
 description = "Date parsing library designed to parse dates from HTML pages"
 category = "main"
 optional = false
@@ -1824,7 +1824,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "8586875d73d13db0b456d10f6b1c732fd55c696f833149ccb35b4eaeb5f599b7"
+content-hash = "4a28cdaaa4cf5be44a1b910a16446c12da15e350daefa739c46883fd2ae95cac"
 
 [metadata.files]
 aioredis = [
@@ -2075,8 +2075,8 @@ daphne = [
     {file = "daphne-2.5.0.tar.gz", hash = "sha256:1ca46d7419103958bbc9576fb7ba3b25b053006e22058bc97084ee1a7d44f4ba"},
 ]
 dateparser = [
-    {file = "dateparser-1.1.1-py2.py3-none-any.whl", hash = "sha256:9600874312ff28a41f96ec7ccdc73be1d1c44435719da47fea3339d55ff5a628"},
-    {file = "dateparser-1.1.1.tar.gz", hash = "sha256:038196b1f12c7397e38aad3d61588833257f6f552baa63a1499e6987fa8d42d9"},
+    {file = "dateparser-1.1.2-py2.py3-none-any.whl", hash = "sha256:d31659dc806a7d88e2b510b2c74f68b525ae531f145c62a57a99bd616b7f90cf"},
+    {file = "dateparser-1.1.2.tar.gz", hash = "sha256:3821bf191f95b2658c4abd91571c09821ce7a2bc179bf6cefd8b4515c3ccf9ef"},
 ]
 decorator = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
