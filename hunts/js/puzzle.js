@@ -15,8 +15,7 @@
 import 'bootstrap/js/dist/button'
 import 'bootstrap/js/dist/collapse'
 import {easeLinear, format, select} from 'd3'
-import durationFilters from './human-duration'
-import {Duration} from 'luxon'
+import humanizeDuration from 'humanize-duration'
 import RobustWebSocket from 'robust-websocket'
 import {encode} from 'html-entities'
 import {createApp, reactive} from 'vue'
@@ -229,7 +228,7 @@ function receivedOldAnswers(content) {
 
 function receivedSolvedMsg(content) {
   window.puzzle_solved = true
-  const time = durationFilters.filters.durationForHumans(Duration.fromMillis(content.time * 1000).toISO())
+  const time = humanizeDuration(content.time * 1000, { largest: 2, round: true })
   const html = `"${content.guess}" by ${content.by} was correct! You spent ${time} on the puzzle. ` +
     `Taking you ${content.text}. <a class="puzzle-complete-redirect" href="${content.redirect}">go right now</a>`
   let message = document.getElementById('correct-answer-message')
