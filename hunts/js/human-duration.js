@@ -1,4 +1,5 @@
 import {Duration} from 'luxon'
+import humanizeDuration from 'humanize-duration'
 
 // We don't have any support for locales in Intl yet, so this just has static formats
 export default {
@@ -8,18 +9,7 @@ export default {
       return Duration.fromISO(this.value).toFormat('hh:mm:ss')
     },
     forHumans() {
-      const duration = Duration.fromISO(this.value).shiftTo('hours', 'minutes', 'seconds').toObject()
-      let parts = []
-      for (let unit in duration) {
-        const value = Math.round(duration[unit])
-        if (value !== 0) {
-          if (value === 1) {
-            unit = unit.slice(0, -1)
-          }
-          parts.push(`${value} ${unit}`)
-        }
-      }
-      return parts.slice(0, 2).join(', ')
+      return humanizeDuration(Duration.fromISO(this.value).toMillis(), { largest: 2, round: true })
     },
   },
 }
