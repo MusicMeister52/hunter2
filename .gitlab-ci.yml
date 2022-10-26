@@ -7,7 +7,7 @@ variables:
   DOCKER_TLS_CERTDIR: ""
 
 services:
-  - name: docker:20.10.21-dind@sha256:52e2b1e7c5e4f61fc0f454bb3cee831a0ee8e5bfe91ce959215709a825604d53
+  - name: docker:20.10.21-dind@sha256:7b7ef8858c96e95fba85cbfa0d216db700a62a3c0fcddaa7a8f3b01b40679f42
     command: ["--mtu=1460"]  # Workaround for https://gitlab.com/gitlab-com/gl-infra/production/-/issues/5590#note_688032420
     alias: docker
 
