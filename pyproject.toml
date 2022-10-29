@@ -51,7 +51,7 @@ django-gdpr-assist = "1.4.2"
 dateparser = "==1.1.2"
 psycopg2-binary = "==2.9.5"
 [tool.poetry.dev-dependencies]
-django-silk = "==5.0.1"
+django-silk = "==5.0.2"
 ipython = "==8.5.0"
 ptpython = "==3.0.20"
 pytest-profiling = "==1.7.0"
