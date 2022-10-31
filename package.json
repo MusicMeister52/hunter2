@@ -35,7 +35,7 @@
     "unplugin-auto-import": "0.11.4",
     "unplugin-element-plus": "0.4.1",
     "unplugin-vue-components": "0.22.9",
-    "vue-loader": "17.0.0",
+    "vue-loader": "17.0.1",
     "webpack": "5.74.0",
     "webpack-bundle-analyzer": "4.7.0",
     "webpack-bundle-tracker": "1.6.0",
