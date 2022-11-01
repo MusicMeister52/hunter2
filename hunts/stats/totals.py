@@ -46,9 +46,9 @@ class TotalsGenerator(AbstractGenerator):
     def generate(self):
         User = get_user_model()
 
-        guesses_filter = Q(late=False)
-        team_guesses_filter = Q(guess__late=False)
-        team_puzzle_progress_filter = Q(late=False)
+        guesses_filter = Q(for_puzzle__episode__no_stats=False, late=False)
+        team_guesses_filter = Q(guess__for_puzzle__episode__no_stats=False, guess__late=False)
+        team_puzzle_progress_filter = Q(puzzle__episode__no_stats=False, late=False)
         if self.episode is not None:
             guesses_filter &= Q(for_puzzle__episode=self.episode)
             team_guesses_filter &= Q(guess__for_puzzle__episode=self.episode)

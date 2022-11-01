@@ -119,7 +119,7 @@ class PuzzleTimesGenerator(AbstractGenerator):
         if self.episode is not None:
             episodes = (self.episode, )
         else:
-            episodes = Episode.objects.all()
+            episodes = Episode.objects.filter(no_stats=False)
 
         output = []
 

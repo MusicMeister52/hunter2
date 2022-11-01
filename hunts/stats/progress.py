@@ -57,7 +57,7 @@ class ProgressGenerator(AbstractGenerator):
         self.number = number
 
     def generate(self):
-        episodes = [self.episode] if self.episode is not None else Episode.objects.all()
+        episodes = [self.episode] if self.episode is not None else Episode.objects.filter(no_stats=False)
 
         results = []
 
