@@ -45,9 +45,9 @@
   },
   "dependencies": {
     "@popperjs/core": "2.11.6",
-    "@sentry/browser": "7.17.2",
-    "@sentry/integrations": "7.17.2",
-    "@sentry/vue": "7.17.2",
+    "@sentry/browser": "7.17.3",
+    "@sentry/integrations": "7.17.3",
+    "@sentry/vue": "7.17.3",
     "@sgratzl/chartjs-chart-boxplot": "3.10.0",
     "@types/lodash-es": "4.17.6",
     "@vue/compiler-sfc": "3.2.41",
