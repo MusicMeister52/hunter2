@@ -17,10 +17,10 @@
     "start": "/node_modules/.bin/nodemon --watch webpack.common.js --watch webpack.dev.js --exec $(yarn bin webpack) -- serve --config webpack.dev.js"
   },
   "devDependencies": {
-    "@babel/core": "7.19.6",
-    "@babel/preset-env": "7.19.4",
+    "@babel/core": "7.20.2",
+    "@babel/preset-env": "7.20.2",
     "autoprefixer": "10.4.13",
-    "babel-loader": "9.0.1",
+    "babel-loader": "9.1.0",
     "babel-plugin-component": "1.1.1",
     "css-loader": "6.7.1",
     "css-minimizer-webpack-plugin": "4.2.2",
