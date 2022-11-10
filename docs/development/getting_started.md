@@ -175,6 +175,15 @@ docker-compose up -d
 docker-compose run --rm app migrate_schemas
 ```
 
+To enable stack tracing of database queries, do:
+```shell
+echo 'H2_DB_LOG=True' >> .env
+docker-compose up -d
+```
+
+If you want to profile code executed from tests, you will also want to enable debug mode in tests, e.g. by adding
+`django_debug_mode=keep` to `pytest.ini`.
+
 ### Building Docs
 Docs are built automatically in CI, but if you need to change them and wish to build them locally you can do so by first
 allowing the container user to write to the docs file tree:

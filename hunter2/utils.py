@@ -13,6 +13,7 @@
 import configparser
 import logging
 import random
+import traceback
 
 from django.conf import settings
 from urllib.parse import urlsplit, urlunsplit
@@ -52,3 +53,79 @@ def wwwize(url, request):
         netloc = domain
 
     return urlunsplit(components[:1] + (netloc,) + components[2:])
+
+
+class StackInfoLoggingMixin:
+    """This mixin adds a stack trace of the log record afterwards
+
+    The assumption is that this will cause a lot of spam in logs, so stack
+    traces are limited to source files within the app base dir.
+    Facility is provided to skip spammy log lines.
+
+    Attributes:
+        bad: iterable of str: if any of these strings appears in the message,
+            don't emit it
+        bad_stack: iterable of str: if any of these strings appear in any of the
+            traceback entries, don't emit the message
+        emit_empty_stack: bool: whether to emit the log message if the stack is empty
+    """
+    bad_msg = ()
+    bad_stack = ()
+    emit_empty_stack = False
+    logged = 0
+
+    def get_stack(self, record):
+        # The last three stack entries will be this method, self.emit: strip them off.
+        stack = [str(s) for s in traceback.format_stack()][:-2]
+        stack = [s for s in stack if settings.BASE_DIR in s]
+        return stack
+
+    def should_emit(self, record, stack):
+        args = str(record.args)
+        if not any(b in args for b in self.bad_msg):
+            if not stack and not self.emit_empty_stack:
+                # Don't emit the log message at all
+                return False
+            for b in self.bad_stack:
+                if any(b in s for s in stack):
+                    return False
+            # Log lines from tests are probably uninteresting
+            if '/tests/' in stack[-1] or 'tests.py' in stack[-1]:
+                return False
+        else:
+            return False
+
+        return True
+
+    def emit(self, record):
+        stack = self.get_stack(record)
+        if not self.should_emit(record, stack):
+            return
+
+        self.logged += 1
+        if stack:
+            record.msg = f'logged {self.logged:03d} {record.msg} ***{self.terminator}{"".join(stack)}'
+        else:
+            record.msg = f'logged {self.logged:03d} {record.msg}'
+        super().emit(record)
+
+
+class DBLogHandler(StackInfoLoggingMixin, logging.StreamHandler):
+    # These are spammy, but the list is not complete; it may be necessary
+    # to extend it for a particular application.
+    bad_msg = (
+        'SET search_path',
+        'SHOW search_path',
+        'django_migrations',
+        'content_type',
+        'conname',
+        'pg_catalog',
+        'ALTER',
+        'CREATE',
+        'SEQUENCE',
+        'CONSTRAINT',
+    )
+    bad_stack = (
+        'Factory',
+        '/migrations/',
+    )

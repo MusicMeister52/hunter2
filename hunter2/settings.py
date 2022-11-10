@@ -34,6 +34,7 @@ DEBUG              = env.bool      ('H2_DEBUG',         default=False)
 BASE_DOMAIN        = env.str       ('H2_DOMAIN',        default='hunter2.localhost')
 DEFAULT_URL_SCHEME = env.str       ('H2_SCHEME',        default='http')
 LOG_LEVEL          = env.str       ('H2_LOG_LEVEL',     default='WARNING')
+DB_LOG             = env.bool      ('H2_DB_LOG',        default=False)
 LANGUAGE_CODE      = env.str       ('H2_LANGUAGE_CODE', default='en-GB')
 MATOMO_DOMAIN_PATH = env.str       ('H2_MATOMO_HOST',   default=env.str('H2_PIWIK_HOST', default=None))
 MATOMO_SITE_ID     = env.str       ('H2_MATOMO_SITE',   default=env.str('H2_PIWIK_SITE', default='1'))
@@ -190,13 +191,19 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
         },
+        'stack-console': {
+            'class': 'hunter2.utils.DBLogHandler'
+        },
     },
     'loggers': {
         '': {
             'handlers': ['console'],
             'level': LOG_LEVEL,
         },
-        'django.db': {
+        'django.db.backends': {
+            'handlers': ['stack-console'] if DB_LOG else [],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }
