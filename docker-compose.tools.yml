@@ -4,7 +4,7 @@ services:
   poetry:
     entrypoint: poetry
     environment:
-      PATH: /opt/hunter2/venv/bin:/root/.poetry/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      PATH: /opt/hunter2/venv/bin:/root/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       VIRTUAL_ENV: /opt/hunter2/venv
     image: ${PYTHON_IMAGE_TAG:-registry.gitlab.com/hunter2.app/hunter2/python:latest}
     volumes:
