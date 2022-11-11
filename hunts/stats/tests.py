@@ -241,6 +241,24 @@ class TestTopGuesses:
         assert len(data['top_teams']) == 1
         assert data['top_teams'][0] == (1, team.get_display_name(), 3)
 
+    def test_episode_excluded(self, event):
+        puzzle1 = PuzzleFactory()
+        puzzle2 = PuzzleFactory(episode__no_stats=True)
+        players = TeamMemberFactory.create_batch(3, team__role=TeamRole.PLAYER)
+        for i, player in enumerate(players):
+            GuessFactory.create_batch(3 - i, by=player, for_puzzle=puzzle1)
+        GuessFactory.create_batch(5, by=players[2], for_puzzle=puzzle2)
+
+        data = TopGuessesGenerator(event=event, number=3).generate()
+        TopGuessesGenerator.schema.is_valid(data)
+
+        assert len(data['top_teams']) == 3
+        for i, player in enumerate(players):
+            assert data['top_teams'][i] == (i + 1, player.team_at(event).get_display_name(), 3 - i)
+        assert len(data['top_users']) == 3
+        for i, player in enumerate(players):
+            assert data['top_users'][i] == (i + 1, player.get_display_name(), 3 - i)
+
     def test_admin_excluded(self, event):
         puzzle = PuzzleFactory()
         admin = TeamMemberFactory(team__role=TeamRole.ADMIN)
@@ -398,6 +416,23 @@ class TestTotals:
         assert data['puzzles_solved'] == 1
         assert data['guess_count'] == 1
 
+    def test_episode_excluded(self, event):
+        puzzle1 = PuzzleFactory()
+        puzzle2 = PuzzleFactory(episode__no_stats=True)
+        player = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        GuessFactory(by=player, for_puzzle=puzzle1, correct=True)
+        GuessFactory(by=player, for_puzzle=puzzle2, correct=True)
+
+        data = TotalsGenerator(event=event).generate()
+        TotalsGenerator.schema.is_valid(data)
+
+        assert data['active_players'] == 1
+        assert data['active_teams'] == 1
+        assert data['correct_teams'] == 1
+        assert data['finished_teams'] == 0  # There is no winning episode
+        assert data['puzzles_solved'] == 1
+        assert data['guess_count'] == 1
+
 
 @pytest.mark.usefixtures("late_guesser")
 class TestPuzzleTimes:
@@ -478,6 +513,18 @@ class TestPuzzleTimes:
         assert len(data[0]['puzzles'][0]['top']) == 1
         assert admin.teams.get().get_display_name() not in data[0]['puzzles'][0]['by_team']
 
+    def test_episode_excluded(self, event):
+        puzzle1 = PuzzleFactory()
+        puzzle2 = PuzzleFactory(episode__no_stats=True)
+        player = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        GuessFactory(by=player, for_puzzle=puzzle1, correct=True)
+        GuessFactory(by=player, for_puzzle=puzzle2, correct=True)
+
+        data = PuzzleTimesGenerator(event=event).generate()
+        PuzzleTimesGenerator.schema.is_valid(data)
+
+        assert len(data) == 1
+
 
 @pytest.mark.usefixtures("late_guesser")
 class TestSolveDistribution:
@@ -512,3 +559,18 @@ class TestSolveDistribution:
             data['episodes'][ep2]['puzzles'][0]['solve_times'] ==
             {team.id: 60 * 2 for team in teams}
         )
+
+    def test_episode_excluded(self, event):
+        puzzle1 = PuzzleFactory()
+        puzzle2 = PuzzleFactory(episode__no_stats=True)
+        player = TeamMemberFactory(team__role=TeamRole.PLAYER)
+        team = player.team_at(event)
+        now = timezone.now()
+        TeamPuzzleProgressFactory(puzzle=puzzle1, team=team, start_time=now - timedelta(minutes=5))
+        TeamPuzzleProgressFactory(puzzle=puzzle2, team=team, start_time=now - timedelta(minutes=5))
+        GuessFactory(by=player, for_puzzle=puzzle1, correct=True, given=now - timedelta(minutes=4))
+        GuessFactory(by=player, for_puzzle=puzzle2, correct=True, given=now - timedelta(minutes=3))
+
+        data = SolveDistributionGenerator(event=event).generate()
+        assert SolveDistributionGenerator.schema.is_valid(data)
+        assert len(data['episodes']) == 1

@@ -50,7 +50,7 @@ class LeadersGenerator(AbstractGenerator):
         if self.episode is not None:
             episodes = [self.episode]
         else:
-            episodes = Episode.objects.filter(winning=True)
+            episodes = Episode.objects.filter(no_stats=False, winning=True)
             # If any "winning" episodes have anything in their sequel graph which are also "winning" then discount them since completion times for the sequels
             # must be higher
             redundant = [e.id for e in episodes if len([s for s in e.all_sequels() if s.winning])]

@@ -57,6 +57,11 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         help_text='Episodes which should grant a headstart for this episode',
         symmetrical=False,
     )
+    no_stats = models.BooleanField(
+        default=False,
+        verbose_name='Excluded from public stats',
+        help_text='Whether this episode should be excluded from public facing stats pages',
+    )
     winning = models.BooleanField(default=False, help_text='Whether this episode must be won in order to win the event')
 
     class Meta:
@@ -67,6 +72,8 @@ class Episode(node_factory(EpisodePrequel), SealableModel):
         return f'{self.event.name} - {self.name}'
 
     def clean(self):
+        if self.no_stats and self.winning:
+            raise ValidationError('A winning Episode cannot be excluded from stats')
         for puzzle in self.puzzle_set.all():
             if puzzle.start_date and puzzle.start_date < self.start_date:
                 raise ValidationError(f"Puzzle {puzzle}'s start date of {puzzle.start_date} is before this episode's")
