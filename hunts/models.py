@@ -518,7 +518,7 @@ class Clue(SealableModel):
 
     @property
     def compact_id(self):
-        return utils.encode_uuid(self.id)
+        return utils.encode_uuid(self.id) if self.id is not None else '<none>'
 
     @property
     def short_compact_id(self):
