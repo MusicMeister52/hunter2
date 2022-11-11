@@ -12,13 +12,15 @@
 
 import asyncio
 from datetime import datetime
+from itertools import chain
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 from channels.layers import get_channel_layer
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections, transaction
-from django.db.models.signals import pre_save, post_save, pre_delete, m2m_changed
+from django.db.models import Prefetch
+from django.db.models.signals import pre_save, post_save, pre_delete, m2m_changed, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from django_tenants.utils import get_tenant_database_alias
@@ -206,46 +208,56 @@ class PuzzleEventWebsocket(HuntWebsocket):
     def _error(self, message):
         self.send_json({'type': 'error', 'content': {'error': message}})
 
-    def setup_hint_timers(self):
-        self.hint_events = {}
-        hints = self.puzzle.hint_set.all().select_related('start_after')
-        for hint in hints:
-            self.schedule_hint(hint)
-
-    def schedule_hint_msg(self, message):
-        try:
-            # select_related is needed not for performance but so no queries are necessary in the
-            # event loop, which is not allowed
-            hint = models.Hint.objects.select_related('start_after').get(id=message['hint_uid'])
-        except (TypeError, KeyError):
-            raise ValueError('Cannot schedule a hint without either a hint instance or a dictionary with `hint_uid` key.')
-        send_expired = message.get('send_expired', False)
-        self.schedule_hint(hint, send_expired)
-
-    def schedule_hint(self, hint, send_expired=False):
-        try:
-            self.hint_events[hint.id].cancel()
-            del self.hint_events[hint.id]
-        except KeyError:
-            pass
-
-        progress, _ = models.TeamPuzzleProgress.objects.get_or_create(
+    def _get_progress_for_hints(self):
+        progress, _ = models.TeamPuzzleProgress.objects.prefetch_related(
+            'teamunlock_set__unlockanswer',
+            'accepted_hints',
+        ).seal().get_or_create(
             puzzle=self.puzzle,
             team=self.team,
             defaults={
                 'late': timezone.now() > self.episode.event.end_date
             }
         )
-        accepted = hint in progress.accepted_hints.all()
+        return progress
+
+    def setup_hint_timers(self):
+        self.hint_events = {}
+        hints = self.puzzle.hint_set.all().select_related('start_after').prefetch_related('obsoleted_by').seal()
+        progress = self._get_progress_for_hints()
+        for hint in hints:
+            self.schedule_hint(hint, progress)
+
+    def schedule_hint_msg(self, message):
+        # select_related is needed not for performance but so no queries are necessary in the
+        # event loop, which is not allowed
+        hints = models.Hint.objects.select_related('start_after').filter(id__in=message['hint_uids'])
+        send_expired = message.get('send_expired', False)
+        progress = self._get_progress_for_hints()
+        for hint in hints:
+            self.schedule_hint(hint, progress, send_expired)
+
+    def schedule_hint(self, hint, progress, send_expired=False):
+        try:
+            self.hint_events[hint.id].cancel()
+            del self.hint_events[hint.id]
+        except KeyError:
+            pass
+
         delay = hint.delay_for_team(self.team, progress)
         if delay is None:
             return
+        accepted = hint in progress.accepted_hints.all()
+        obsolete = hint.obsolete_for(self.team, progress)
         delay = delay.total_seconds()
         if not send_expired and delay < 0:
             return
         # run the hint sender function on the asyncio event loop so we don't have to bother writing scheduler stuff
         # we need a future in order to be able to cancel it. This seems to be the easiest way to get one.
-        future = asyncio.run_coroutine_threadsafe(self.send_new_hint(self.team, hint, accepted, delay), self.loop)
+        future = asyncio.run_coroutine_threadsafe(
+            self.send_new_hint(self.team, hint, accepted, obsolete, delay),
+            self.loop
+        )
         self.hint_events[hint.id] = future
 
     def cancel_scheduled_hint(self, content):
@@ -337,42 +349,24 @@ class PuzzleEventWebsocket(HuntWebsocket):
         })
 
     @classmethod
-    def send_delete_unlockguess(cls, teamunlock):
-        layer = get_channel_layer()
-        unlock = teamunlock.unlockanswer.unlock
-        guess = teamunlock.unlocked_by
-        groupname = cls._puzzle_groupname(guess.for_puzzle, guess.by_team_id)
-        for hint in unlock.hint_set.all():
-            async_to_sync(layer.group_send)(groupname, {
-                'type': 'cancel_scheduled_hint',
-                'hint_uid': str(hint.id)
-            })
-        cls._send_message(cls._puzzle_groupname(unlock.puzzle, guess.by_team_id), {
-            'type': 'delete_unlockguess',
-            'content': {
-                'guess': guess.guess,
-                'unlock_uid': unlock.compact_id,
-            }
-        })
-
-    @classmethod
-    def _new_hint_json(cls, hint, accepted):
+    def _new_hint_json(cls, hint, accepted, obsolete):
         return {
             'type': 'new_hint',
             'content': {
                 'hint': hint.text if accepted else None,
                 'hint_uid': hint.compact_id,
                 'accepted': accepted,
+                'obsolete': obsolete,
                 'time': str(hint.time),
                 'depends_on_unlock_uid': hint.start_after.compact_id if hint.start_after else None
             }
         }
 
     @classmethod
-    def send_new_hint_to_team(cls, team_id, hint, accepted):
-        cls._send_message(cls._puzzle_groupname(hint.puzzle, team_id), cls._new_hint_json(hint, accepted))
+    def send_new_hint_to_team(cls, team_id, hint, accepted, obsolete):
+        cls._send_message(cls._puzzle_groupname(hint.puzzle, team_id), cls._new_hint_json(hint, accepted, obsolete))
 
-    async def send_new_hint(self, team, hint, accepted, delay, **kwargs):
+    async def send_new_hint(self, team, hint, accepted, obsolete, delay, **kwargs):
         # We can't have a sync function (added to the event loop via call_later) because it would have to call back
         # ultimately to SyncConsumer's send method, which is wrapped in async_to_sync, which refuses to run in a thread
         # with a running asyncio event loop.
@@ -384,7 +378,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
         # We also have to reproduce the functionality of JsonWebsocketConsumer and WebsocketConsumer here (they don't
         # have async versions.)
         await self.base_send.awaitable(
-            {'type': 'websocket.send', 'text': self.encode_json(self._new_hint_json(hint, accepted))}
+            {'type': 'websocket.send', 'text': self.encode_json(self._new_hint_json(hint, accepted, obsolete))}
         )
         del self.hint_events[hint.id]
 
@@ -451,7 +445,20 @@ class PuzzleEventWebsocket(HuntWebsocket):
         })
 
     def send_old_hints(self, start):
-        progress = self.puzzle.teampuzzleprogress_set.get(team=self.team)
+        progress = self.puzzle.teampuzzleprogress_set.select_related(
+            'team'
+        ).prefetch_related(
+            'accepted_hints',
+            'puzzle__hint_set__obsoleted_by',
+            Prefetch(
+                'teamunlock_set',
+                queryset=models.TeamUnlock.objects.select_related(
+                    'unlocked_by',
+                    'unlockanswer',
+                    'unlockanswer__unlock',
+                ).seal()
+            ),
+        ).seal().get(team=self.team)
         hints = [h for hint_list in progress.hints().values() for h in hint_list]
         if start != 'all':
             start = datetime.fromtimestamp(int(start) // 1000, timezone.utc)
@@ -463,7 +470,7 @@ class PuzzleEventWebsocket(HuntWebsocket):
             msg_type = 'old_hint'
 
         for h in hints:
-            content = self._new_hint_json(h, h.accepted)
+            content = self._new_hint_json(h, h.accepted, h.obsolete)
             content['type'] = msg_type
             self.send_json(content)
 
@@ -485,17 +492,18 @@ class PuzzleEventWebsocket(HuntWebsocket):
             return
 
         cls.send_new_unlock(teamunlock)
+        layer = get_channel_layer()
+        groupname = cls._puzzle_groupname(
+            teamunlock.team_puzzle_progress.puzzle,
+            teamunlock.team_puzzle_progress.team_id
+        )
 
-        for hint in teamunlock.unlockanswer.unlock.hint_set.all():
-            layer = get_channel_layer()
-            async_to_sync(layer.group_send)(cls._puzzle_groupname(
-                teamunlock.team_puzzle_progress.puzzle,
-                teamunlock.team_puzzle_progress.team_id
-            ), {
-                'type': 'schedule_hint_msg',
-                'hint_uid': str(hint.id),
-                'send_expired': True
-            })
+        hints = chain(teamunlock.unlockanswer.unlock.hint_set.all(), teamunlock.unlockanswer.unlock.obsoletes.all())
+        async_to_sync(layer.group_send)(groupname, {
+            'type': 'schedule_hint_msg',
+            'hint_uids': [str(hint.id) for hint in hints],
+            'send_expired': True
+        })
 
     @classmethod
     def _deleted_teamunlock(cls, sender, instance, *args, **kwargs):
@@ -503,13 +511,39 @@ class PuzzleEventWebsocket(HuntWebsocket):
         # TODO: this incurs at least one query each time this handler runs, which runs many times in some situations
         # like if the unlock itself is deleted, and/or teams had several guesses unlocking it multiple times
 
+        layer = get_channel_layer()
+        unlock = teamunlock.unlockanswer.unlock
+        guess = teamunlock.unlocked_by
+        progress = teamunlock.team_puzzle_progress
+        groupname = cls._puzzle_groupname(progress.puzzle, progress.team_id)
+        # First handle dependendent hints
+        for hint in unlock.hint_set.seal().all():
+            async_to_sync(layer.group_send)(groupname, {
+                'type': 'cancel_scheduled_hint',
+                'hint_uid': str(hint.id)
+            })
+        # ... then obsoleted hints. They require more logic, and queries.
+        for hint in unlock.obsoletes.seal().all():
+            if not hint.obsolete_for(progress.team, progress):
+                # If the unlock obsoletes the hint and the hint is no longer obsolete for the team, the team needs to
+                # be notified. But there are two possible target states: a normal hint and no hint.
+                if hint.unlocked_by(progress.team, progress):
+                    cls.send_new_hint_to_team(progress.team_id, hint, hint in progress.accepted_hints.all(), False)
+                else:
+                    cls.send_delete_hint(progress.team_id, hint)
         # to avoid doing more than necessary, we don't check if the unlock is still unlocked.
         # the client will just hide the unlock if there's no longer anything unlocking it.
         # This could result in some unlocks remaining visible incorrectly if there is a network interruption,
         # where doing these checks would mean we can always send a "delete unlock" event to the client.
         # Since this is rare and we assume the team has usually seen the unlock and gained any benefit
         # or confusion (if it's being changed because it was wrong!) from it, this is probably OK.
-        cls.send_delete_unlockguess(teamunlock)
+        cls._send_message(cls._puzzle_groupname(unlock.puzzle, guess.by_team_id), {
+            'type': 'delete_unlockguess',
+            'content': {
+                'guess': guess.guess,
+                'unlock_uid': unlock.compact_id,
+            }
+        })
 
     # handler: Unlock.pre_save
     @pre_save_handler
@@ -545,7 +579,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         ).select_related(
             'team', 'puzzle'
         ).prefetch_related(
-            'accepted_hints'
+            'accepted_hints',
+            'teamunlock_set__unlockanswer'
         ).seal()
         for progress in tpps:
             layer = get_channel_layer()
@@ -555,15 +590,16 @@ class PuzzleEventWebsocket(HuntWebsocket):
                     {'type': 'cancel_scheduled_hint', 'hint_uid': str(hint.id)}
                 )
                 accepted = hint in progress.accepted_hints.all()
+                obsolete = hint.obsolete_for(progress.team, progress)
                 # Rather than try to work out whether the client should change what it's displaying and only update
                 # it if so, just send the info and let it decide.
-                cls.send_new_hint_to_team(progress.team_id, hint, accepted)
+                cls.send_new_hint_to_team(progress.team_id, hint, accepted, obsolete)
             else:
                 if old and old.unlocked_by(progress.team, progress):
                     cls.send_delete_hint(progress.team_id, hint)
                 async_to_sync(layer.group_send)(
                     cls._puzzle_groupname(hint.puzzle, progress.team_id),
-                    {'type': 'schedule_hint_msg', 'hint_uid': str(hint.id), 'send_expired': True}
+                    {'type': 'schedule_hint_msg', 'hint_uids': [str(hint.id)], 'send_expired': True}
                 )
 
     # handler: Hint.pre_delete
@@ -587,7 +623,8 @@ class PuzzleEventWebsocket(HuntWebsocket):
         if action == 'post_add':
             team = instance.team
             for hint in models.Hint.objects.filter(pk__in=pk_set):
-                cls.send_new_hint_to_team(team.id, hint, True)
+                obsolete = hint.obsolete_for(team, instance)
+                cls.send_new_hint_to_team(team.id, hint, True, obsolete)
 
 
 pre_save.connect(PuzzleEventWebsocket._saved_teampuzzleprogress, sender=models.TeamPuzzleProgress)
@@ -596,7 +633,7 @@ pre_save.connect(PuzzleEventWebsocket._saved_guess, sender=models.Guess)
 pre_save.connect(PuzzleEventWebsocket._saved_unlock, sender=models.Unlock)
 pre_save.connect(PuzzleEventWebsocket._saved_hint, sender=models.Hint)
 
-pre_delete.connect(PuzzleEventWebsocket._deleted_teamunlock, sender=models.TeamUnlock)
+post_delete.connect(PuzzleEventWebsocket._deleted_teamunlock, sender=models.TeamUnlock)
 pre_delete.connect(PuzzleEventWebsocket._deleted_hint, sender=models.Hint)
 
 m2m_changed.connect(PuzzleEventWebsocket.accepted_hint, sender=models.TeamPuzzleProgress.accepted_hints.through)

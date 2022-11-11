@@ -633,6 +633,127 @@ class ClueTests(EventTestCase):
         self.assertFalse(unlock.unlocked_by(other_team), "Unlock should not be visible to other team")
 
 
+class TestTeamPuzzleProgress:
+    def test_hints(self, event):
+        tpp = TeamPuzzleProgressFactory(start_time=timezone.now())
+        h1 = HintFactory(puzzle=tpp.puzzle, time=datetime.timedelta(minutes=1))
+
+        with freezegun.freeze_time() as frozen_datetime:
+            hints = tpp.hints()
+            assert not hints
+
+            frozen_datetime.tick(datetime.timedelta(minutes=1))
+
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1]
+            }
+            assert not hints[None][0].accepted
+            assert not hints[None][0].obsolete
+
+    def test_dependent_hints(self, event):
+        user = TeamMemberFactory()
+        team = user.team_at(event)
+        tpp = TeamPuzzleProgressFactory(team=team, start_time=timezone.now())
+        h1 = HintFactory(puzzle=tpp.puzzle, time=datetime.timedelta(minutes=1))
+        unlock = UnlockFactory(puzzle=tpp.puzzle)
+        h2 = HintFactory(
+            puzzle=tpp.puzzle, time=datetime.timedelta(minutes=1), start_after=unlock
+        )
+
+        with freezegun.freeze_time() as frozen_datetime:
+            GuessFactory(for_puzzle=tpp.puzzle, by=user, guess=unlock.unlockanswer_set.get().guess)
+            assert unlock.unlocked_by(team)
+            hints = dict(tpp.hints())
+            assert not hints
+
+            frozen_datetime.tick(datetime.timedelta(minutes=2))
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1],
+                unlock.id: [h2]
+            }
+            assert not hints[None][0].accepted
+            assert not hints[None][0].obsolete
+            assert not hints[unlock.id][0].accepted
+            assert not hints[unlock.id][0].obsolete
+
+    def test_accepted_hints(self, event):
+        user = TeamMemberFactory()
+        team = user.team_at(event)
+        tpp = TeamPuzzleProgressFactory(team=team, start_time=timezone.now())
+        h1 = HintFactory(puzzle=tpp.puzzle, time=datetime.timedelta(minutes=1))
+
+        with freezegun.freeze_time() as frozen_datetime:
+            frozen_datetime.tick(datetime.timedelta(minutes=2))
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1],
+            }
+            assert not hints[None][0].accepted
+            assert not hints[None][0].obsolete
+
+            tpp.accepted_hints.add(h1)
+
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1],
+            }
+            assert hints[None][0].accepted
+            assert not hints[None][0].obsolete
+
+    def test_obsolete_hints(self, event):
+        user = TeamMemberFactory()
+        team = user.team_at(event)
+        tpp = TeamPuzzleProgressFactory(team=team, start_time=timezone.now())
+        unlock1 = UnlockFactory(puzzle=tpp.puzzle)
+        unlock2 = UnlockFactory(puzzle=tpp.puzzle)
+        # different times gives a predictable order later
+        h1 = HintFactory(puzzle=tpp.puzzle, time=datetime.timedelta(minutes=1))
+        h2 = HintFactory(puzzle=tpp.puzzle, time=datetime.timedelta(minutes=2))
+        h1.obsoleted_by.add(unlock1)
+        h2.obsoleted_by.add(unlock2)
+
+        with freezegun.freeze_time() as frozen_datetime:
+            hints = dict(tpp.hints())
+            assert not hints
+
+            # guess to obtain the first hint by obsoletion
+            GuessFactory(for_puzzle=tpp.puzzle, by=user, guess=unlock1.unlockanswer_set.get().guess)
+            assert unlock1.unlocked_by(team)
+
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1],
+            }
+            assert not hints[None][0].accepted
+            assert hints[None][0].obsolete
+
+            # wait to obtain the second hint normally
+            frozen_datetime.tick(datetime.timedelta(minutes=3))
+
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1, h2],
+            }
+            assert not hints[None][0].accepted
+            assert hints[None][0].obsolete
+            assert not hints[None][1].accepted
+            assert not hints[None][1].obsolete
+
+            # obsolete the second hint too, check it is marked obsolete in results
+            GuessFactory(for_puzzle=tpp.puzzle, by=user, guess=unlock2.unlockanswer_set.get().guess)
+
+            hints = dict(tpp.hints())
+            assert hints == {
+                None: [h1, h2],
+            }
+            assert not hints[None][0].accepted
+            assert hints[None][0].obsolete
+            assert not hints[None][1].accepted
+            assert hints[None][1].obsolete
+
+
 class UnlockAnswerTests(EventTestCase):
     def test_unlock_immutable(self):
         unlockanswer = UnlockAnswerFactory()

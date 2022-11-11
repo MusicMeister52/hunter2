@@ -548,6 +548,13 @@ class Hint(Clue):
                    'unlock to display this hint'),
         validators=(MinValueValidator(timedelta(seconds=0)),),
     )
+    obsoleted_by = models.ManyToManyField(
+        'Unlock',
+        verbose_name='Reveal after Unlock',
+        related_name='obsoletes',
+        blank=True,
+        help_text='Any unlock added here will, when unlocked, cause this hint to be immediately revealed.',
+    )
 
     def __str__(self):
         return f'Hint unlocked after {self.time}'
@@ -561,7 +568,7 @@ class Hint(Clue):
           - A mapping from unlock ID to unlocked time
         """
         unlocks_at = self.unlocks_at(team, progress, possible_guesses, unlocked_unlocks)
-        return unlocks_at is not None and unlocks_at < timezone.now()
+        return unlocks_at is not None and unlocks_at <= timezone.now()
 
     def delay_for_team(self, team, progress, possible_guesses=None, unlocked_unlocks=None):
         """Returns how long until the hint unlocks for the given team.
@@ -576,13 +583,16 @@ class Hint(Clue):
 
         Parameters as for `unlocked_by`.
         """
+        if self.obsolete_for(team, progress, unlocked_unlocks):
+            return timezone.now()
+
         if self.start_after_id:
-            if unlocked_unlocks:
-                start_time = unlocked_unlocks.get(self.start_after_id)
-            else:
+            if unlocked_unlocks is None:
                 start_time = progress.teamunlock_set.filter(
                     unlockanswer__unlock_id=self.start_after_id
                 ).aggregate(start=Min('unlocked_by__given'))['start']
+            else:
+                start_time = unlocked_unlocks.get(self.start_after_id)
         else:
             start_time = progress.start_time
 
@@ -590,6 +600,16 @@ class Hint(Clue):
             return None
 
         return start_time + self.time
+
+    def obsolete_for(self, team, progress, unlocked_unlocks=None):
+        if unlocked_unlocks is None:
+            if set(self.obsoleted_by.all()) & progress.unlocks:
+                return True
+        else:
+            if any(unlock.id in unlocked_unlocks for unlock in self.obsoleted_by.all()):
+                return True
+
+        return False
 
 
 class Unlock(Clue):
@@ -927,6 +947,7 @@ class TeamPuzzleProgress(SealableModel):
 
     @property
     def unlocks(self):
+        return set(tu.unlockanswer.unlock for tu in self.teamunlock_set.all())
         return set(ua.unlock for ua in self.unlockanswers.all())
 
     def hints(self):
@@ -934,17 +955,32 @@ class TeamPuzzleProgress(SealableModel):
 
         Note:
             * hints are annotated with whether they have been accepted or not
+            * hints are annotated with whether an unlock which obsoletes them has been unlocked
             * a key of `None` is used for hints that aren't dependent on an unlock
         """
-        hints = self.puzzle.hint_set.all().order_by('time')
+        hints = self.puzzle.hint_set.all()
+        unlocked_unlocks = {
+            unlock.id: sorted(guesses, key=lambda g: g.given)[0].given
+            for unlock, guesses in self.unlocks_to_guesses().items()
+        }
         accepted = set(self.accepted_hints.all())
+        obsolete = set(hints.annotate(
+            obsolete=Exists(
+                self.teamunlock_set.filter(unlockanswer__unlock__obsoletes=OuterRef('pk'))
+            )
+        ).filter(obsolete=True))
         hint_dict = defaultdict(list)
         guesses = self.guesses.all()
         for hint in hints:
-            if hint.unlocked_by(self.team, self, guesses):
+            if hint.unlocked_by(self.team, self, guesses, unlocked_unlocks):
                 hint.accepted = hint in accepted
+                hint.obsolete = hint in obsolete
                 hint_dict[hint.start_after_id].append(hint)
 
+        # We cannot sort the hints when obtaining them from the db while also allowing them
+        # to be prefetched
+        for hs in hint_dict.values():
+            hs.sort(key=lambda h: h.time)
         return hint_dict
 
     def unlocks_to_guesses(self):

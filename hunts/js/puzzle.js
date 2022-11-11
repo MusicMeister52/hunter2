@@ -279,7 +279,7 @@ function deleteAnnouncement(announcement) {
 }
 
 function newHint(content) {
-  let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true, 'accepted': content.accepted}
+  let hintInfo = {'time': content.time, 'hint': content.hint, 'isNew': true, 'accepted': content.accepted, 'obsolete': content.obsolete}
   if (content.depends_on_unlock_uid === null) {
     this.hints.set(content.hint_uid, hintInfo)
   } else {

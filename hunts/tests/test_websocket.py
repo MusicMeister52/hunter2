@@ -688,6 +688,60 @@ class PuzzleWebsocketTests(AsyncEventTestCase):
 
             self.run_async(comm.disconnect)()
 
+    def test_websocket_receives_hint_obsoletions(self):
+        delay = 10
+
+        user = TeamMemberFactory()
+        team = user.team_at(self.tenant)
+        progress = TeamPuzzleProgressFactory(puzzle=self.pz, team=team, start_time=timezone.now())
+        unlock = UnlockFactory(puzzle=self.pz)
+        unlockanswer = unlock.unlockanswer_set.get()
+        hint1 = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=delay))
+        hint2 = HintFactory(puzzle=self.pz, time=datetime.timedelta(seconds=0))
+        hint1.obsoleted_by.add(unlock)
+        hint2.obsoleted_by.add(unlock)
+
+        self.assertFalse(hint1.unlocked_by(team, progress))
+        self.assertTrue(hint2.unlocked_by(team, progress))
+
+        comm = self.get_communicator(websocket_app, self.url, {'user': user})
+        connected, _ = self.run_async(comm.connect)()
+
+        self.assertTrue(connected)
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        GuessFactory(for_puzzle=self.pz, by=user, guess=unlockanswer.guess)
+        output = self.receive_json(comm, 'Websocket did not send unlock')
+        self.assertEqual(output['type'], 'new_unlock')
+        output = self.receive_json(comm, 'Websocket did not send obsoleted hint')
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint_uid'], hint1.compact_id)
+        self.assertEqual(output['content']['obsolete'], True)
+        self.assertEqual(output['content']['accepted'], False)
+        output = self.receive_json(comm, 'Websocket did not send obsoleted hint')
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint_uid'], hint2.compact_id)
+        self.assertEqual(output['content']['obsolete'], True)
+        self.assertEqual(output['content']['accepted'], False)
+
+        output = self.receive_json(comm, 'Websocket did not send new guess')
+        self.assertEqual(output['type'], 'new_guesses')
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+
+        unlockanswer.guess = '__INCORRECT__'
+        unlockanswer.save()
+        output = self.receive_json(comm, 'Websocket did not notify of no-longer visible, no-longer obsolete hint')
+        self.assertEqual(output['type'], 'delete_hint')
+        self.assertEqual(output['content']['hint_uid'], hint1.compact_id)
+        output = self.receive_json(comm, 'Websocket did not notify of still visible, no-longer obsolete hint')
+        self.assertEqual(output['type'], 'new_hint')
+        self.assertEqual(output['content']['hint_uid'], hint2.compact_id)
+        output = self.receive_json(comm, 'Websocket did not notify of disappeared unlock')
+        self.assertEqual(output['type'], 'delete_unlockguess')
+
+        self.assertTrue(self.run_async(comm.receive_nothing)())
+        self.run_async(comm.disconnect)()
+
     def test_receive_global_announcement(self):
         user = TeamMemberFactory()
         comm = self.get_communicator(websocket_app, self.url, {'user': user})
