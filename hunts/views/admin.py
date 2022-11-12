@@ -510,8 +510,6 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
             start_time__isnull=False,
         ).annotate(
             num_guesses=Count('guesses'),
-        ).filter(
-            num_guesses__gt=0,
         ).order_by(
             'puzzle'
         ).select_related(
