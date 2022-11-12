@@ -64,40 +64,10 @@ export default {
       })
     },
     oldest_latest_guess: function() {
-      if (this.puzzles.length === 0) {
-        return Infinity
-      }
-      let oldest = Math.max(
-        ...this.team_progress.map(team => {
-          let val = Math.max(...team.progress.filter(
-            puzzle_progress => puzzle_progress.latest_guess !== null,
-          ).map(
-            puzzle_progress => -DateTime.fromISO(puzzle_progress.latest_guess).diffNow().as('milliseconds'),
-          ))
-          if (val === Infinity) return 0
-          return val
-        }),
-        0,  // If the above set was empty we want to return 0, not -Infinity
-      )
-      return oldest
+      return this.get_oldest_latest_guess(this.puzzles.length, this.team_progress)
     },
     max_total_guesses: function () {
-      if (this.puzzles.length === 0) {
-        return Infinity
-      }
-      let total = Math.max(
-        ...this.team_progress.map(team => team.progress.map(
-          puzzle_progress => puzzle_progress.guesses,
-        ).filter(
-          guesses => guesses !== null,
-        ).reduce((a, b) => a + b, 0),
-        ),
-      )
-      // Math.max returns -Infinity if there are no inputs
-      if (total === -Infinity) {
-        return 0
-      }
-      return total
+      return this.get_max_total_guesses(this.puzzles.length, this.team_progress)
     },
   },
   created: function() {
@@ -140,6 +110,41 @@ export default {
       let time_on_str = state.time_on === null ? '' : `\ntime on: ${time_on}`
       return `guesses: ${state.guesses}` + latest_str + time_on_str
     },
+    get_oldest_latest_guess: function(num_puzzles, team_progress) {
+      if (num_puzzles === 0) {
+        return Infinity
+      }
+      let oldest = Math.max(
+        ...team_progress.map(team => {
+          let val = Math.max(...team.progress.filter(
+            puzzle_progress => puzzle_progress.latest_guess !== null,
+          ).map(
+            puzzle_progress => -DateTime.fromISO(puzzle_progress.latest_guess).diffNow().as('milliseconds'),
+          ))
+          if (val === Infinity) return 0
+          return val
+        }),
+        0,  // If the above set was empty we want to return 0, not -Infinity
+      )
+      return oldest
+    },
+    get_max_total_guesses: function(num_puzzles, team_progress) {
+      if (num_puzzles === 0) {
+        return Infinity
+      }
+      let total = Math.max(
+        ...team_progress.map(team => team.progress.map(
+          puzzle_progress => puzzle_progress.guesses,
+        ).filter(
+          guesses => guesses !== null,
+        ).reduce((a, b) => a + b, 0)),
+      )
+      // Math.max returns -Infinity if there are no inputs
+      if (total === -Infinity) {
+        return 0
+      }
+      return total
+    },
     updateData: function(force) {
       clearTimeout(this.timer)
       if (force || this.autoUpdate) {
@@ -155,11 +160,11 @@ export default {
             v.team_progress = data.team_progress
 
             if (v.filters.open_puzzles[1] === old_puzzle_length)
-              v.filters.open_puzzles[1] = v.puzzles.length
+              v.filters.open_puzzles[1] = data.puzzles.length
             if (v.filters.latest_guess[1] === old_oldest_latest_guess)
-              v.filters.latest_guess[1] = v.oldest_latest_guess
+              v.filters.latest_guess[1] = v.get_oldest_latest_guess(data.puzzles.length, data.team_progress)
             if (v.filters.total_guesses[1] === old_max_total_guesses)
-              v.filters.total_guesses[1] = v.max_total_guesses
+              v.filters.total_guesses[1] = v.get_max_total_guesses(data.puzzles.length, data.team_progress)
           },
         )
         if (this.autoUpdate) {
