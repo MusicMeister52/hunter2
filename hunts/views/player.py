@@ -15,11 +15,13 @@ from string import Template
 from datetime import timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Prefetch
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.views import View
@@ -362,23 +364,28 @@ class Answer(LoginRequiredMixin, PuzzleUnlockedMixin, View):
         return JsonResponse(response)
 
 
+@method_decorator(transaction.non_atomic_requests, name='dispatch')
 class AcceptHint(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def post(self, request, episode_number, puzzle_number):
         try:
-            hint_id = request.POST['id']
-        except KeyError:
-            return JsonResponse({'error': 'No hint ID specified'}, status=400)
-        try:
-            hint = models.Hint.objects.get(id=utils.decode_uuid(hint_id))
-        except (models.Hint.DoesNotExist, ValueError):
-            return JsonResponse({'error': f'Hint with id {hint_id} does not exist'}, status=400)
+            with transaction.atomic():
+                try:
+                    hint_id = request.POST['id']
+                except KeyError:
+                    return JsonResponse({'error': 'No hint ID specified'}, status=400)
+                try:
+                    hint = models.Hint.objects.get(id=utils.decode_uuid(hint_id))
+                except (models.Hint.DoesNotExist, ValueError):
+                    return JsonResponse({'error': f'Hint with id {hint_id} does not exist'}, status=400)
 
-        progress = request.team.teampuzzleprogress_set.get(puzzle=request.puzzle)
-        if not hint.unlocked_by(request.team, progress):
-            return JsonResponse({'error': f'Hint with id {hint_id} cannot be accepted: it is not unlocked'}, status=400)
+                progress = request.team.teampuzzleprogress_set.get(puzzle=request.puzzle)
+                if not hint.unlocked_by(request.team, progress):
+                    return JsonResponse({'error': f'Hint with id {hint_id} cannot be accepted: it is not unlocked'}, status=400)
 
-        progress.accepted_hints.add(hint)
-        return JsonResponse({})
+                progress.accepted_hints.add(hint)
+                return JsonResponse({})
+        except IntegrityError:
+            return JsonResponse({'error': f'Hint {hint_id} already accepted'}, status=409)
 
 
 class Callback(LoginRequiredMixin, PuzzleUnlockedMixin, View):
