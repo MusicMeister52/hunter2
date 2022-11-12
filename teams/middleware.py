@@ -9,7 +9,7 @@
 # PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along with Hunter2.  If not, see <http://www.gnu.org/licenses/>.
-
+from django.db import transaction, IntegrityError
 
 from .models import Team
 
@@ -25,8 +25,12 @@ class TeamMiddleware(object):
             try:
                 request.team = request.user.teams.get(at_event=request.tenant)
             except Team.DoesNotExist:
-                request.team = Team(at_event=request.tenant)
-                request.team.save()
-                request.team.members.add(request.user)
+                try:
+                    with transaction.atomic():
+                        request.team = Team(at_event=request.tenant)
+                        request.team.save()
+                        request.team.members.add(request.user)
+                except IntegrityError:
+                    request.team = request.user.teams.get(at_event=request.tenant)
 
         return self.get_response(request)

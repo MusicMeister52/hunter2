@@ -27,7 +27,7 @@ from events.test import EventAwareTestCase, EventTestCase
 from hunter2.models import APIToken
 from .middleware import TeamMiddleware
 from .factories import TeamFactory, TeamMemberFactory
-from .models import Team, TeamRole
+from .models import Team, TeamRole, TeamMembership
 from . import permissions
 
 
@@ -43,8 +43,11 @@ class FactoryTests(EventTestCase):
 class AdminRegistrationTests(TestCase):
     def test_models_registered(self):
         models = apps.get_app_config('teams').get_models()
+        # Models which don't need to be directly registered due to being a through model
+        inline_models = (TeamMembership, )
         for model in models:
-            self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
+            if model not in inline_models:
+                self.assertIsInstance(admin.site._registry[model], admin.ModelAdmin)
 
 
 class TeamMultiEventTests(EventAwareTestCase):
