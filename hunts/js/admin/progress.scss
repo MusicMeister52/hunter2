@@ -1,6 +1,13 @@
 $hover-color: #eee;
 
 .admin-progress-table {
+    position: relative;
+    th {
+        background-color: #eee;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
     overflow: hidden;
     tr:hover {
         background-color: $hover-color;
