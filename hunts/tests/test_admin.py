@@ -322,7 +322,9 @@ class AdminContentTests(EventTestCase):
     def test_admin_team_detail_content(self):
         team = self.guesses[0].by_team
         puzzle2 = PuzzleFactory()
+        puzzle3 = PuzzleFactory(order=self.puzzle.order+1)
         GuessFactory(by=team.members.all()[0], for_puzzle=puzzle2, correct=True)
+        TeamPuzzleProgressFactory(puzzle=puzzle3, team=team)
 
         self.client.force_login(self.admin_user)
         url = reverse('admin_team_detail_content', kwargs={'team_id': team.id})
@@ -330,15 +332,20 @@ class AdminContentTests(EventTestCase):
         self.assertEqual(response.status_code, 200)
         response_json = response.json()
 
+        self.assertEqual(self.puzzle.order, 0)
+        self.assertEqual(puzzle3.order, 1)
+
         self.assertTrue('puzzles' in response_json)
-        self.assertEqual(len(response_json['puzzles']), 1)
-        self.assertEqual(response_json['puzzles'][0]['id'], self.puzzle.id)
-        self.assertEqual(len(response_json['puzzles'][0]['guesses']), 1)
+        self.assertEqual(len(response_json['puzzles']), 2)
+        self.assertEqual(response_json['puzzles'][0]['id'], puzzle3.id)
+        self.assertEqual(len(response_json['puzzles'][0]['guesses']), 0)
+        self.assertEqual(response_json['puzzles'][1]['id'], self.puzzle.id)
+        self.assertEqual(len(response_json['puzzles'][1]['guesses']), 1)
 
         self.assertTrue('solved_puzzles' in response_json)
         self.assertEqual(len(response_json['solved_puzzles']), 1)
         self.assertEqual(response_json['solved_puzzles'][0]['id'], puzzle2.id)
-        self.assertEqual(response_json['puzzles'][0]['num_guesses'], 1)
+        self.assertEqual(response_json['solved_puzzles'][0]['num_guesses'], 1)
 
     def test_admin_team_detail_content_guesses(self):
         # Create a user/team that's made >5 guesses
