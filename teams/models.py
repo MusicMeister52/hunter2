@@ -38,7 +38,7 @@ class Team(SealableModel):
         TeamRole, max_length=1, default=TeamRole.PLAYER,
         help_text='Role of the team. Admins can edit the event and see admin views, authors are credited on the about page'
     )
-    members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='teams')
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='teams', through='TeamMembership')
     invites = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='team_invites')
     requests = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='team_requests')
     token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -96,3 +96,8 @@ class Team(SealableModel):
 
     def is_full(self):
         return self.members.count() >= self.at_event.max_team_size > 0 and not self.is_admin
+
+
+class TeamMembership(SealableModel):
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
