@@ -49,7 +49,7 @@ export default {
       'clue_fields': [
         'type',
         'text',
-        'received_at',
+        'time',
       ],
     }
   },

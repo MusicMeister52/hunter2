@@ -16,6 +16,7 @@ import freezegun
 import pytest
 from django.apps import apps
 from django.contrib import admin
+from django.core.serializers.json import DjangoJSONEncoder
 from django.forms import inlineformset_factory
 from django.test import override_settings
 from django.urls import reverse
@@ -424,7 +425,7 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(response_json['puzzles'][0]['hints_scheduled'][0]['text'], hint.text)
 
             # Advance time again, the hint should now be visible, alongside the unlock
-            frozen_datetime.tick(datetime.timedelta(minutes=11))
+            frozen_datetime.tick(datetime.timedelta(minutes=10))
             # Add another guess to ensure this doesn't throw off the timings
             GuessFactory(for_puzzle=self.puzzle, by=member, guess=unlock.unlockanswer_set.all()[0].guess)
 
@@ -432,22 +433,27 @@ class AdminContentTests(EventTestCase):
             self.assertEqual(response.status_code, 200)
             response_json = response.json()
 
+            time = DjangoJSONEncoder().default(timezone.now())
             self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 2)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['accepted'], False)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['time'], time)
 
             # Accept the hint and check that this fact is reflected
+            frozen_datetime.tick(datetime.timedelta(minutes=1))
             tpp.accepted_hints.add(hint)
 
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             response_json = response.json()
 
+            time = DjangoJSONEncoder().default(timezone.now())
             self.assertEqual(len(response_json['puzzles'][0]['clues_visible']), 2)
             self.assertEqual(len(response_json['puzzles'][0]['hints_scheduled']), 0)
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['text'], hint.text)
             self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['accepted'], True)
+            self.assertEqual(response_json['puzzles'][0]['clues_visible'][1]['time'], time)
 
     def test_can_view_admin_progress(self):
         self.client.force_login(self.admin_user)

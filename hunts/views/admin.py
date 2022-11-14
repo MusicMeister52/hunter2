@@ -528,6 +528,7 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
             'team__id',
         ).prefetch_related(
             'accepted_hints',
+            'hint_acceptances',
             Prefetch(
                 'teamunlock_set',
                 queryset=models.TeamUnlock.objects.select_related(
@@ -603,11 +604,13 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                         min_given=Min('unlocked_by__given')
                     )
                 }
+                acceptances = {acceptance.hint_id: acceptance for acceptance in tp_progress.hint_acceptances.all()}
+
                 clues_visible = [
                     {
                         'type': 'Unlock',
                         'text': tu['unlockanswer__unlock__text'],
-                        'received_at': tu['min_given']
+                        'time': tu['min_given']
                     }
                     for tu in unlocked_unlocks.values()
                 ] + [
@@ -615,7 +618,7 @@ class TeamAdminDetailContent(EventAdminJSONMixin, View):
                         'type': 'Hint',
                         'text': h.text,
                         'accepted': h.accepted,
-                        'received_at': h.unlocks_at(team, tp_progress)
+                        'time': acceptances[h.id].accepted_at if h.accepted else h.unlocks_at(team, tp_progress),
                     }
                     for h in itertools.chain(*tp_progress.hints().values())
                 ]

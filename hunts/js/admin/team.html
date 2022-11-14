@@ -31,7 +31,7 @@
 						<tr>
 							<th scope="col">Type</th>
 							<th scope="col">Text</th>
-							<th scope="col">Received At</th>
+							<th scope="col" title="for hints: received or, if accepted, accepted">Received At</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -45,7 +45,7 @@
 								<span :class="((clue.type === 'Hint') && !clue.accepted).toString()"></span>
 								{{ clue.text }}
 							</td>
-							<td><human-datetime v-bind:value="clue.received_at" /></td>
+							<td><human-datetime v-bind:value="clue.time" /></td>
 						</tr>
 					</tbody>
 				</table>
