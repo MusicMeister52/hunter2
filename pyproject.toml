@@ -21,7 +21,7 @@ django-enumfields = "==2.1.1"
 django-environ = "==0.9.0"
 django-extensions = "==3.2.1"
 django-fullclean = "0.0.5"
-django-nested-admin = "==4.0.0"
+django-nested-admin = "==4.0.2"
 django-ordered-model = { git = "https://github.com/fish-face/django-ordered-model.git", rev = "8a2908472b7bfbedb530a845f6c18fc86da7b750" }
 django-prometheus = { git = "https://github.com/riconnon/django-prometheus.git", rev = "multi-process-dedicated-listener" }
 django-redis-cache = "==3.0.1"

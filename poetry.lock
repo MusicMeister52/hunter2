@@ -463,7 +463,7 @@ dev = ["freezegun", "model-bakery", "pillow", "sphinx", "sphinx-autobuild", "sph
 
 [[package]]
 name = "django-nested-admin"
-version = "4.0.0"
+version = "4.0.2"
 description = "Django admin classes that allow for nested inlines"
 category = "main"
 optional = false
@@ -1810,7 +1810,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "ee113c27d08d77a52d468fce5779b4f3fe217fd1fed976f5a69eece72f8ac549"
+content-hash = "2e39498e4469dc8971c8490a6ca2315d4103c0dcc843e770072880be3aef3ef6"
 
 [metadata.files]
 aioredis = [
@@ -2111,8 +2111,8 @@ django-gdpr-assist = [
     {file = "django_gdpr_assist-1.4.2-py3-none-any.whl", hash = "sha256:791aff8be0916f1d2e83b8c02bd1ca90362fe8616d9df29ff8558d87ad1a1c5a"},
 ]
 django-nested-admin = [
-    {file = "django-nested-admin-4.0.0.tar.gz", hash = "sha256:f488933265d0fb429e98a627087d1e78ce1f58d17cd9a7cbf6b3e458660f6c0f"},
-    {file = "django_nested_admin-4.0.0-py3-none-any.whl", hash = "sha256:4de8e97b445be65c4ac7952fa1b3a62b2f4333051dd97b8c960a37790ccdeee4"},
+    {file = "django-nested-admin-4.0.2.tar.gz", hash = "sha256:79a5ce80b81c41a0f48f778fb556a3721029df48580bfce60a5962ffa2ef2d47"},
+    {file = "django_nested_admin-4.0.2-py3-none-any.whl", hash = "sha256:74d8fc0d0f17862ffcece66d39b8814cb649878b3b6ba8438076145a688ea473"},
 ]
 django-ordered-model = []
 django-postgresql-dag = [
