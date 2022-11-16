@@ -22,7 +22,7 @@
     "autoprefixer": "10.4.13",
     "babel-loader": "9.1.0",
     "babel-plugin-component": "1.1.1",
-    "css-loader": "6.7.1",
+    "css-loader": "6.7.2",
     "css-minimizer-webpack-plugin": "4.2.2",
     "expose-loader": "4.0.0",
     "imports-loader": "4.0.1",
