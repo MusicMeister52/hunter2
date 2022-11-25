@@ -14,31 +14,23 @@
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 from collections import defaultdict
 
-from django.http import Http404
 from uuid import UUID
 
 
 def event_episode(event, episode_number):
-    from .models import Episode
 
     episodes = event.episode_set.order_by('start_date')
     ep_int = int(episode_number)
-    try:
-        ep = episodes[ep_int - 1:ep_int].get()
-    except Episode.DoesNotExist as e:
-        raise Http404 from e
+    ep = episodes[ep_int - 1:ep_int].get()
+
     ep.relative_id = ep_int
     return ep
 
 
 def event_episode_puzzle(event, episode_number, puzzle_number):
-    from .models import Puzzle
 
     episode = event_episode(event, episode_number)
-    try:
-        return episode, episode.get_puzzle(puzzle_number)
-    except Puzzle.DoesNotExist as e:
-        raise Http404 from e
+    return episode, episode.get_puzzle(puzzle_number)
 
 
 def finishing_positions(event, include_late=False):

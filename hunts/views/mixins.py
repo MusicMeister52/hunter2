@@ -19,16 +19,19 @@ from django.utils import timezone
 from django.views.decorators.cache import cache_page
 
 from teams.permissions import is_admin_for_event
-from ..models import Puzzle
+from ..models import Puzzle, Episode
 from .. import utils
 
 # If PuzzleUnlockedMixin inherits from EpisodeUnlockedMixin the dispatch methods execute in the wrong order
 
 
-class EpisodeUnlockedMixin():
+class EpisodeUnlockedMixin:
     def dispatch(self, request, episode_number, *args, **kwargs):
         # Views using this mixin inevitably want the episode object so keep it on the request
-        request.episode = utils.event_episode(request.tenant, episode_number)
+        try:
+            request.episode = utils.event_episode(request.tenant, episode_number)
+        except Episode.DoesNotExist as e:
+            raise Http404 from e
         request.admin = is_admin_for_event.test(request.user, request.tenant)
 
         if request.admin or request.episode.available(request.team):
@@ -54,10 +57,18 @@ class EpisodeUnlockedMixin():
         )
 
 
-class PuzzleUnlockedMixin():
+class PuzzleUnlockedMixin:
     def dispatch(self, request, episode_number, puzzle_number, *args, **kwargs):
         # Views using this mixin inevitably want the episode and puzzle objects so keep it on the request
-        request.episode, request.puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
+        try:
+            request.episode, request.puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
+        except Episode.DoesNotExist as e:
+            raise Http404 from e
+        except Puzzle.DoesNotExist:
+            return TemplateResponse(
+                request, 'hunts/puzzle404.html', status=404
+            )
+
         request.admin = is_admin_for_event.test(request.user, request.tenant)
 
         if request.admin or request.puzzle.available(request.team):
@@ -70,7 +81,7 @@ class PuzzleUnlockedMixin():
             return redirect(f'{event_url}#episode-{episode_number}')
 
         if not request.accepts('text/html'):
-            raise PermissionDenied
+            raise Http404
 
         if not request.puzzle.started_for(request.team):
             return TemplateResponse(
@@ -83,7 +94,7 @@ class PuzzleUnlockedMixin():
             )
 
         return TemplateResponse(
-            request, 'hunts/puzzlelocked.html', status=403
+            request, 'hunts/puzzle404.html', status=404
         )
 
 

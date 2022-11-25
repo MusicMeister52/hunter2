@@ -14,7 +14,7 @@ from string import Template
 
 from datetime import timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError, ObjectDoesNotExist
 from django.db.models import Prefetch
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -260,7 +260,10 @@ class AbsolutePuzzleView(RedirectView):
 
 class SolutionContent(LoginRequiredMixin, PuzzleUnlockedMixin, View):
     def get(self, request, episode_number, puzzle_number):
-        episode, puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
+        try:
+            episode, puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
+        except ObjectDoesNotExist as e:
+            raise Http404 from e
         admin = is_admin_for_event.test(request.user, request.tenant)
 
         if request.tenant.end_date > timezone.now() and not admin:
@@ -301,7 +304,10 @@ class PuzzleFile(LoginRequiredMixin, PuzzleUnlockedMixin, View):
 
 class SolutionFile(View):
     def get(self, request, episode_number, puzzle_number, file_path):
-        episode, puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
+        try:
+            episode, puzzle = utils.event_episode_puzzle(request.tenant, episode_number, puzzle_number)
+        except ObjectDoesNotExist as e:
+            raise Http404 from e
         admin = is_admin_for_event.test(request.user, request.tenant)
 
         if request.tenant.end_date > timezone.now() and not admin:
