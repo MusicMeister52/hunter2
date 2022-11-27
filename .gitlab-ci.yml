@@ -62,7 +62,7 @@ check:eslint:
   needs: []
   stage: build1
   variables:
-    BUILDKIT_VERSION: v0.9.3
+    BUILDKIT_VERSION: v0.10.6
   before_script:
     - !reference [.base_job, before_script]
     - docker buildx create --name hunter2 --node amd64 --use
