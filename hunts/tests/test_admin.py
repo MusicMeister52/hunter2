@@ -321,8 +321,8 @@ class AdminContentTests(EventTestCase):
 
     def test_admin_team_detail_content(self):
         team = self.guesses[0].by_team
-        puzzle2 = PuzzleFactory()
-        puzzle3 = PuzzleFactory(order=self.puzzle.order+1)
+        puzzle2 = PuzzleFactory(episode__start_date=self.episode.start_date - datetime.timedelta(days=1))
+        puzzle3 = PuzzleFactory(episode=puzzle2.episode, order=puzzle2.order+1)
         GuessFactory(by=team.members.all()[0], for_puzzle=puzzle2, correct=True)
         TeamPuzzleProgressFactory(puzzle=puzzle3, team=team)
 
