@@ -1,14 +1,10 @@
 {% extends "events/base.html" %}
 
 {% block topbar_right %}{% spaceless %}
-	{% if is_admin or user.is_superuser %}
-	{% block topbar_admin %}
-		{% if is_admin %}
+	{% if is_admin %}
+		{% block topbar_admin %}
 			<li class="nav-item"><a class="btn btn-secondary" href="{% url 'admin_index' %}">Admin Site</a></li>
-		{% elif user.is_superuser %}
-			<li class="nav-item"><a class="btn btn-secondary" href="{% url 'admin:index' %}">Super Admin</a></li>
-		{% endif %}
-	{% endblock %}
+		{% endblock %}
 	{% endif %}
 	{% if event %}
 		<li class="nav-item"><a class="nav-link" href="{% url 'manage_team' %}">Team</a></li>
