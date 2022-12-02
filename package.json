@@ -26,7 +26,7 @@
     "css-minimizer-webpack-plugin": "4.2.2",
     "expose-loader": "4.0.0",
     "imports-loader": "4.0.1",
-    "mini-css-extract-plugin": "2.7.0",
+    "mini-css-extract-plugin": "2.7.1",
     "postcss": "8.4.19",
     "postcss-loader": "7.0.1",
     "sass": "1.56.1",
