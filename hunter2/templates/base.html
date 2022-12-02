@@ -78,31 +78,33 @@
 		<source src="/static/ping.mp3" type="audio/mpeg">
 	</audio>
 
-	<nav class="navbar navbar-expand-md bg-dark navbar-dark container-fluid">
-		{% block topbar_title %}
-			<a class="navbar-brand" href="{% url 'index' %}">Home</a>
-		{% endblock %}
+	<nav class="navbar navbar-expand-md bg-dark navbar-dark">
+		<div class="container-fluid">
+			{% block topbar_title %}
+				<a class="navbar-brand" href="{% url 'index' %}">Home</a>
+			{% endblock %}
 
-		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar" aria-controls="collapsibleNavbar" aria-expanded="false" aria-label="Toggle navigation">
-		  <span class="navbar-toggler-icon"></span>
-		</button>
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar" aria-controls="collapsibleNavbar" aria-expanded="false" aria-label="Toggle navigation">
+			  <span class="navbar-toggler-icon"></span>
+			</button>
 
-		<div class="collapse navbar-collapse" id="collapsibleNavbar">
-			<ul class="navbar-nav">
-				{% block topbar_left %}{% endblock %}
-			</ul>
+			<div class="collapse navbar-collapse" id="collapsibleNavbar">
+				<ul class="navbar-nav">
+					{% block topbar_left %}{% endblock %}
+				</ul>
 
-			<ul class="navbar-nav ms-auto">
-				{% block topbar_right %}
-					{% if user.is_authenticated %}
-						<li class="nav-item"><a class="nav-link" href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
-						<li class="nav-item"><a id="logoutLink" class="nav-link" href="#">Log out</a></li>
-						<li class="nav-item"><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
-					{% else %}
-						<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Log in</a></li>
-					{% endif %}
-				{% endblock %}
-			</ul>
+				<ul class="navbar-nav ms-auto">
+					{% block topbar_right %}
+						{% if user.is_authenticated %}
+							<li class="nav-item"><a class="nav-link" href="{% url 'edit_profile' %}" id="navUser">Account</a></li>
+							<li class="nav-item"><a id="logoutLink" class="nav-link" href="#">Log out</a></li>
+							<li class="nav-item"><form id="logoutForm" action="{% url 'account_logout' %}?next={{ request.get_full_path | urlencode }}" method="post">{% csrf_token %}</form></li>
+						{% else %}
+							<li class="nav-item"><a class="nav-link" href="{{ login_url }}" id="navLogin">Log in</a></li>
+						{% endif %}
+					{% endblock %}
+				</ul>
+			</div>
 		</div>
 	</nav>
 
