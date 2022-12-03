@@ -41,7 +41,7 @@ class UserSignupForm(forms.ModelForm):
         model = User
         fields = ['contact']
         widgets = {
-            'contact': RadioSelect(choices=CONTACT_CHOICES, attrs={"required": True}),
+            'contact': RadioSelect(choices=CONTACT_CHOICES),
         }
 
     field_order = ['username', 'email', 'password1', 'password2', 'contact']
@@ -49,6 +49,7 @@ class UserSignupForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         config = Configuration.get_solo()
+        self.fields['contact'].required = True
         if config.privacy_policy:
             self.fields['privacy'] = forms.BooleanField(
                 label=mark_safe('I have read and agree to <a href="/privacy">the site privacy policy</a>'),
