@@ -11,7 +11,7 @@ services:
       - ${PWD:-.}:/opt/hunter2/src
   dot:
     command: -v -Tsvg -o/files/diagram/models.svg /files/diagram/models.dot
-    image: registry.gitlab.com/rconan/docker-graphviz:3.0.0-38@sha256:7b2f9f8194c7bf4958fc7da37024c2aa853fd1a08e90634e0e82a64079a1308e
+    image: registry.gitlab.com/rconan/docker-graphviz:3.0.0-39@sha256:68ddec0deff1d737775e28725e26f703406c5327e4dbdfab8850d475857ac8bb
     volumes:
       - ${PWD:-.}:/files
   eslint:
