@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apk apk add \
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 
 ENV PATH "/root/.local/bin:${PATH}"
-RUN wget -q -O - https://raw.githubusercontent.com/python-poetry/install.python-poetry.org/9b64f71d730d7be00e204b96a095b38af9e909e3/install-poetry.py | python3 - --version 1.2.0 \
+RUN wget -q -O - https://raw.githubusercontent.com/python-poetry/install.python-poetry.org/9b64f71d730d7be00e204b96a095b38af9e909e3/install-poetry.py | python3 - --version 1.3.1 \
  && poetry config virtualenvs.create false \
  && python -m venv /opt/hunter2/venv
 
