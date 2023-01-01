@@ -48,7 +48,7 @@ pytest-django = "==4.5.2"
 pytest-cov = "==4.0.0"
 pytest-shard = "0.1.2"
 django-gdpr-assist = "1.4.2"
-dateparser = "==1.1.4"
+dateparser = "==1.1.5"
 psycopg2-binary = "==2.9.5"
 [tool.poetry.dev-dependencies]
 django-silk = "==5.0.2"
