@@ -1,5 +1,5 @@
 # Construct a common base image for creating python wheels and the final image
-FROM python:3.10.8-alpine3.15@sha256:4cbe559428e1a13d10469578aee527f3c9f46894486dd9ba8f6f536887657712 AS runtime_base
+FROM python:3.11.0-alpine3.15@sha256:1567c44f47c8136752ee4301be2e94130a5f8e1fb7a0e737ccac28fb8f66fd0f AS runtime_base
 
 RUN --mount=type=cache,target=/var/cache/apk apk add \
     libxml2 \
