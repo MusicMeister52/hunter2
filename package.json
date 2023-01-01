@@ -62,7 +62,7 @@
     "humanize-duration": "3.27.3",
     "jquery": "3.6.2",
     "js-cookie": "3.0.1",
-    "luxon": "3.1.1",
+    "luxon": "3.2.0",
     "path-browserify": "1.0.1",
     "popper.js": "1.16.1",
     "robust-websocket": "1.0.0",
