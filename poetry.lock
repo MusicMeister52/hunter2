@@ -879,18 +879,19 @@ resolved_reference = "8a2908472b7bfbedb530a845f6c18fc86da7b750"
 
 [[package]]
 name = "django-postgresql-dag"
-version = "0.3.2"
+version = "0.4.0"
 description = "Directed Acyclic Graph implementation for Django & Postgresql"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "django-postgresql-dag-0.3.2.tar.gz", hash = "sha256:768cf1ddf592c75f29a6f71ad9f0061c5f87c75ac937e8477ca5b0d962a9d979"},
-    {file = "django_postgresql_dag-0.3.2-py3-none-any.whl", hash = "sha256:5d29ec52a711639849350109a1b93fbe21e4069b5ce93716ed26fb4f5b8bfdd6"},
+    {file = "django_postgresql_dag-0.4.0-py3-none-any.whl", hash = "sha256:192141cd5c0d0887d9397291ca17546282e832b0b8057eac23ad80c7f01b7be0"},
+    {file = "django_postgresql_dag-0.4.0.tar.gz", hash = "sha256:224a724d19ca256c8547158f25211bbda651c907efe508385f62203e47803a52"},
 ]
 
-[package.extras]
-transforms = ["networkx (>=2.5)", "pandas (>=1.2)"]
+[package.dependencies]
+django = ">=3.2"
+psycopg2-binary = ">=2.9,<3.0"
 
 [[package]]
 name = "django-prometheus"
@@ -3073,6 +3074,7 @@ category = "dev"
 optional = false
 python-versions = "*"
 files = [
+    {file = "wcwidth-0.2.6-py2.py3-none-any.whl", hash = "sha256:795b138f6875577cd91bba52baf9e445cd5118fd32723b460e30a0af30ea230e"},
     {file = "wcwidth-0.2.6.tar.gz", hash = "sha256:a5220780a404dbe3353789870978e472cfe477761f06ee55077256e509b156d0"},
 ]
 
@@ -3149,4 +3151,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "e20c55c676c6d89d22f3a41679291e1731bb6bd1231cc27311b0026d66c2da4a"
+content-hash = "23a29b3f4064d11c41db2e299329543bbb8e33f834dc71080a0d4666674ac5d6"
